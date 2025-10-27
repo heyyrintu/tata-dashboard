@@ -39,3 +39,29 @@ export interface UploadResponse {
   message: string;
 }
 
+export interface RangeWiseData {
+  range: string;
+  tripCount: number;
+  totalLoad: number;
+  percentage: number;
+}
+
+export interface LocationData {
+  name: string;
+  tripCount: number;
+  totalLoad: number;
+  range: string;
+  lat?: number;
+  lng?: number;
+}
+
+export interface RangeWiseResponse {
+  success: boolean;
+  rangeData: RangeWiseData[];
+  locations: LocationData[];
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+}
+

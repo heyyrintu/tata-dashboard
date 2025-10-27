@@ -85,8 +85,7 @@
   padding: 8px;
 }
 
-.react-datepicker__month-text,
-.react-datepicker__year-text {
+.react-datepicker__month-text {
   display: inline-block;
   width: 100%;
   line-height: 2.5rem;
@@ -97,6 +96,12 @@
 }
 
 .react-datepicker__year-text {
+  display: inline-block;
+  width: 100%;
+  line-height: 2.5rem;
+  text-align: center;
+  cursor: pointer;
+  border-radius: 0.5rem;
   color: #ffffff !important;
   font-weight: 600;
 }
@@ -140,6 +145,20 @@
 .react-datepicker__current-month {
   color: #ffffff !important;
   font-weight: 600;
+}
+
+.react-datepicker__header .react-datepicker__current-month {
+  color: #ffffff !important;
+}
+
+.react-datepicker__header .react-datepicker__year-dropdown-container,
+.react-datepicker__header .react-datepicker__year-dropdown {
+  color: #ffffff !important;
+}
+
+.react-datepicker__year-read-view--down-arrow,
+.react-datepicker__year-read-view--selected-year {
+  color: #ffffff !important;
 }
 
 .react-datepicker__year-wrapper {

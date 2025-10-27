@@ -8,7 +8,15 @@ interface ExcelRow {
 export const parseExcelFile = (filePath: string): ITrip[] => {
   try {
     const workbook = XLSX.readFile(filePath, { type: 'file', cellDates: true });
-    const sheetName = workbook.SheetNames[0];
+    
+    // Find 'OPs Data' sheet
+    let sheetName = 'OPs Data';
+    if (!workbook.SheetNames.includes(sheetName)) {
+      // Fallback to first sheet if 'OPs Data' not found
+      sheetName = workbook.SheetNames[0];
+      console.log(`Warning: 'OPs Data' sheet not found, using first sheet: ${sheetName}`);
+    }
+    
     const worksheet = workbook.Sheets[sheetName];
     const data: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet);
 

@@ -18,6 +18,32 @@ interface UploadResponse {
   message: string;
 }
 
+interface RangeWiseData {
+  range: string;
+  tripCount: number;
+  totalLoad: number;
+  percentage: number;
+}
+
+interface LocationData {
+  name: string;
+  tripCount: number;
+  totalLoad: number;
+  range: string;
+  lat?: number;
+  lng?: number;
+}
+
+interface RangeWiseResponse {
+  success: boolean;
+  rangeData: RangeWiseData[];
+  locations: LocationData[];
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+}
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
@@ -51,6 +77,20 @@ export const getAnalytics = async (fromDate?: Date, toDate?: Date): Promise<Anal
   }
 
   const response = await api.get<Analytics>(`/analytics?${params.toString()}`);
+  return response.data;
+};
+
+export const getRangeWiseAnalytics = async (fromDate?: Date, toDate?: Date): Promise<RangeWiseResponse> => {
+  const params = new URLSearchParams();
+  
+  if (fromDate) {
+    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+  }
+  if (toDate) {
+    params.append('toDate', toDate.toISOString().split('T')[0]);
+  }
+
+  const response = await api.get<RangeWiseResponse>(`/analytics/range-wise?${params.toString()}`);
   return response.data;
 };
 

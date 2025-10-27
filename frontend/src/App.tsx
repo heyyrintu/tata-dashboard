@@ -1,7 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import Header from './components/Header';
 import DateRangeSelector from './components/DateRangeSelector';
 import SummaryCards from './components/SummaryCards';
+import RangeWiseTable from './components/RangeWiseTable';
+import RangeWiseLoadGraph from './components/RangeWiseLoadGraph';
+import IndiaMap from './components/IndiaMap';
 import { useDashboard } from './context/DashboardContext';
 import { getAnalytics } from './services/api';
 import { FileUploadNew } from './components/FileUploadNew';
@@ -9,7 +12,6 @@ import { BackgroundRippleEffect } from './components/BackgroundRippleEffect';
 
 function App() {
   const { uploadedFileName, dateRange, setMetrics, setIsLoading, setError } = useDashboard();
-  const [showUploadModal, setShowUploadModal] = useState(!uploadedFileName);
 
   // Fetch analytics when component mounts or when date range changes
   useEffect(() => {
@@ -32,13 +34,6 @@ function App() {
       fetchInitialData();
     }
   }, [uploadedFileName, dateRange.from, dateRange.to, setMetrics, setIsLoading, setError]);
-
-  useEffect(() => {
-    // Hide upload modal when file is loaded
-    if (uploadedFileName) {
-      setShowUploadModal(false);
-    }
-  }, [uploadedFileName]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0e27] to-[#08101e] relative">
@@ -64,6 +59,20 @@ function App() {
             
             <DateRangeSelector />
             <SummaryCards />
+            
+            {/* Phase 2: Range Analytics and Map */}
+            <div className="space-y-6 mt-6">
+              {/* Second Row: Range-Wise Trips and Range-Wise Load Graph */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <RangeWiseTable />
+                <RangeWiseLoadGraph />
+              </div>
+              
+              {/* Third Row: Delivery Locations Map */}
+              <div>
+                <IndiaMap />
+              </div>
+            </div>
           </>
         )}
       </main>

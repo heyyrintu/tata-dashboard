@@ -26,12 +26,13 @@ export const uploadExcel = async (req: Request, res: Response) => {
         });
       }
 
-      // Bulk insert with upsert (update if exists, insert if not)
+      // Delete all existing data before inserting new data
+      await Trip.deleteMany({});
+
+      // Bulk insert new data
       const bulkOps = trips.map(trip => ({
-        updateOne: {
-          filter: { indent: trip.indent },
-          update: { $set: trip },
-          upsert: true
+        insertOne: {
+          document: trip
         }
       }));
 
