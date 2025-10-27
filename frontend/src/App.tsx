@@ -41,11 +41,11 @@ function App() {
   }, [uploadedFileName]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a0e27] to-[#08101e] pt-8 relative">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a0e27] to-[#08101e] relative">
       <BackgroundRippleEffect />
       <Header />
       
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 relative z-10">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
         {!uploadedFileName && (
           <div className="mb-8">
             <FileUploadNew onClose={() => {}} />
