@@ -1,132 +1,249 @@
-# Dashboard Web Application
+# Drona Dashboard - Excel Analytics Platform
 
-A professional dashboard web application that processes Excel files and displays analytics data with interactive visualizations.
+A modern, full-stack web application for processing and analyzing Excel trip data with real-time analytics and interactive visualizations.
 
-## Tech Stack
+## 🚀 Features
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **UI**: Tailwind CSS
-- **Backend**: Node.js + Express + TypeScript
-- **Database**: MongoDB with Mongoose
-- **Excel Processing**: xlsx library
-- **Date Handling**: date-fns
-- **File Upload**: Multer
+- **Excel File Upload**: Drag-and-drop interface for uploading `.xlsx` and `.xls` files
+- **Data Processing**: Automatic parsing and storage of trip/indent data in MongoDB
+- **Date Range Filtering**: Filter analytics by custom date ranges or select a specific month
+- **Real-time Analytics**: Live display of total trips and indents
+- **Dark Theme UI**: Sleek deep dark blue interface with glassmorphism effects
+- **Responsive Design**: Works seamlessly on desktop, tablet, and mobile devices
+- **Animated Interactions**: Smooth animations and hover effects throughout
 
-## Project Structure
+## 🛠️ Tech Stack
 
+### Frontend
+- **React 18** with TypeScript
+- **Vite** for fast development and building
+- **Tailwind CSS v4** with custom theming
+- **Motion** (Framer Motion) for animations
+- **React DatePicker** for date selection
+- **Axios** for API communication
+- **SheetJS (xlsx)** for Excel file handling
+
+### Backend
+- **Node.js** with Express and TypeScript
+- **MongoDB** with Mongoose ODM
+- **Multer** for file uploads
+- **date-fns** for date manipulation
+
+## 📋 Prerequisites
+
+- **Node.js** (v18 or higher)
+- **MongoDB** (v7 or higher)
+- **npm** or **yarn**
+
+## 🚀 Getting Started
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/yourusername/tata-dashboard.git
+cd tata-dashboard
 ```
-tata/
-├── backend/          # Node.js/Express API
-├── frontend/         # React dashboard
-└── README.md
-```
 
-## Getting Started
+### 2. Backend Setup
 
-### Prerequisites
-
-- Node.js (v16 or higher)
-- MongoDB (running on localhost:27017)
-- npm or yarn
-
-### Backend Setup
-
-1. Navigate to the backend directory:
 ```bash
 cd backend
-```
-
-2. Install dependencies:
-```bash
 npm install
 ```
 
-3. Create a `.env` file in the backend directory:
+Create a `.env` file in the `backend` directory:
+
 ```env
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/tata-dashboard
 NODE_ENV=development
 ```
 
-4. Start the backend server:
+Start the backend server:
+
 ```bash
 npm run dev
 ```
 
-The backend will be running on `http://localhost:5000`
+The server will run on `http://localhost:5000`
 
-### Frontend Setup
+### 3. Frontend Setup
 
-1. Navigate to the frontend directory:
 ```bash
-cd frontend
-```
-
-2. Install dependencies:
-```bash
+cd ../frontend
 npm install
 ```
 
-3. The `.env` file is already created with `VITE_API_URL=http://localhost:5000/api`
+Create a `.env` file in the `frontend` directory:
 
-4. Start the development server:
+```env
+VITE_API_URL=http://localhost:5000/api
+```
+
+Start the frontend development server:
+
 ```bash
 npm run dev
 ```
 
-The frontend will be running on `http://localhost:5173`
+The application will be available at `http://localhost:5173`
 
-## Usage
+## 📁 Project Structure
 
-1. Start MongoDB on your local machine
-2. Start the backend server (`npm run dev` in backend directory)
-3. Start the frontend (`npm run dev` in frontend directory)
-4. Open your browser to `http://localhost:5173`
-5. Click "UPDATE EXCEL FILE" button in the header
-6. Upload your Excel file (`.xlsx` or `.xls` format)
-7. View the analytics with date range filtering
+```
+tata-dashboard/
+├── backend/
+│   ├── src/
+│   │   ├── models/          # MongoDB schemas
+│   │   ├── controllers/      # Request handlers
+│   │   ├── routes/          # API routes
+│   │   ├── utils/           # Utility functions
+│   │   ├── config/           # Configuration files
+│   │   └── server.ts        # Entry point
+│   ├── uploads/             # Excel file storage
+│   └── package.json
+├── frontend/
+│   ├── src/
+│   │   ├── components/       # React components
+│   │   ├── context/         # Global state management
+│   │   ├── services/        # API calls
+│   │   ├── lib/            # Utilities
+│   │   ├── App.tsx         # Main app component
+│   │   └── main.tsx        # Entry point
+│   └── package.json
+└── README.md
+```
 
-## API Endpoints
+## 🔑 Key Features Explained
 
-### POST /api/upload
-Upload and process Excel file
-- Accepts `.xlsx` or `.xls` files
-- Returns record count and success message
+### Excel Data Processing
+- Accepts `.xlsx` and `.xls` files
+- Automatically parses all columns including dates
+- Validates required fields (`Indent`, `Allocation Date`)
+- Stores data in MongoDB with proper schema mapping
 
-### GET /api/analytics
-Get analytics data with date range filtering
-- Query params: `fromDate` (YYYY-MM-DD), `toDate` (YYYY-MM-DD)
-- Returns: `totalTrips`, `totalIndents`, `dateRange`
+### Analytics Dashboard
+- **Total Trips**: Count of records with valid allocation dates
+- **Total Indents**: Count of unique indent values
+- Real-time updates based on selected date range
+- Month selector for quick filtering
 
-## Features
+### User Interface
+- **Header**: Drona logo with glassmorphism effect
+- **File Upload**: Drag-and-drop zone with file preview
+- **Date Range Selector**: From/To date pickers with month selector
+- **Summary Cards**: Animated metrics with gradient text
+- **Background Effects**: Interactive ripple grid overlay
 
-- Excel file upload and parsing
-- MongoDB data storage with all 23 columns
-- Date range filtering
-- Real-time analytics (Total Trips & Total Indents)
-- Responsive design
-- Professional UI with Tailwind CSS
-- Error handling and loading states
+## 🎨 Design Features
 
-## Phase 1 Deliverables
+- **Deep Dark Blue Theme** (#0a0e27) with glassmorphism
+- **Gradient Accents**: Purple, cyan, and blue color schemes
+- **Hover Effects**: Scale transforms and shadow animations
+- **Smooth Transitions**: All interactions are animated
+- **Custom Scrollbars**: Styled scrollbars matching the theme
+- **Responsive Grid**: Adapts to all screen sizes
 
-✓ Excel file upload and parsing  
-✓ MongoDB data storage  
-✓ Date range filtering  
-✓ Two summary cards (Trips, Indents)  
-✓ Clean, professional UI  
-✓ Error handling  
-✓ Responsive design  
+## 📝 Available Scripts
 
-## Future Phases
+### Backend
+```bash
+npm run dev      # Start development server with nodemon
+npm run build    # Build for production
+npm start        # Start production server
+```
 
-- User authentication
-- Interactive graphs and charts
-- Map visualization
-- Advanced filtering options
-- Export functionality
+### Frontend
+```bash
+npm run dev      # Start development server
+npm run build    # Build for production
+npm run preview  # Preview production build
+```
 
-## License
+## 🌐 API Endpoints
 
-ISC
+### POST `/api/upload`
+Upload and process Excel files.
 
+**Request**: Multipart form data with file
+**Response**: 
+```json
+{
+  "success": true,
+  "recordCount": 12,
+  "fileName": "MIS MASTER SHEET July 2025.xlsx",
+  "message": "File processed successfully"
+}
+```
+
+### GET `/api/analytics`
+Get analytics data with optional date filtering.
+
+**Query Parameters**:
+- `fromDate` (optional): Start date (YYYY-MM-DD)
+- `toDate` (optional): End date (YYYY-MM-DD)
+
+**Response**:
+```json
+{
+  "success": true,
+  "totalTrips": 8,
+  "totalIndents": 5,
+  "dateRange": {
+    "from": "2025-03-18",
+    "to": "2025-03-25"
+  },
+  "recordsProcessed": 8
+}
+```
+
+## 🗄️ Database Schema
+
+The application uses MongoDB to store trip data:
+
+```typescript
+interface Trip {
+  sNo: number;
+  indentDate: Date;
+  indent: string;           // Unique identifier
+  allocationDate: Date;      // Primary filter field
+  customerName: string;
+  location: string;
+  vehicleModel: string;
+  vehicleNumber: string;
+  // ... additional fields
+}
+```
+
+## 🚧 Roadmap
+
+- [ ] User authentication and authorization
+- [ ] Advanced data visualization with charts
+- [ ] Export functionality for filtered data
+- [ ] Historical data comparison
+- [ ] Real-time data updates
+- [ ] Multi-user support with role-based access
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 👨‍💻 Author
+
+**Drona Logitech Private Limited**
+
+## 🙏 Acknowledgments
+
+- [Aceternity UI](https://ui.aceternity.com) for design components
+- [Motion](https://motion.dev) for animation library
+- [React DatePicker](https://reactdatepicker.com) for date selection
