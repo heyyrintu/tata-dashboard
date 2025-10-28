@@ -8,19 +8,19 @@ import {
   Legend,
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
-import { useRangeData } from '../hooks/useRangeData';
+import { useFulfillmentData } from '../hooks/useFulfillmentData';
 import { LoadingSpinner } from './LoadingSpinner';
-import { formatLoad, calculateChartData } from '../utils/rangeCalculations';
+import { formatIndentCount, calculateFulfillmentChartData } from '../utils/fulfillmentCalculations';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-export default function RangeWiseLoadGraph() {
-  const { data, loading } = useRangeData();
+export default function FulfillmentGraph() {
+  const { data, loading } = useFulfillmentData();
 
   if (loading) {
     return (
       <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-        <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Load Graph</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">Fulfillment Utilization Graph</h2>
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner />
         </div>
@@ -28,10 +28,10 @@ export default function RangeWiseLoadGraph() {
     );
   }
 
-  if (!data || data.rangeData.length === 0) {
+  if (!data || !data.fulfillmentData || data.fulfillmentData.length === 0) {
     return (
       <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-        <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Load Graph</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">Fulfillment Utilization Graph</h2>
         <div className="text-center py-12 text-slate-400">
           No data available for the selected date range
         </div>
@@ -39,11 +39,11 @@ export default function RangeWiseLoadGraph() {
     );
   }
 
-  const chartData = calculateChartData(data.rangeData);
+  const chartData = calculateFulfillmentChartData(data.fulfillmentData);
 
   return (
     <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-      <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Load Graph</h2>
+      <h2 className="text-lg font-semibold text-white mb-4">Fulfillment Utilization Graph</h2>
       <div className="h-64">
         <Bar
           data={chartData}
@@ -63,7 +63,7 @@ export default function RangeWiseLoadGraph() {
                 borderWidth: 1,
                 callbacks: {
                   label: function (context) {
-                    return `Load: ${formatLoad(context.parsed.y || 0)} Kgs`;
+                    return `Indents: ${formatIndentCount(context.parsed.y || 0)}`;
                   },
                 },
               },
@@ -73,7 +73,7 @@ export default function RangeWiseLoadGraph() {
                 ticks: {
                   color: '#e2e8f0',
                   callback: function (value) {
-                    return formatLoad(value as number);
+                    return formatIndentCount(value as number);
                   },
                 },
                 grid: {

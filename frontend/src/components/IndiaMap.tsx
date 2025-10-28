@@ -33,23 +33,16 @@ export default function IndiaMap() {
   const [mapKey, setMapKey] = useState(0);
 
   useEffect(() => {
-    console.log('IndiaMap: data changed', data);
-    
     if (!data || !data.locations || data.locations.length === 0) {
-      console.log('IndiaMap: No data or locations available');
       setLocationMarkers([]);
       return;
     }
-
-    console.log('IndiaMap: Starting geocoding for', data.locations.length, 'locations');
 
     const geocodeLocations = async () => {
       setGeocodingLoading(true);
       try {
         const locationNames = data.locations.map(loc => loc.name);
-        console.log('IndiaMap: Geocoding locations:', locationNames);
         const geocoded = await geocodeAllLocations(locationNames);
-        console.log('IndiaMap: Geocoded successfully, got', geocoded.length, 'coordinates');
         
         const markers = data.locations.map(location => {
           const coords = geocoded.find(g => g.name === location.name);
@@ -59,9 +52,8 @@ export default function IndiaMap() {
           return null;
         }).filter(Boolean) as Array<LocationData & { lat: number; lng: number }>;
         
-        console.log('IndiaMap: Created markers:', markers.length);
         setLocationMarkers(markers);
-        setMapKey(prev => prev + 1); // Force map refresh
+        setMapKey(prev => prev + 1);
       } catch (error) {
         console.error('Geocoding error:', error);
       } finally {
@@ -80,7 +72,7 @@ export default function IndiaMap() {
   ];
 
   return (
-    <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30" style={{ height: '612px' }}>
+    <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30 mb-12" style={{ height: '612px' }}>
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-lg font-semibold text-white">Delivery Locations Map</h2>
         

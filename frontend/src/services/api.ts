@@ -44,6 +44,37 @@ interface RangeWiseResponse {
   };
 }
 
+interface FulfillmentData {
+  range: string;
+  indentCount: number;
+}
+
+interface FulfillmentResponse {
+  success: boolean;
+  fulfillmentData: FulfillmentData[];
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+}
+
+interface LoadOverTimeDataPoint {
+  date: string;
+  totalLoad: number;
+  avgFulfillment: number;
+  indentCount: number;
+}
+
+interface LoadOverTimeResponse {
+  success: boolean;
+  data: LoadOverTimeDataPoint[];
+  granularity: string;
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+}
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
@@ -91,6 +122,35 @@ export const getRangeWiseAnalytics = async (fromDate?: Date, toDate?: Date): Pro
   }
 
   const response = await api.get<RangeWiseResponse>(`/analytics/range-wise?${params.toString()}`);
+  return response.data;
+};
+
+export const getFulfillmentAnalytics = async (fromDate?: Date, toDate?: Date): Promise<FulfillmentResponse> => {
+  const params = new URLSearchParams();
+  
+  if (fromDate) {
+    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+  }
+  if (toDate) {
+    params.append('toDate', toDate.toISOString().split('T')[0]);
+  }
+
+  const response = await api.get<FulfillmentResponse>(`/analytics/fulfillment?${params.toString()}`);
+  return response.data;
+};
+
+export const getLoadOverTime = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<LoadOverTimeResponse> => {
+  const params = new URLSearchParams();
+  params.append('granularity', granularity);
+  
+  if (fromDate) {
+    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+  }
+  if (toDate) {
+    params.append('toDate', toDate.toISOString().split('T')[0]);
+  }
+
+  const response = await api.get<LoadOverTimeResponse>(`/analytics/load-over-time?${params.toString()}`);
   return response.data;
 };
 

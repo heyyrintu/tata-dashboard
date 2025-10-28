@@ -1,10 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import Header from './components/Header';
 import DateRangeSelector from './components/DateRangeSelector';
 import SummaryCards from './components/SummaryCards';
 import RangeWiseTable from './components/RangeWiseTable';
 import RangeWiseLoadGraph from './components/RangeWiseLoadGraph';
 import IndiaMap from './components/IndiaMap';
+import FulfillmentTable from './components/FulfillmentTable';
+import FulfillmentGraph from './components/FulfillmentGraph';
+import LoadOverTimeGraph from './components/LoadOverTimeGraph';
 import { useDashboard } from './context/DashboardContext';
 import { getAnalytics } from './services/api';
 import { FileUploadNew } from './components/FileUploadNew';
@@ -13,27 +16,27 @@ import { BackgroundRippleEffect } from './components/BackgroundRippleEffect';
 function App() {
   const { uploadedFileName, dateRange, setMetrics, setIsLoading, setError } = useDashboard();
 
+  const fetchInitialData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const data = await getAnalytics(dateRange.from || undefined, dateRange.to || undefined);
+      setMetrics({
+        totalTrips: data.totalTrips,
+        totalIndents: data.totalIndents,
+      });
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to fetch analytics');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [dateRange.from, dateRange.to, setMetrics, setIsLoading, setError]);
+
   // Fetch analytics when component mounts or when date range changes
   useEffect(() => {
-    const fetchInitialData = async () => {
-      setIsLoading(true);
-      try {
-        const data = await getAnalytics(dateRange.from || undefined, dateRange.to || undefined);
-        setMetrics({
-          totalTrips: data.totalTrips,
-          totalIndents: data.totalIndents,
-        });
-      } catch (error) {
-        setError(error instanceof Error ? error.message : 'Failed to fetch analytics');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     if (uploadedFileName) {
       fetchInitialData();
     }
-  }, [uploadedFileName, dateRange.from, dateRange.to, setMetrics, setIsLoading, setError]);
+  }, [uploadedFileName, fetchInitialData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#0a0e27] to-[#08101e] relative">
@@ -71,6 +74,24 @@ function App() {
               {/* Third Row: Delivery Locations Map */}
               <div>
                 <IndiaMap />
+              </div>
+            </div>
+
+            {/* Phase 3: Fulfillment Analytics */}
+            <div className="space-y-6 mt-6">
+              {/* Fulfillment Utilization Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                <div className="lg:col-span-2">
+                  <FulfillmentTable />
+                </div>
+                <div className="lg:col-span-3">
+                  <FulfillmentGraph />
+                </div>
+              </div>
+              
+              {/* Load Over Time Row - Full Width */}
+              <div>
+                <LoadOverTimeGraph />
               </div>
             </div>
           </>

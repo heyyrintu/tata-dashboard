@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import Trip from '../models/Trip';
 import { parseDateParam } from '../utils/dateFilter';
+import { format, startOfWeek, getISOWeek } from 'date-fns';
 
 export const getAnalytics = async (req: Request, res: Response) => {
   try {
@@ -142,4 +143,171 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     });
   }
 };
+
+export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
+  try {
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+
+    // Build date filter query
+    const dateFilter: any = {};
+    if (fromDate || toDate) {
+      dateFilter.allocationDate = {};
+      if (fromDate) {
+        dateFilter.allocationDate.$gte = fromDate;
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.allocationDate.$lte = endDate;
+      }
+    }
+
+    // Query database with date filter
+    const trips = await Trip.find(dateFilter);
+
+    // Calculate fulfillment percentage for each trip
+    const TRUCK_CAPACITY = 6000;
+    const ranges = [
+      { min: 0, max: 50, label: '0 - 50%' },
+      { min: 51, max: 70, label: '51 - 70%' },
+      { min: 71, max: 90, label: '71 - 90%' },
+      { min: 91, max: 100, label: '91 - 100%' }
+    ];
+
+    // Calculate fulfillment for each indent
+    const fulfillmentData = trips.map(trip => {
+      const fulfillmentPercentage = (trip.totalLoad / TRUCK_CAPACITY) * 100;
+      return { fulfillmentPercentage };
+    });
+
+    // Count indents in each range
+    const rangeCounts = ranges.map(range => {
+      const count = fulfillmentData.filter(f => 
+        f.fulfillmentPercentage >= range.min && 
+        f.fulfillmentPercentage <= range.max
+      ).length;
+      return {
+        range: range.label,
+        indentCount: count
+      };
+    });
+
+    res.json({
+      success: true,
+      fulfillmentData: rangeCounts,
+      dateRange: {
+        from: fromDate?.toISOString().split('T')[0] || null,
+        to: toDate?.toISOString().split('T')[0] || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch fulfillment analytics'
+    });
+  }
+};
+
+export const getLoadOverTime = async (req: Request, res: Response) => {
+  try {
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+    const granularity = req.query.granularity as string || 'daily';
+
+    // Build date filter query
+    const dateFilter: any = {};
+    if (fromDate || toDate) {
+      dateFilter.allocationDate = {};
+      if (fromDate) {
+        dateFilter.allocationDate.$gte = fromDate;
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.allocationDate.$lte = endDate;
+      }
+    }
+
+    // Query database with date filter
+    const trips = await Trip.find(dateFilter);
+
+    const TRUCK_CAPACITY = 6000;
+    const groupedData: Record<string, { totalLoad: number; indentCount: number; totalFulfillment: number }> = {};
+
+    trips.forEach(trip => {
+      let key: string;
+
+      // Group by time period based on granularity
+      switch (granularity) {
+        case 'daily':
+          key = format(trip.allocationDate, 'yyyy-MM-dd');
+          break;
+        case 'weekly':
+          const week = getISOWeek(trip.allocationDate);
+          const year = trip.allocationDate.getFullYear();
+          key = `Week ${week}, ${year}`;
+          break;
+        case 'monthly':
+          key = format(trip.allocationDate, 'yyyy-MM');
+          break;
+        default:
+          key = format(trip.allocationDate, 'yyyy-MM-dd');
+      }
+
+      if (!groupedData[key]) {
+        groupedData[key] = { totalLoad: 0, indentCount: 0, totalFulfillment: 0 };
+      }
+
+      const load = trip.totalLoad || 0;
+      const fulfillmentPercentage = (load / TRUCK_CAPACITY) * 100;
+
+      groupedData[key].totalLoad += load;
+      groupedData[key].indentCount += 1;
+      groupedData[key].totalFulfillment += fulfillmentPercentage;
+    });
+
+    // Convert to array and format labels
+    const sortedKeys = Object.keys(groupedData).sort();
+    const timeSeriesData = sortedKeys.map(key => {
+      const data = groupedData[key];
+      const formattedKey = formatTimeLabel(key, granularity);
+      return {
+        date: formattedKey,
+        totalLoad: Math.round(data.totalLoad),
+        avgFulfillment: parseFloat((data.totalFulfillment / data.indentCount).toFixed(2)),
+        indentCount: data.indentCount
+      };
+    });
+
+    res.json({
+      success: true,
+      data: timeSeriesData,
+      granularity,
+      dateRange: {
+        from: fromDate?.toISOString().split('T')[0] || null,
+        to: toDate?.toISOString().split('T')[0] || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch load over time data'
+    });
+  }
+};
+
+// Helper function to format time labels
+function formatTimeLabel(key: string, granularity: string): string {
+  switch (granularity) {
+    case 'daily':
+      return format(new Date(key), 'MMM dd');
+    case 'weekly':
+      return key; // Already formatted as "Week X, YYYY"
+    case 'monthly':
+      return format(new Date(key + '-01'), 'MMMM yyyy');
+    default:
+      return key;
+  }
+}
 

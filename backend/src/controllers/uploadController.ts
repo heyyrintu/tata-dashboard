@@ -29,14 +29,8 @@ export const uploadExcel = async (req: Request, res: Response) => {
       // Delete all existing data before inserting new data
       await Trip.deleteMany({});
 
-      // Bulk insert new data
-      const bulkOps = trips.map(trip => ({
-        insertOne: {
-          document: trip
-        }
-      }));
-
-      await Trip.bulkWrite(bulkOps);
+      // Insert new data
+      await Trip.insertMany(trips);
 
       // Clean up uploaded file
       fs.unlinkSync(filePath);

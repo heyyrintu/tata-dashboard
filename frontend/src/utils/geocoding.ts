@@ -4,7 +4,26 @@ interface GeocodeCache {
   [location: string]: { lat: number; lng: number };
 }
 
-const geocodeCache: GeocodeCache = {};
+// Load geocode cache from localStorage on initialization
+const loadGeocodeCache = (): GeocodeCache => {
+  try {
+    const cached = localStorage.getItem('geocodeCache');
+    return cached ? JSON.parse(cached) : {};
+  } catch {
+    return {};
+  }
+};
+
+const geocodeCache: GeocodeCache = loadGeocodeCache();
+
+// Save to localStorage whenever cache is updated
+const saveGeocodeCache = (cache: GeocodeCache) => {
+  try {
+    localStorage.setItem('geocodeCache', JSON.stringify(cache));
+  } catch {
+    // Ignore localStorage errors
+  }
+};
 
 export const geocodeLocation = async (locationName: string): Promise<{ lat: number; lng: number } | null> => {
   // Check cache first
@@ -32,6 +51,7 @@ export const geocodeLocation = async (locationName: string): Promise<{ lat: numb
       };
 
       geocodeCache[locationName] = coords;
+      saveGeocodeCache(geocodeCache);
       return coords;
     }
   } catch (error) {
@@ -52,8 +72,8 @@ export const geocodeAllLocations = async (
     if (coords) {
       geocoded.push({ name: location, ...coords });
     }
-    // Add 1 second delay to respect API rate limits
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Add 500ms delay to respect API rate limits
+    await new Promise(resolve => setTimeout(resolve, 500));
   }
 
   return geocoded;

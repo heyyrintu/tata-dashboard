@@ -68,7 +68,7 @@ export function HoverBorderGradient({
     >
       <div
         className={cn(
-          "w-auto text-white z-10 bg-black px-4 py-2 rounded-[inherit]",
+          "w-auto text-white z-10 bg-black px-6 py-3 rounded-[inherit]",
           className
         )}
       >
@@ -79,7 +79,7 @@ export function HoverBorderGradient({
           "flex-none inset-0 overflow-hidden absolute z-0 rounded-[inherit]"
         )}
         style={{
-          filter: "blur(2px)",
+          filter: "blur(1px)",
           position: "absolute",
           width: "100%",
           height: "100%",
@@ -92,7 +92,7 @@ export function HoverBorderGradient({
         }}
         transition={{ ease: "linear", duration: duration ?? 1 }}
       />
-      <div className="bg-black absolute z-1 flex-none inset-[2px] rounded-[100px]" />
+      <div className="bg-black absolute z-1 flex-none inset-px rounded-[100px]" />
     </button>
   );
 }
