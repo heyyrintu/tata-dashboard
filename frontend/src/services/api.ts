@@ -23,6 +23,7 @@ interface RangeWiseData {
   tripCount: number;
   totalLoad: number;
   percentage: number;
+  bucketCount: number;
 }
 
 interface LocationData {
@@ -152,6 +153,41 @@ export const getLoadOverTime = async (granularity: 'daily' | 'weekly' | 'monthly
   }
 
   const response = await api.get<LoadOverTimeResponse>(`/analytics/load-over-time?${params.toString()}`);
+  return response.data;
+};
+
+interface RevenueAnalyticsResponse {
+  success: boolean;
+  revenueByRange: Array<{
+    range: string;
+    rate: number;
+    bucketCount: number;
+    revenue: number;
+  }>;
+  totalRevenue: number;
+  revenueOverTime: Array<{
+    date: string;
+    revenue: number;
+  }>;
+  granularity: string;
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+}
+
+export const getRevenueAnalytics = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<RevenueAnalyticsResponse> => {
+  const params = new URLSearchParams();
+  params.append('granularity', granularity);
+  
+  if (fromDate) {
+    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+  }
+  if (toDate) {
+    params.append('toDate', toDate.toISOString().split('T')[0]);
+  }
+
+  const response = await api.get<RevenueAnalyticsResponse>(`/analytics/revenue?${params.toString()}`);
   return response.data;
 };
 

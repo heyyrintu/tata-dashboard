@@ -7,6 +7,7 @@ interface RangeWiseData {
   tripCount: number;
   totalLoad: number;
   percentage: number;
+  bucketCount: number;
 }
 
 interface LocationData {

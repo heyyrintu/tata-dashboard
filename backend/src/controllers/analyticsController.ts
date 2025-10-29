@@ -92,7 +92,7 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       const tripCount = rangeTrips.length;
       const totalLoad = rangeTrips.reduce((sum, trip) => sum + (trip.totalLoad || 0), 0);
       const percentage = totalTrips > 0 ? (tripCount / totalTrips) * 100 : 0;
-      const bucketCount = Math.round((totalLoad / 20) * 100) / 100;
+      const bucketCount = rangeTrips.reduce((sum, trip) => sum + (trip.noOfBuckets || 0), 0);
 
       return {
         range: label,
@@ -314,4 +314,143 @@ function formatTimeLabel(key: string, granularity: string): string {
       return key;
   }
 }
+
+export const getRevenueAnalytics = async (req: Request, res: Response) => {
+  try {
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+    const granularity = req.query.granularity as string || 'daily';
+
+    // Build date filter query using indentDate instead of allocationDate
+    const dateFilter: any = {};
+    if (fromDate || toDate) {
+      dateFilter.indentDate = {};
+      if (fromDate) {
+        dateFilter.indentDate.$gte = fromDate;
+      }
+      if (toDate) {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        dateFilter.indentDate.$lte = endDate;
+      }
+    }
+
+    // Query database with date filter
+    const trips = await Trip.find(dateFilter);
+
+    // Bucket rates by range
+    const BUCKET_RATES: Record<string, number> = {
+      '0-100Km': 21,
+      '101-250Km': 40,
+      '251-400Km': 68,
+      '401-600Km': 105
+    };
+
+    // Range mappings for normalization
+    const rangeMappings = [
+      { label: '0-100Km', patterns: ['0-100km', '0-100Km', '0-100KM'] },
+      { label: '101-250Km', patterns: ['101-250km', '101-250Km', '101-250KM'] },
+      { label: '251-400Km', patterns: ['251-400km', '251-400Km', '251-400KM'] },
+      { label: '401-600Km', patterns: ['401-600km', '401-600Km', '401-600KM'] },
+    ];
+
+    // Calculate revenue by range using actual noOfBuckets field
+    const revenueByRange = rangeMappings.map(({ label, patterns }) => {
+      const rangeTrips = trips.filter(trip => {
+        if (!trip.range) return false;
+        const normalized = trip.range.toLowerCase();
+        return patterns.some(p => p.toLowerCase() === normalized);
+      });
+
+      const bucketCount = rangeTrips.reduce((sum, trip) => sum + (trip.noOfBuckets || 0), 0);
+      const rate = BUCKET_RATES[label];
+      const revenue = bucketCount * rate;
+
+      return {
+        range: label,
+        rate: rate,
+        bucketCount: bucketCount,
+        revenue: revenue
+      };
+    });
+
+    // Calculate total revenue
+    const totalRevenue = revenueByRange.reduce((sum, item) => sum + item.revenue, 0);
+
+    // Calculate revenue over time
+    const groupedData: Record<string, number> = {};
+
+    trips.forEach(trip => {
+      let key: string;
+
+      // Group by time period based on granularity using indentDate
+      switch (granularity) {
+        case 'daily':
+          key = format(trip.indentDate, 'yyyy-MM-dd');
+          break;
+        case 'weekly':
+          const week = getISOWeek(trip.indentDate);
+          const year = trip.indentDate.getFullYear();
+          key = `Week ${week}, ${year}`;
+          break;
+        case 'monthly':
+          key = format(trip.indentDate, 'yyyy-MM');
+          break;
+        default:
+          key = format(trip.indentDate, 'yyyy-MM-dd');
+      }
+
+      if (!groupedData[key]) {
+        groupedData[key] = 0;
+      }
+
+      // Find the range for this trip and calculate revenue
+      const tripRange = trip.range?.toLowerCase();
+      let rate = 0;
+      for (const mapping of rangeMappings) {
+        if (mapping.patterns.some(p => p.toLowerCase() === tripRange)) {
+          rate = BUCKET_RATES[mapping.label];
+          break;
+        }
+      }
+
+      const revenue = (trip.noOfBuckets || 0) * rate;
+      groupedData[key] += revenue;
+    });
+
+    // Convert to array and format labels
+    const sortedKeys = Object.keys(groupedData).sort();
+    const revenueOverTime = sortedKeys.map(key => {
+      const formattedKey = formatTimeLabel(key, granularity);
+      return {
+        date: formattedKey,
+        revenue: groupedData[key]
+      };
+    });
+
+    console.log('Revenue Analytics Response:', {
+      revenueByRangeCount: revenueByRange.length,
+      totalRevenue,
+      revenueOverTimeCount: revenueOverTime.length,
+      tripsCount: trips.length
+    });
+
+    res.json({
+      success: true,
+      revenueByRange,
+      totalRevenue,
+      revenueOverTime,
+      granularity,
+      dateRange: {
+        from: fromDate?.toISOString().split('T')[0] || null,
+        to: toDate?.toISOString().split('T')[0] || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch revenue analytics'
+    });
+  }
+};
 

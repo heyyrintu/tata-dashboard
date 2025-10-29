@@ -9,6 +9,10 @@ import FulfillmentTable from '../components/FulfillmentTable';
 import FulfillmentGraph from '../components/FulfillmentGraph';
 import LoadTrendChart from '../components/LoadTrendChart';
 import FulfillmentTrendChart from '../components/FulfillmentTrendChart';
+import RevenueTable from '../components/phase5/RevenueTable';
+import RevenueMetrics from '../components/phase5/RevenueMetrics';
+import RevenueOverTimeChart from '../components/phase5/RevenueOverTimeChart';
+import RevenueBreakdownChart from '../components/phase5/RevenueBreakdownChart';
 import { useDashboard } from '../context/DashboardContext';
 import { getAnalytics } from '../services/api';
 import { FileUploadNew } from '../components/FileUploadNew';
@@ -101,6 +105,23 @@ function MainDashboard() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <LoadTrendChart />
                 <FulfillmentTrendChart />
+              </div>
+            </div>
+
+            {/* Phase 5: Revenue Analytics */}
+            <div className="space-y-6 mt-6">
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                {/* Left Column: Revenue Table and Metrics (40% width) */}
+                <div className="lg:col-span-2 space-y-4">
+                  <RevenueTable />
+                  <RevenueMetrics />
+                </div>
+                
+                {/* Right Column: Revenue Charts (60% width) */}
+                <div className="lg:col-span-3 space-y-6">
+                  <RevenueOverTimeChart />
+                  <RevenueBreakdownChart />
+                </div>
               </div>
             </div>
           </>
