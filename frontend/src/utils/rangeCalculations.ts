@@ -3,10 +3,15 @@ interface RangeWiseData {
   tripCount: number;
   totalLoad: number;
   percentage: number;
+  bucketCount: number;
 }
 
 export const formatLoad = (load: number): string => {
   return new Intl.NumberFormat('en-IN').format(load);
+};
+
+export const formatBucketCount = (load: number): number => {
+  return Math.round((load / 20) * 100) / 100;
 };
 
 export const formatPercentage = (percentage: number): string => {
@@ -15,7 +20,7 @@ export const formatPercentage = (percentage: number): string => {
 
 export const calculateChartData = (rangeData: RangeWiseData[]) => {
   const labels = ['0-100Km', '101-250Km', '251-400Km', '401-600Km'];
-  const data = rangeData.map(item => item.totalLoad);
+  const data = rangeData.map(item => item.bucketCount);
   
   const colors = [
     'rgba(34, 211, 238, 0.8)',   // cyan
@@ -35,7 +40,7 @@ export const calculateChartData = (rangeData: RangeWiseData[]) => {
     labels,
     datasets: [
       {
-        label: 'Total Load (Kgs)',
+        label: 'Bucket Count',
         data,
         backgroundColor: colors,
         borderColor: borderColors,

@@ -1,6 +1,10 @@
 import { TypewriterEffect } from './ui/typewriter-effect';
+import { HoverBorderGradient } from './HoverBorderGradient';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function Header() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const words = [
     { text: "TML DEF Dashboard" },
   ];
@@ -31,8 +35,16 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Right: User Icon */}
-          <div className="flex items-center">
+          {/* Right: Navigation Buttons */}
+          <div className="flex items-center gap-3">
+            {location.pathname === '/' && (
+              <HoverBorderGradient
+                onClick={() => navigate('/powerbi')}
+                className="bg-slate-700 text-white px-4 py-2 text-sm"
+              >
+                Power BI View
+              </HoverBorderGradient>
+            )}
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 cursor-pointer">
               <span className="text-white font-semibold">U</span>
             </div>

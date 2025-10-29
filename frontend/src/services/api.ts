@@ -63,6 +63,7 @@ interface LoadOverTimeDataPoint {
   totalLoad: number;
   avgFulfillment: number;
   indentCount: number;
+  bucketCount: number;
 }
 
 interface LoadOverTimeResponse {

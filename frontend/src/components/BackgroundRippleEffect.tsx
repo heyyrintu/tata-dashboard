@@ -1,16 +1,15 @@
+"use client";
 import React, { useMemo, useRef, useState, useEffect } from "react";
 
 function cn(...classes: (string | undefined | null | false)[]): string {
   return classes.filter(Boolean).join(' ');
 }
 
-interface BackgroundRippleEffectProps {
-  cellSize?: number;
-}
-
 export const BackgroundRippleEffect = ({
   cellSize = 56,
-}: BackgroundRippleEffectProps) => {
+}: {
+  cellSize?: number;
+}) => {
   const [dimensions, setDimensions] = useState({ width: 1920, height: 1080 });
 
   useEffect(() => {
@@ -23,7 +22,7 @@ export const BackgroundRippleEffect = ({
     return () => window.removeEventListener('resize', updateDimensions);
   }, []);
 
-  // Calculate responsive values based on screen size to cover full background
+  // Calculate responsive values based on screen size
   const responsiveCellSize = useMemo(() => {
     if (dimensions.width < 640) return 40;
     if (dimensions.width < 1024) return 48;
@@ -31,14 +30,13 @@ export const BackgroundRippleEffect = ({
   }, [dimensions.width, cellSize]);
 
   const responsiveCols = useMemo(() => {
-    // Calculate number of columns to cover full width
-    return Math.ceil(dimensions.width / responsiveCellSize) + 2; // +2 to ensure full coverage
+    return Math.ceil(dimensions.width / responsiveCellSize) + 4; // Increased padding for full coverage
   }, [dimensions.width, responsiveCellSize]);
 
   const responsiveRows = useMemo(() => {
-    // Calculate number of rows to cover full height
-    return Math.ceil(dimensions.height / responsiveCellSize) + 2; // +2 to ensure full coverage
+    return Math.ceil(dimensions.height / responsiveCellSize) + 4; // Increased padding for full coverage
   }, [dimensions.height, responsiveCellSize]);
+
   const [clickedCell, setClickedCell] = useState<{
     row: number;
     col: number;
@@ -49,19 +47,21 @@ export const BackgroundRippleEffect = ({
   return (
     <div
       ref={ref}
-      className={cn(
-        "fixed inset-0 h-full w-full pointer-events-none overflow-hidden",
-        "[--cell-border-color:#1e3a8a] [--cell-fill-color:rgba(15,23,42,0.4)] [--cell-shadow-color:#0f172a]",
-      )}
+      className="fixed inset-0 h-screen w-screen overflow-hidden"
+      style={{
+        '--cell-border-color': '#6B7280',
+        '--cell-fill-color': 'rgba(249, 250, 251, 0.5)',
+        '--cell-shadow-color': 'rgba(0, 0, 0, 0.02)',
+      } as React.CSSProperties}
     >
       <DivGrid
         key={`base-${rippleKey}`}
-        className="opacity-20"
+        className="opacity-60"
         rows={responsiveRows}
         cols={responsiveCols}
         cellSize={responsiveCellSize}
-        borderColor="#1e3a8a"
-        fillColor="rgba(15, 23, 42, 0.4)"
+        borderColor="#6B7280"
+        fillColor="rgba(249, 250, 251, 0.5)"
         clickedCell={clickedCell}
         onCellClick={(row, col) => {
           setClickedCell({ row, col });
@@ -77,7 +77,7 @@ type DivGridProps = {
   className?: string;
   rows: number;
   cols: number;
-  cellSize: number;
+  cellSize: number; // in pixels
   borderColor: string;
   fillColor: string;
   clickedCell: { row: number; col: number } | null;
@@ -95,8 +95,8 @@ const DivGrid = ({
   rows = 7,
   cols = 30,
   cellSize = 56,
-  borderColor = "#1f2937",
-  fillColor = "rgba(0, 0, 0, 0.3)",
+  borderColor = "#6B7280",
+  fillColor = "rgba(249,250,251,0.5)",
   clickedCell = null,
   onCellClick = () => {},
   interactive = true,
@@ -115,6 +115,8 @@ const DivGrid = ({
     position: "fixed",
     top: 0,
     left: 0,
+    justifyContent: "center",
+    alignItems: "center",
   };
 
   return (
@@ -125,8 +127,8 @@ const DivGrid = ({
         const distance = clickedCell
           ? Math.hypot(clickedCell.row - rowIdx, clickedCell.col - colIdx)
           : 0;
-        const delay = clickedCell ? Math.max(0, distance * 55) : 0;
-        const duration = 200 + distance * 80;
+        const delay = clickedCell ? Math.max(0, distance * 55) : 0; // ms
+        const duration = 200 + distance * 80; // ms
 
         const style: CellStyle = clickedCell
           ? {
@@ -136,22 +138,24 @@ const DivGrid = ({
           : {};
 
         return (
-        <div
-          key={idx}
-          className={cn(
-            "cell relative border-[0.5px] opacity-30 transition-opacity duration-150 will-change-transform pointer-events-auto",
-            "hover:opacity-60 hover:bg-opacity-50 transition-all duration-200",
-            clickedCell && "animate-cell-ripple [animation-fill-mode:forwards]",
-          )}
-          style={{
-            backgroundColor: fillColor,
-            borderColor: borderColor,
-            ...style,
-          }}
-          onClick={
-            interactive ? () => onCellClick?.(rowIdx, colIdx) : undefined
-          }
-        />
+          <div
+            key={idx}
+            className={cn(
+              "cell relative border-[0.5px] opacity-50 transition-opacity duration-150 will-change-transform hover:opacity-80",
+              clickedCell && "animate-cell-ripple [animation-fill-mode:none]",
+              !interactive && "pointer-events-none",
+            )}
+            style={{
+              backgroundColor: fillColor,
+              borderColor: borderColor,
+              width: `${cellSize}px`,
+              height: `${cellSize}px`,
+              ...style,
+            }}
+            onClick={
+              interactive ? () => onCellClick?.(rowIdx, colIdx) : undefined
+            }
+          />
         );
       })}
     </div>

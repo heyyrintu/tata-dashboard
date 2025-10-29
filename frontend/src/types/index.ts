@@ -44,6 +44,7 @@ export interface RangeWiseData {
   tripCount: number;
   totalLoad: number;
   percentage: number;
+  bucketCount: number;
 }
 
 export interface LocationData {

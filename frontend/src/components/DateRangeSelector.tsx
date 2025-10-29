@@ -21,7 +21,20 @@ export default function DateRangeSelector() {
 
   return (
     <div className="glass-card rounded-2xl p-6 mb-6 shadow-xl hover:shadow-2xl hover:shadow-blue-900/20 transition-all duration-300 border border-blue-900/30">
-      <h2 className="text-lg font-semibold text-white mb-4">Filter by Date Range</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-white">Filter by Date Range</h2>
+        <HoverBorderGradient
+          onClick={() => {
+            setDateRange(null, null);
+            setSelectedMonthDate(currentMonth);
+          }}
+          containerClassName="rounded-full"
+          className="px-4 py-2 text-white bg-black/40"
+          duration={1}
+        >
+          Clear
+        </HoverBorderGradient>
+      </div>
       
       <div className="flex flex-col sm:flex-row gap-4 mb-4">
         <div className="flex-1">
@@ -57,20 +70,6 @@ export default function DateRangeSelector() {
             dateFormat="yyyy-MM-dd"
             portalId="date-picker-portal"
           />
-        </div>
-
-        <div className="flex items-end">
-          <HoverBorderGradient
-            onClick={() => {
-              setDateRange(null, null);
-              setSelectedMonthDate(currentMonth);
-            }}
-            containerClassName="rounded-full"
-            className="w-full sm:w-auto px-4 py-2 text-white bg-black/40"
-            duration={1}
-          >
-            Clear
-          </HoverBorderGradient>
         </div>
       </div>
 

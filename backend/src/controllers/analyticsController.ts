@@ -92,12 +92,14 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       const tripCount = rangeTrips.length;
       const totalLoad = rangeTrips.reduce((sum, trip) => sum + (trip.totalLoad || 0), 0);
       const percentage = totalTrips > 0 ? (tripCount / totalTrips) * 100 : 0;
+      const bucketCount = Math.round((totalLoad / 20) * 100) / 100;
 
       return {
         range: label,
         tripCount,
         totalLoad,
-        percentage: parseFloat(percentage.toFixed(2))
+        percentage: parseFloat(percentage.toFixed(2)),
+        bucketCount
       };
     });
 
@@ -272,11 +274,13 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
     const timeSeriesData = sortedKeys.map(key => {
       const data = groupedData[key];
       const formattedKey = formatTimeLabel(key, granularity);
+      const bucketCount = Math.round((data.totalLoad / 20) * 100) / 100;
       return {
         date: formattedKey,
         totalLoad: Math.round(data.totalLoad),
         avgFulfillment: parseFloat((data.totalFulfillment / data.indentCount).toFixed(2)),
-        indentCount: data.indentCount
+        indentCount: data.indentCount,
+        bucketCount
       };
     });
 

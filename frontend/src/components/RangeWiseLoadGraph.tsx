@@ -10,7 +10,7 @@ import {
 import { Bar } from 'react-chartjs-2';
 import { useRangeData } from '../hooks/useRangeData';
 import { LoadingSpinner } from './LoadingSpinner';
-import { formatLoad, calculateChartData } from '../utils/rangeCalculations';
+import { calculateChartData } from '../utils/rangeCalculations';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -20,7 +20,7 @@ export default function RangeWiseLoadGraph() {
   if (loading) {
     return (
       <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-        <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Load Graph</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Bucket Count Graph</h2>
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner />
         </div>
@@ -31,7 +31,7 @@ export default function RangeWiseLoadGraph() {
   if (!data || data.rangeData.length === 0) {
     return (
       <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-        <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Load Graph</h2>
+        <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Bucket Count Graph</h2>
         <div className="text-center py-12 text-slate-400">
           No data available for the selected date range
         </div>
@@ -43,7 +43,7 @@ export default function RangeWiseLoadGraph() {
 
   return (
     <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-      <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Load Graph</h2>
+      <h2 className="text-lg font-semibold text-white mb-4">Range-Wise Bucket Count Graph</h2>
       <div className="h-64">
         <Bar
           data={chartData}
@@ -63,7 +63,7 @@ export default function RangeWiseLoadGraph() {
                 borderWidth: 1,
                 callbacks: {
                   label: function (context) {
-                    return `Load: ${formatLoad(context.parsed.y || 0)} Kgs`;
+                    return `Bucket Count: ${context.parsed.y || 0}`;
                   },
                 },
               },
@@ -72,9 +72,6 @@ export default function RangeWiseLoadGraph() {
               y: {
                 ticks: {
                   color: '#e2e8f0',
-                  callback: function (value) {
-                    return formatLoad(value as number);
-                  },
                 },
                 grid: {
                   color: 'rgba(30, 58, 138, 0.3)',

@@ -1,6 +1,6 @@
 import { useRangeData } from '../hooks/useRangeData';
 import { LoadingSpinner } from './LoadingSpinner';
-import { formatLoad, formatPercentage } from '../utils/rangeCalculations';
+import { formatLoad, formatPercentage, formatBucketCount } from '../utils/rangeCalculations';
 
 export default function RangeWiseTable() {
   const { data, loading } = useRangeData();
@@ -22,6 +22,7 @@ export default function RangeWiseTable() {
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-300">Trip</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-300">Percentage</th>
                 <th className="text-left py-3 px-4 text-sm font-medium text-slate-300">Load</th>
+                <th className="text-left py-3 px-4 text-sm font-medium text-slate-300">Bucket Count</th>
               </tr>
             </thead>
             <tbody>
@@ -34,6 +35,7 @@ export default function RangeWiseTable() {
                   <td className="py-3 px-4 text-white font-medium">{item.tripCount}</td>
                   <td className="py-3 px-4 text-cyan-400 font-medium">{formatPercentage(item.percentage)}</td>
                   <td className="py-3 px-4 text-slate-300">{formatLoad(item.totalLoad)} Kgs</td>
+                  <td className="py-3 px-4 text-emerald-400 font-medium">{formatBucketCount(item.totalLoad)}</td>
                 </tr>
               ))}
             </tbody>
