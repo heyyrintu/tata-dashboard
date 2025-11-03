@@ -8,40 +8,40 @@ export const getAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    // Build date filter query
+    // Build date filter query using indentDate
     const dateFilter: any = {};
     if (fromDate || toDate) {
-      dateFilter.allocationDate = {};
+      dateFilter.indentDate = {};
       if (fromDate) {
-        dateFilter.allocationDate.$gte = fromDate;
+        dateFilter.indentDate.$gte = fromDate;
       }
       if (toDate) {
         // Set to end of day
         const endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
-        dateFilter.allocationDate.$lte = endDate;
+        dateFilter.indentDate.$lte = endDate;
       }
     }
 
     // Query database with date filter
-    const trips = await Trip.find(dateFilter);
+    const indents = await Trip.find(dateFilter);
 
-    // Total Trips: count of rows with non-empty Allocation Date
-    const totalTrips = trips.length;
+    // Total Indents: count of rows with non-empty Indent Date
+    const totalIndents = indents.length;
 
-    // Total Indents: count of unique indent values
-    const uniqueIndents = new Set(trips.filter(t => t.indent).map(t => t.indent));
-    const totalIndents = uniqueIndents.size;
+    // Total Unique Indents: count of unique indent values
+    const uniqueIndents = new Set(indents.filter(t => t.indent).map(t => t.indent));
+    const totalUniqueIndents = uniqueIndents.size;
 
     res.json({
       success: true,
-      totalTrips,
       totalIndents,
+      totalIndentsUnique: totalUniqueIndents,
       dateRange: {
         from: fromDate?.toISOString().split('T')[0] || null,
         to: toDate?.toISOString().split('T')[0] || null
       },
-      recordsProcessed: trips.length
+      recordsProcessed: indents.length
     });
   } catch (error) {
     res.status(500).json({
@@ -56,75 +56,85 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    // Build date filter query
+    // Build date filter query using indentDate
     const dateFilter: any = {};
     if (fromDate || toDate) {
-      dateFilter.allocationDate = {};
+      dateFilter.indentDate = {};
       if (fromDate) {
-        dateFilter.allocationDate.$gte = fromDate;
+        dateFilter.indentDate.$gte = fromDate;
       }
       if (toDate) {
         const endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
-        dateFilter.allocationDate.$lte = endDate;
+        dateFilter.indentDate.$lte = endDate;
       }
     }
 
     // Query database with date filter
-    const trips = await Trip.find(dateFilter);
-    const totalTrips = trips.length;
+    const indents = await Trip.find(dateFilter);
+    const totalIndents = indents.length;
 
-    // Range labels - handle case-insensitive matching
+    // Range labels - now standardized after normalization in parser
     const rangeMappings = [
-      { label: '0-100Km', patterns: ['0-100km', '0-100Km', '0-100KM'] },
-      { label: '101-250Km', patterns: ['101-250km', '101-250Km', '101-250KM'] },
-      { label: '251-400Km', patterns: ['251-400km', '251-400Km', '251-400KM'] },
-      { label: '401-600Km', patterns: ['401-600km', '401-600Km', '401-600KM'] },
+      { label: '0-100Km' },
+      { label: '101-250Km' },
+      { label: '251-400Km' },
+      { label: '401-600Km' },
     ];
 
     // Calculate range-wise data using the Range column from Excel
-    const rangeData = rangeMappings.map(({ label, patterns }) => {
-      const rangeTrips = trips.filter(trip => {
-        if (!trip.range) return false;
-        const normalized = trip.range.toLowerCase();
-        return patterns.some(p => p.toLowerCase() === normalized);
+    // Range values are now normalized to standard format during parsing
+    const rangeData = rangeMappings.map(({ label }) => {
+      const rangeIndents = indents.filter(indent => {
+        // Since ranges are normalized during parsing, we can do direct comparison
+        return indent.range === label;
       });
-      const tripCount = rangeTrips.length;
-      const totalLoad = rangeTrips.reduce((sum, trip) => sum + (trip.totalLoad || 0), 0);
-      const percentage = totalTrips > 0 ? (tripCount / totalTrips) * 100 : 0;
-      const bucketCount = rangeTrips.reduce((sum, trip) => sum + (trip.noOfBuckets || 0), 0);
+      const indentCount = rangeIndents.length;
+      const totalLoad = rangeIndents.reduce((sum, indent) => sum + (indent.totalLoad || 0), 0);
+      const percentage = totalIndents > 0 ? (indentCount / totalIndents) * 100 : 0;
+      
+      // Count buckets and barrels separately based on Material column
+      let bucketCount = 0;
+      let barrelCount = 0;
+      
+      rangeIndents.forEach(indent => {
+        const count = indent.noOfBuckets || 0;
+        const material = (indent.material || '').trim();
+        
+        if (material === '20L Buckets') {
+          bucketCount += count;
+        } else if (material === '210L Barrels') {
+          barrelCount += count;
+        }
+      });
 
       return {
         range: label,
-        tripCount,
+        indentCount,
         totalLoad,
         percentage: parseFloat(percentage.toFixed(2)),
-        bucketCount
+        bucketCount,
+        barrelCount
       };
     });
 
     // Calculate location-wise data using Range column from Excel
-    const locationMap = new Map<string, { tripCount: number; totalLoad: number; range: string }>();
+    const locationMap = new Map<string, { indentCount: number; totalLoad: number; range: string }>();
 
-    trips.forEach(trip => {
-      if (trip.location && trip.range) {
-        const existing = locationMap.get(trip.location) || { tripCount: 0, totalLoad: 0, range: trip.range };
-        existing.tripCount++;
-        existing.totalLoad += trip.totalLoad || 0;
-        // Normalize range to standard format
-        const normalizedRange = trip.range.toLowerCase();
-        if (normalizedRange.startsWith('0-100')) existing.range = '0-100Km';
-        else if (normalizedRange.startsWith('101-250')) existing.range = '101-250Km';
-        else if (normalizedRange.startsWith('251-400')) existing.range = '251-400Km';
-        else if (normalizedRange.startsWith('401-600')) existing.range = '401-600Km';
-        else existing.range = trip.range;
-        locationMap.set(trip.location, existing);
+    indents.forEach(indent => {
+      if (indent.location && indent.range) {
+        const existing = locationMap.get(indent.location) || { indentCount: 0, totalLoad: 0, range: indent.range };
+        existing.indentCount++;
+        existing.totalLoad += indent.totalLoad || 0;
+        // Range is already normalized during parsing, so use directly
+        existing.range = indent.range;
+        locationMap.set(indent.location, existing);
       }
     });
 
     const locations = Array.from(locationMap.entries()).map(([name, data]) => ({
       name,
-      tripCount: data.tripCount,
+      indentCount: data.indentCount,
       totalLoad: data.totalLoad,
       range: data.range
     }));
@@ -151,24 +161,24 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    // Build date filter query
+    // Build date filter query using indentDate
     const dateFilter: any = {};
     if (fromDate || toDate) {
-      dateFilter.allocationDate = {};
+      dateFilter.indentDate = {};
       if (fromDate) {
-        dateFilter.allocationDate.$gte = fromDate;
+        dateFilter.indentDate.$gte = fromDate;
       }
       if (toDate) {
         const endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
-        dateFilter.allocationDate.$lte = endDate;
+        dateFilter.indentDate.$lte = endDate;
       }
     }
 
     // Query database with date filter
-    const trips = await Trip.find(dateFilter);
+    const indents = await Trip.find(dateFilter);
 
-    // Calculate fulfillment percentage for each trip
+    // Calculate fulfillment percentage for each indent
     const TRUCK_CAPACITY = 6000;
     const ranges = [
       { min: 0, max: 50, label: '0 - 50%' },
@@ -178,8 +188,8 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
     ];
 
     // Calculate fulfillment for each indent
-    const fulfillmentData = trips.map(trip => {
-      const fulfillmentPercentage = (trip.totalLoad / TRUCK_CAPACITY) * 100;
+    const fulfillmentData = indents.map(indent => {
+      const fulfillmentPercentage = (indent.totalLoad / TRUCK_CAPACITY) * 100;
       return { fulfillmentPercentage };
     });
 
@@ -217,51 +227,51 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
     const granularity = req.query.granularity as string || 'daily';
 
-    // Build date filter query
+    // Build date filter query using indentDate
     const dateFilter: any = {};
     if (fromDate || toDate) {
-      dateFilter.allocationDate = {};
+      dateFilter.indentDate = {};
       if (fromDate) {
-        dateFilter.allocationDate.$gte = fromDate;
+        dateFilter.indentDate.$gte = fromDate;
       }
       if (toDate) {
         const endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
-        dateFilter.allocationDate.$lte = endDate;
+        dateFilter.indentDate.$lte = endDate;
       }
     }
 
     // Query database with date filter
-    const trips = await Trip.find(dateFilter);
+    const indents = await Trip.find(dateFilter);
 
     const TRUCK_CAPACITY = 6000;
     const groupedData: Record<string, { totalLoad: number; indentCount: number; totalFulfillment: number }> = {};
 
-    trips.forEach(trip => {
+    indents.forEach(indent => {
       let key: string;
 
-      // Group by time period based on granularity
+      // Group by time period based on granularity using indentDate
       switch (granularity) {
         case 'daily':
-          key = format(trip.allocationDate, 'yyyy-MM-dd');
+          key = format(indent.indentDate, 'yyyy-MM-dd');
           break;
         case 'weekly':
-          const week = getISOWeek(trip.allocationDate);
-          const year = trip.allocationDate.getFullYear();
+          const week = getISOWeek(indent.indentDate);
+          const year = indent.indentDate.getFullYear();
           key = `Week ${week}, ${year}`;
           break;
         case 'monthly':
-          key = format(trip.allocationDate, 'yyyy-MM');
+          key = format(indent.indentDate, 'yyyy-MM');
           break;
         default:
-          key = format(trip.allocationDate, 'yyyy-MM-dd');
+          key = format(indent.indentDate, 'yyyy-MM-dd');
       }
 
       if (!groupedData[key]) {
         groupedData[key] = { totalLoad: 0, indentCount: 0, totalFulfillment: 0 };
       }
 
-      const load = trip.totalLoad || 0;
+      const load = indent.totalLoad || 0;
       const fulfillmentPercentage = (load / TRUCK_CAPACITY) * 100;
 
       groupedData[key].totalLoad += load;
@@ -336,7 +346,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     }
 
     // Query database with date filter
-    const trips = await Trip.find(dateFilter);
+    const indents = await Trip.find(dateFilter);
 
     // Bucket rates by range
     const BUCKET_RATES: Record<string, number> = {
@@ -346,31 +356,58 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
       '401-600Km': 105
     };
 
-    // Range mappings for normalization
+    // Barrel rates by range
+    const BARREL_RATES: Record<string, number> = {
+      '0-100Km': 220.5,
+      '101-250Km': 420,
+      '251-400Km': 714,
+      '401-600Km': 1081.5
+    };
+
+    // Range mappings - values are normalized during parsing
     const rangeMappings = [
-      { label: '0-100Km', patterns: ['0-100km', '0-100Km', '0-100KM'] },
-      { label: '101-250Km', patterns: ['101-250km', '101-250Km', '101-250KM'] },
-      { label: '251-400Km', patterns: ['251-400km', '251-400Km', '251-400KM'] },
-      { label: '401-600Km', patterns: ['401-600km', '401-600Km', '401-600KM'] },
+      { label: '0-100Km' },
+      { label: '101-250Km' },
+      { label: '251-400Km' },
+      { label: '401-600Km' },
     ];
 
-    // Calculate revenue by range using actual noOfBuckets field
-    const revenueByRange = rangeMappings.map(({ label, patterns }) => {
-      const rangeTrips = trips.filter(trip => {
-        if (!trip.range) return false;
-        const normalized = trip.range.toLowerCase();
-        return patterns.some(p => p.toLowerCase() === normalized);
+    // Calculate revenue by range - count buckets and barrels separately
+    const revenueByRange = rangeMappings.map(({ label }) => {
+      const rangeIndents = indents.filter(indent => {
+        // Since ranges are normalized during parsing, we can do direct comparison
+        return indent.range === label;
       });
 
-      const bucketCount = rangeTrips.reduce((sum, trip) => sum + (trip.noOfBuckets || 0), 0);
-      const rate = BUCKET_RATES[label];
-      const revenue = bucketCount * rate;
+      let bucketCount = 0;
+      let barrelCount = 0;
+      let bucketRevenue = 0;
+      let barrelRevenue = 0;
+
+      rangeIndents.forEach(indent => {
+        const count = indent.noOfBuckets || 0;
+        const material = (indent.material || '').trim();
+        
+        if (material === '20L Buckets') {
+          bucketCount += count;
+          bucketRevenue += count * BUCKET_RATES[label];
+        } else if (material === '210L Barrels') {
+          barrelCount += count;
+          barrelRevenue += count * BARREL_RATES[label];
+        }
+      });
+
+      const totalRevenue = bucketRevenue + barrelRevenue;
 
       return {
         range: label,
-        rate: rate,
+        bucketRate: BUCKET_RATES[label],
+        barrelRate: BARREL_RATES[label],
         bucketCount: bucketCount,
-        revenue: revenue
+        barrelCount: barrelCount,
+        bucketRevenue: bucketRevenue,
+        barrelRevenue: barrelRevenue,
+        revenue: totalRevenue
       };
     });
 
@@ -380,41 +417,42 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     // Calculate revenue over time
     const groupedData: Record<string, number> = {};
 
-    trips.forEach(trip => {
+    indents.forEach(indent => {
       let key: string;
 
       // Group by time period based on granularity using indentDate
       switch (granularity) {
         case 'daily':
-          key = format(trip.indentDate, 'yyyy-MM-dd');
+          key = format(indent.indentDate, 'yyyy-MM-dd');
           break;
         case 'weekly':
-          const week = getISOWeek(trip.indentDate);
-          const year = trip.indentDate.getFullYear();
+          const week = getISOWeek(indent.indentDate);
+          const year = indent.indentDate.getFullYear();
           key = `Week ${week}, ${year}`;
           break;
         case 'monthly':
-          key = format(trip.indentDate, 'yyyy-MM');
+          key = format(indent.indentDate, 'yyyy-MM');
           break;
         default:
-          key = format(trip.indentDate, 'yyyy-MM-dd');
+          key = format(indent.indentDate, 'yyyy-MM-dd');
       }
 
       if (!groupedData[key]) {
         groupedData[key] = 0;
       }
 
-      // Find the range for this trip and calculate revenue
-      const tripRange = trip.range?.toLowerCase();
-      let rate = 0;
-      for (const mapping of rangeMappings) {
-        if (mapping.patterns.some(p => p.toLowerCase() === tripRange)) {
-          rate = BUCKET_RATES[mapping.label];
-          break;
-        }
+      // Calculate revenue based on Material type and count
+      const indentRange = indent.range;
+      const count = indent.noOfBuckets || 0;
+      const material = (indent.material || '').trim();
+      
+      let revenue = 0;
+      if (material === '20L Buckets') {
+        revenue = count * (BUCKET_RATES[indentRange] || 0);
+      } else if (material === '210L Barrels') {
+        revenue = count * (BARREL_RATES[indentRange] || 0);
       }
-
-      const revenue = (trip.noOfBuckets || 0) * rate;
+      
       groupedData[key] += revenue;
     });
 
@@ -432,7 +470,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
       revenueByRangeCount: revenueByRange.length,
       totalRevenue,
       revenueOverTimeCount: revenueOverTime.length,
-      tripsCount: trips.length
+      indentsCount: indents.length
     });
 
     res.json({

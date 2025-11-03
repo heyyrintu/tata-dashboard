@@ -4,13 +4,16 @@ import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
 import { DashboardProvider } from './context/DashboardContext';
+import { ThemeProvider } from './context/ThemeContext';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
-      <DashboardProvider>
-        <App />
-      </DashboardProvider>
+      <ThemeProvider>
+        <DashboardProvider>
+          <App />
+        </DashboardProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </StrictMode>
 );

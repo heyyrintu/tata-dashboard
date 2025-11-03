@@ -33,7 +33,7 @@ export default function RangeDonutChart() {
     labels: data.rangeData.map(item => item.range),
     datasets: [
       {
-        data: data.rangeData.map(item => item.tripCount),
+        data: data.rangeData.map(item => item.indentCount),
         backgroundColor: [
           '#EF4444', // Red
           '#F59E0B', // Amber
@@ -46,11 +46,11 @@ export default function RangeDonutChart() {
     ],
   };
 
-  const totalTrips = data.rangeData.reduce((sum, item) => sum + item.tripCount, 0);
+  const totalIndents = data.rangeData.reduce((sum, item) => sum + item.indentCount, 0);
 
   return (
     <div className="enhanced-glass-card p-6 h-96 flex flex-col">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4 text-left">Trip Distribution by Range</h3>
+      <h3 className="text-lg font-semibold text-gray-800 mb-4 text-left">Indent Distribution by Range</h3>
       
       <div className="flex-1 relative flex items-center justify-center">
         <div className="w-full h-full max-w-[280px] max-h-[280px]">
@@ -83,8 +83,8 @@ export default function RangeDonutChart() {
                     label: function(context: any) {
                       const label = context.label || '';
                       const value = context.parsed || 0;
-                      const percentage = ((value / totalTrips) * 100).toFixed(1);
-                      return `${label}: ${value} trips (${percentage}%)`;
+                      const percentage = ((value / totalIndents) * 100).toFixed(1);
+                      return `${label}: ${value} indents (${percentage}%)`;
                     }
                   }
                 }
@@ -96,8 +96,8 @@ export default function RangeDonutChart() {
         {/* Perfectly centered text */}
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-3xl font-bold text-gray-800">{totalTrips}</div>
-            <div className="text-sm text-gray-600">Total Trips</div>
+            <div className="text-3xl font-bold text-gray-800">{totalIndents}</div>
+            <div className="text-sm text-gray-600">Total Indents</div>
           </div>
         </div>
       </div>

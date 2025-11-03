@@ -28,7 +28,7 @@ export interface ITrip extends Document {
 const TripSchema = new Schema<ITrip>(
   {
     sNo: { type: Number },
-    indentDate: { type: Date },
+    indentDate: { type: Date, index: true },
     indent: { type: String, index: true },
     allocationDate: { type: Date, index: true },
     customerName: { type: String },
@@ -53,8 +53,8 @@ const TripSchema = new Schema<ITrip>(
   }
 );
 
-// Compound index for efficient date range queries
-TripSchema.index({ allocationDate: 1 });
+// Index for efficient date range queries using indentDate
+TripSchema.index({ indentDate: 1 });
 
 export default mongoose.model<ITrip>('Trip', TripSchema);
 

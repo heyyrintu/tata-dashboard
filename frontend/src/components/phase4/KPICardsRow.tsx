@@ -13,25 +13,25 @@ export default function KPICardsRow() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-      {/* Total Trips */}
-      <div className="enhanced-glass-card p-6 flex flex-col items-center justify-center h-32">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center mb-3">
-          <div className="text-2xl">🚛</div>
-        </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-gray-800 mb-1">{formatCompactNumber(metrics.totalTrips)}</div>
-          <div className="text-sm text-gray-600">Total Trips</div>
-        </div>
-      </div>
-
       {/* Total Indents */}
       <div className="enhanced-glass-card p-6 flex flex-col items-center justify-center h-32">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600 flex items-center justify-center mb-3">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center mb-3">
           <div className="text-2xl">📋</div>
         </div>
         <div className="text-center">
           <div className="text-2xl font-bold text-gray-800 mb-1">{formatCompactNumber(metrics.totalIndents)}</div>
           <div className="text-sm text-gray-600">Total Indents</div>
+        </div>
+      </div>
+
+      {/* Unique Indents */}
+      <div className="enhanced-glass-card p-6 flex flex-col items-center justify-center h-32">
+        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600 flex items-center justify-center mb-3">
+          <div className="text-2xl">🔢</div>
+        </div>
+        <div className="text-center">
+          <div className="text-2xl font-bold text-gray-800 mb-1">{formatCompactNumber(metrics.totalIndentsUnique)}</div>
+          <div className="text-sm text-gray-600">Unique Indents</div>
         </div>
       </div>
 

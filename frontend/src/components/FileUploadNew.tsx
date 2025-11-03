@@ -4,7 +4,9 @@ import { IconUpload } from "@tabler/icons-react";
 import { useDropzone } from "react-dropzone";
 import { useDashboard } from '../context/DashboardContext';
 import { uploadExcel, getAnalytics } from '../services/api';
-import { HoverBorderGradient } from './HoverBorderGradient';
+import { Button } from './ui/moving-border';
+import { useTheme } from '../context/ThemeContext';
+import { cn } from '../lib/utils';
 
 const mainVariant = {
   initial: {
@@ -27,16 +29,13 @@ const secondaryVariant = {
   },
 };
 
-function cn(...classes: (string | undefined | null | false)[]): string {
-  return classes.filter(Boolean).join(' ');
-}
-
 interface FileUploadNewProps {
   onClose: () => void;
 }
 
 export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
   const { setUploadedFileName, setMetrics, setIsLoading, setError, setDateRange } = useDashboard();
+  const { theme } = useTheme();
   const [files, setFiles] = useState<File[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -88,8 +87,8 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
       // Fetch analytics after successful upload
       const analytics = await getAnalytics();
       setMetrics({
-        totalTrips: analytics.totalTrips,
         totalIndents: analytics.totalIndents,
+        totalIndentsUnique: analytics.totalIndentsUnique,
       });
 
       // Reset date range to last 30 days
@@ -117,10 +116,16 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
 
   return (
     <div className="w-full">
-      <div className="glass-card rounded-2xl shadow-2xl max-w-3xl w-full mx-auto border border-blue-900/50 relative">
+      <div className={`rounded-2xl max-w-3xl w-full mx-auto relative ${
+        theme === 'light'
+          ? 'bg-[#F1EFEC] border-2 border-blue-500/35 shadow-lg shadow-blue-500/20'
+          : 'glass-card border border-blue-900/50 shadow-2xl'
+      }`}>
         <div className="p-8">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Upload Excel File</h2>
+            <h2 className={`text-2xl font-bold ${
+              theme === 'light' ? 'text-black' : 'text-white'
+            }`}>Upload Excel File</h2>
           </div>
 
           <div className="w-full" {...getRootProps()}>
@@ -146,10 +151,14 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
                 <GridPattern />
               </div>
               <div className="flex flex-col items-center justify-center">
-                <p className="relative z-20 font-sans font-bold text-slate-300 text-base">
+                <p className={`relative z-20 font-sans font-bold text-base ${
+                  theme === 'light' ? 'text-[#132440]' : 'text-slate-300'
+                }`}>
                   Upload file
                 </p>
-                <p className="relative z-20 font-sans font-normal text-slate-400 text-base mt-2">
+                <p className={`relative z-20 font-sans font-normal text-base mt-2 ${
+                  theme === 'light' ? 'text-[#132440]' : 'text-slate-400'
+                }`}>
                   Drag or drop your files here or click to upload
                 </p>
                 <div className="relative w-full mt-10 max-w-xl mx-auto">
@@ -159,16 +168,20 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
                         key={"file" + idx}
                         layoutId={idx === 0 ? "file-upload" : "file-upload-" + idx}
                         className={cn(
-                          "relative overflow-hidden z-40 glass-card flex flex-col items-start justify-start md:h-24 p-4 mt-4 w-full mx-auto rounded-md",
-                          "shadow-lg"
+                          "relative overflow-hidden z-40 flex flex-col items-center justify-center md:h-24 p-4 mt-4 w-full mx-auto rounded-md shadow-lg",
+                          theme === 'light'
+                            ? 'bg-[#EFEEEA] border border-black/50'
+                            : 'glass-card'
                         )}
                       >
-                        <div className="flex justify-between w-full items-center gap-4">
+                        <div className="flex justify-center w-full items-center gap-4">
                           <motion.p
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             layout
-                            className="text-base text-slate-300 truncate max-w-xs"
+                            className={`text-base truncate max-w-xs text-center ${
+                              theme === 'light' ? 'text-black' : 'text-slate-300'
+                            }`}
                           >
                             {file.name}
                           </motion.p>
@@ -176,18 +189,28 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             layout
-                            className="rounded-lg px-2 py-1 w-fit shrink-0 text-sm bg-slate-700 text-white shadow-input"
+                            className={`rounded-lg px-2 py-1 w-fit shrink-0 text-sm shadow-input ${
+                              theme === 'light'
+                                ? 'bg-gray-200 text-gray-800'
+                                : 'bg-slate-700 text-white'
+                            }`}
                           >
                             {(file.size / (1024 * 1024)).toFixed(2)} MB
                           </motion.p>
                         </div>
 
-                        <div className="flex text-sm md:flex-row flex-col items-start md:items-center w-full mt-2 justify-between text-slate-400">
+                        <div className={`flex text-sm md:flex-row flex-col items-center justify-center w-full mt-2 gap-4 ${
+                          theme === 'light' ? 'text-gray-600' : 'text-slate-400'
+                        }`}>
                           <motion.p
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             layout
-                            className="px-1 py-0.5 rounded-md bg-slate-800"
+                            className={`px-1 py-0.5 rounded-md ${
+                              theme === 'light'
+                                ? 'bg-gray-100 text-gray-700'
+                                : 'bg-slate-800'
+                            }`}
                           >
                             {file.type || 'application/vnd.ms-excel'}
                           </motion.p>
@@ -196,6 +219,7 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             layout
+                            className={theme === 'light' ? 'text-gray-600' : ''}
                           >
                             modified{" "}
                             {new Date(file.lastModified).toLocaleDateString()}
@@ -256,15 +280,26 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
           )}
 
           <div className="flex justify-end space-x-3 mt-8">
-            <HoverBorderGradient
+            <Button
               onClick={handleProcess}
               disabled={!files.length || uploading}
-              containerClassName="rounded-full"
-              className={`px-6 py-3 text-white bg-black/40 font-semibold ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-              duration={1}
+              borderRadius="0.5rem"
+              containerClassName="h-auto w-auto"
+              className={cn(
+                'px-6 py-3 text-base font-bold whitespace-nowrap',
+                uploading ? 'opacity-50 cursor-not-allowed' : '',
+                theme === 'light' 
+                  ? '!bg-white !text-[#FEA519] !border-neutral-200' 
+                  : 'bg-slate-900 text-white border-slate-800'
+              )}
+              borderClassName={
+                theme === 'light'
+                  ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)]'
+                  : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)]'
+              }
             >
               {uploading ? 'Processing...' : '🚀 Process File'}
-            </HoverBorderGradient>
+            </Button>
           </div>
         </div>
       </div>

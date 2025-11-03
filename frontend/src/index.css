@@ -9,6 +9,12 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background-color: #0a0e27;
   color: #e2e8f0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.light-theme {
+  background-color: #F1F1F1;
+  color: #000000;
 }
 
 * {
@@ -25,13 +31,25 @@ body {
   background: #0f1b3d;
 }
 
+body.light-theme ::-webkit-scrollbar-track {
+  background: #e5e7eb;
+}
+
 ::-webkit-scrollbar-thumb {
   background: #1e3a8a;
   border-radius: 4px;
 }
 
+body.light-theme ::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+}
+
 ::-webkit-scrollbar-thumb:hover {
   background: #2563eb;
+}
+
+body.light-theme ::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 /* Smooth transitions */
@@ -44,6 +62,24 @@ body {
   background: rgba(15, 23, 42, 0.95);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(30, 58, 138, 0.5);
+}
+
+/* Light theme glass card */
+body.light-theme .glass-card {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  /* Border is handled by Tailwind classes - no default border */
+}
+
+/* Date Range Selector Background */
+.date-range-selector-bg {
+  background-color: #e0e0e0 !important;
+  background: #e0e0e0 !important;
+}
+
+body.light-theme .date-range-selector-bg {
+  background-color: #e0e0e0 !important;
+  background: #e0e0e0 !important;
 }
 
 /* Gradient background */

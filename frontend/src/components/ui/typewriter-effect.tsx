@@ -69,8 +69,7 @@ export function TypewriterEffect({
             key={idx}
             className={cn(
               "transition-colors duration-300",
-              isActive && "text-amber-50",
-              word.className
+              word.className || className
             )}
           >
             {idx === currentWordIndex ? displayText : word.text}

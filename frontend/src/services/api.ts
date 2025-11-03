@@ -2,8 +2,8 @@ import axios from 'axios';
 
 interface Analytics {
   success: boolean;
-  totalTrips: number;
   totalIndents: number;
+  totalIndentsUnique: number;
   dateRange: {
     from: string | null;
     to: string | null;
@@ -20,15 +20,16 @@ interface UploadResponse {
 
 interface RangeWiseData {
   range: string;
-  tripCount: number;
+  indentCount: number;
   totalLoad: number;
   percentage: number;
   bucketCount: number;
+  barrelCount: number;
 }
 
 interface LocationData {
   name: string;
-  tripCount: number;
+  indentCount: number;
   totalLoad: number;
   range: string;
   lat?: number;
@@ -160,8 +161,12 @@ interface RevenueAnalyticsResponse {
   success: boolean;
   revenueByRange: Array<{
     range: string;
-    rate: number;
+    bucketRate: number;
+    barrelRate: number;
     bucketCount: number;
+    barrelCount: number;
+    bucketRevenue: number;
+    barrelRevenue: number;
     revenue: number;
   }>;
   totalRevenue: number;

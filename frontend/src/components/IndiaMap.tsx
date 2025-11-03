@@ -6,10 +6,11 @@ import { useRangeData } from '../hooks/useRangeData';
 import { LoadingSpinner } from './LoadingSpinner';
 import { formatLoad } from '../utils/rangeCalculations';
 import { geocodeAllLocations } from '../utils/geocoding';
+import { useTheme } from '../context/ThemeContext';
 
 interface LocationData {
   name: string;
-  tripCount: number;
+  indentCount: number;
   totalLoad: number;
   range: string;
   lat?: number;
@@ -28,6 +29,7 @@ const SONIPAT_CENTER: [number, number] = [28.9931, 77.0151];
 
 export default function IndiaMap() {
   const { data, loading } = useRangeData();
+  const { theme } = useTheme();
   const [locationMarkers, setLocationMarkers] = useState<Array<LocationData & { lat: number; lng: number }>>([]);
   const [geocodingLoading, setGeocodingLoading] = useState(false);
   const [mapKey, setMapKey] = useState(0);
@@ -72,27 +74,40 @@ export default function IndiaMap() {
   ];
 
   return (
-    <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30 mb-12" style={{ height: '612px' }}>
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-white">Delivery Locations Map</h2>
+    <div className={`rounded-2xl mb-12 ${
+      theme === 'light' 
+        ? 'p-[2px] shadow-lg' 
+        : 'shadow-xl border border-blue-900/30'
+    }`} style={theme === 'light' ? {
+      height: '612px',
+      background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
+      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
+    } : { height: '612px' }}>
+      <div className={`rounded-2xl p-6 h-full ${
+        theme === 'light' ? 'bg-[#F1F1F1] border-0' : 'glass-card'
+      }`} style={theme === 'light' ? { border: 'none', height: '100%' } : { height: '100%' }}>
+        <div className="flex justify-between items-center mb-4">
+        <h2 className={`text-lg font-semibold ${
+          theme === 'light' ? 'text-black' : 'text-white'
+        }`}>Delivery Locations Map</h2>
         
         {/* Distance Legend */}
         <div className="flex gap-4 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#22d3ee' }}></div>
-            <span className="text-white">0-100 Km</span>
+            <span className={theme === 'light' ? 'text-black' : 'text-white'}>0-100 Km</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#3b82f6' }}></div>
-            <span className="text-white">101-250 Km</span>
+            <span className={theme === 'light' ? 'text-black' : 'text-white'}>101-250 Km</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#8b5cf6' }}></div>
-            <span className="text-white">251-400 Km</span>
+            <span className={theme === 'light' ? 'text-black' : 'text-white'}>251-400 Km</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: '#a855f7' }}></div>
-            <span className="text-white">401-600 Km</span>
+            <span className={theme === 'light' ? 'text-black' : 'text-white'}>401-600 Km</span>
           </div>
         </div>
       </div>
@@ -153,7 +168,7 @@ export default function IndiaMap() {
                   <Popup>
                     <div className="text-sm text-slate-800">
                       <p className="font-semibold">Location: {marker.name}</p>
-                      <p className="font-semibold">Total Trips: {marker.tripCount}</p>
+                      <p className="font-semibold">Total Indents: {marker.indentCount}</p>
                       <p className="font-semibold">Total Load: {formatLoad(marker.totalLoad)} Kgs</p>
                       <p className="font-semibold">Range: {marker.range}</p>
                     </div>
@@ -164,6 +179,7 @@ export default function IndiaMap() {
           </MapContainer>
         </div>
       )}
+      </div>
     </div>
   );
 }

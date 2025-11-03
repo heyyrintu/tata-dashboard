@@ -1,71 +1,137 @@
 import { useDashboard } from '../context/DashboardContext';
+import { useTheme } from '../context/ThemeContext';
+import { useRevenueData } from '../hooks/useRevenueData';
 import { useRangeData } from '../hooks/useRangeData';
 import { LoadingSpinner } from './LoadingSpinner';
-import { calculateTotalRevenue, calculateRevenueByRange, formatCurrency } from '../utils/revenueCalculations';
+import { formatCurrency } from '../utils/revenueCalculations';
+import { calculateTotalLoad } from '../utils/phase4Calculations';
 
 export default function SummaryCards() {
   const { metrics, isLoading } = useDashboard();
-  const { data: rangeData } = useRangeData();
+  const { theme } = useTheme();
+  const { data: revenueData, loading: revenueLoading } = useRevenueData();
+  const { data: rangeData, loading: rangeLoading } = useRangeData();
 
-  // Calculate total revenue from range data
-  const totalRevenue = rangeData?.rangeData 
-    ? calculateTotalRevenue(calculateRevenueByRange(rangeData.rangeData.map(item => ({
-        range: item.range,
-        bucketCount: item.bucketCount
-      }))))
-    : 0;
+  // Get total revenue from revenue analytics endpoint (same source as RevenueTable)
+  const totalRevenue = revenueData?.totalRevenue || 0;
+  const totalLoadKg = rangeData?.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0;
+  const totalLoad = totalLoadKg / 1000; // Convert kg to tons
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6">
       {/* Total Trips Card */}
-      <div className="glass-card rounded-2xl p-6 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group border border-blue-900/30">
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 to-blue-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(224, 30, 31, 0.25)',
+        border: '1px solid rgba(224, 30, 31, 0.5)'
+      } : {}}>
+        <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
         <div className="flex items-center justify-between relative z-10">
           <div>
-            <p className="text-sm font-medium text-slate-400 mb-2">Total Trips</p>
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-black' : 'text-slate-400'
+            }`}>Total Trips</p>
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <p className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">{metrics.totalTrips}</p>
+              <p className="text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">{metrics.totalIndents}</p>
             )}
           </div>
           <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">🚛</div>
         </div>
-        <p className="text-xs text-slate-500 mt-4 relative z-10">Count of trips with allocation dates</p>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-black' : 'text-slate-500'
+        }`}>Total number of trips</p>
       </div>
 
       {/* Total Indents Card */}
-      <div className="glass-card rounded-2xl p-6 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group border border-blue-900/30">
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 to-cyan-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(254, 165, 25, 0.25)',
+        border: '1px solid rgba(254, 165, 25, 0.5)'
+      } : {}}>
+        <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
         <div className="flex items-center justify-between relative z-10">
           <div>
-            <p className="text-sm font-medium text-slate-400 mb-2">Total Indents</p>
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-gray-600' : 'text-slate-400'
+            }`}>Total Indents</p>
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <p className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">{metrics.totalIndents}</p>
+              <p className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">{metrics.totalIndentsUnique}</p>
             )}
           </div>
           <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📋</div>
         </div>
-        <p className="text-xs text-slate-500 mt-4 relative z-10">Count of unique indent values</p>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-gray-500' : 'text-slate-500'
+        }`}>Count of unique indents</p>
+      </div>
+
+      {/* Total Load Card */}
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(224, 30, 31, 0.25)',
+        border: '1px solid rgba(224, 30, 31, 0.5)'
+      } : {}}>
+        <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-black' : 'text-slate-400'
+            }`}>Total Load</p>
+            {isLoading || rangeLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <p className="text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
+                {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(totalLoad)}
+                <span className="text-[18px] bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent"> Ton</span>
+              </p>
+            )}
+          </div>
+          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">⚖️</div>
+        </div>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-gray-500' : 'text-slate-500'
+        }`}>Total load in tons</p>
       </div>
 
       {/* Total Revenue Card */}
-      <div className="glass-card rounded-2xl p-6 hover:shadow-2xl hover:shadow-blue-900/30 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group border border-blue-900/30">
-        <div className="absolute inset-0 bg-gradient-to-br from-emerald-600/10 to-green-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(254, 165, 25, 0.25)',
+        border: '1px solid rgba(254, 165, 25, 0.5)'
+      } : {}}>
+        <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
         <div className="flex items-center justify-between relative z-10">
           <div>
-            <p className="text-sm font-medium text-slate-400 mb-2">Total Revenue</p>
-            {isLoading ? (
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-gray-600' : 'text-slate-400'
+            }`}>Total Revenue</p>
+            {isLoading || revenueLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <p className="text-4xl font-bold bg-gradient-to-r from-emerald-400 to-green-400 bg-clip-text text-transparent">{formatCurrency(totalRevenue)}</p>
+              <p className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">{formatCurrency(totalRevenue)}</p>
             )}
           </div>
           <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">💰</div>
         </div>
-        <p className="text-xs text-slate-500 mt-4 relative z-10">Revenue calculated from bucket counts and rates</p>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-gray-500' : 'text-slate-500'
+        }`}>Revenue calculated from bucket and barrel counts</p>
       </div>
     </div>
   );

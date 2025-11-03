@@ -1,4 +1,4 @@
-export interface TripData {
+export interface IndentData {
   sNo: number;
   indentDate: string;
   indent: string;
@@ -23,8 +23,8 @@ export interface TripData {
 
 export interface Analytics {
   success: boolean;
-  totalTrips: number;
   totalIndents: number;
+  totalIndentsUnique: number;
   dateRange: {
     from: string | null;
     to: string | null;
@@ -41,15 +41,16 @@ export interface UploadResponse {
 
 export interface RangeWiseData {
   range: string;
-  tripCount: number;
+  indentCount: number;
   totalLoad: number;
   percentage: number;
   bucketCount: number;
+  barrelCount: number;
 }
 
 export interface LocationData {
   name: string;
-  tripCount: number;
+  indentCount: number;
   totalLoad: number;
   range: string;
   lat?: number;
@@ -69,8 +70,12 @@ export interface RangeWiseResponse {
 // Revenue Analysis Types
 export interface RevenueByRange {
   range: string;
-  rate: number;
+  bucketRate: number;
+  barrelRate: number;
   bucketCount: number;
+  barrelCount: number;
+  bucketRevenue: number;
+  barrelRevenue: number;
   revenue: number;
 }
 
@@ -82,9 +87,9 @@ export interface RevenueOverTime {
 export interface RevenueMetrics {
   totalRevenue: number;
   totalBuckets: number;
-  revenuePerTrip: number;
+  revenuePerIndent: number;
   revenuePerBucket: number;
-  avgBucketsPerTrip: number;
+  avgBucketsPerIndent: number;
 }
 
 export interface RevenueBreakdown {

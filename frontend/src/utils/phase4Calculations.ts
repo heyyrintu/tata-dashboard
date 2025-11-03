@@ -21,9 +21,9 @@ export const calculateAvgFulfillment = (fulfillmentData: any[]): number => {
   return weightedSum / totalIndents;
 };
 
-export const sortLocationsByTrips = (locations: any[], topN: number = 10) => {
+export const sortLocationsByIndents = (locations: any[], topN: number = 10) => {
   return locations
-    .sort((a, b) => b.tripCount - a.tripCount)
+    .sort((a, b) => b.indentCount - a.indentCount)
     .slice(0, topN);
 };
 

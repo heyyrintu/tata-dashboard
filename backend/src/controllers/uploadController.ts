@@ -17,9 +17,9 @@ export const uploadExcel = async (req: Request, res: Response) => {
     
     try {
       // Parse the Excel file
-      const trips = parseExcelFile(filePath);
+      const indents = parseExcelFile(filePath);
 
-      if (trips.length === 0) {
+      if (indents.length === 0) {
         return res.status(400).json({
           success: false,
           error: 'No valid data found in Excel file'
@@ -30,16 +30,16 @@ export const uploadExcel = async (req: Request, res: Response) => {
       await Trip.deleteMany({});
 
       // Insert new data
-      await Trip.insertMany(trips);
+      await Trip.insertMany(indents);
 
       // Clean up uploaded file
       fs.unlinkSync(filePath);
 
       res.json({
         success: true,
-        recordCount: trips.length,
+        recordCount: indents.length,
         fileName: req.file.originalname,
-        message: `Successfully uploaded ${trips.length} records`
+        message: `Successfully uploaded ${indents.length} records`
       });
     } catch (parseError) {
       // Clean up file on error

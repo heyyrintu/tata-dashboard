@@ -9,14 +9,14 @@ export interface DashboardContextType {
     to: Date | null;
   };
   metrics: {
-    totalTrips: number;
     totalIndents: number;
+    totalIndentsUnique: number;
   };
   isLoading: boolean;
   error: string | null;
   setUploadedFileName: (fileName: string | null) => void;
   setDateRange: (from: Date | null, to: Date | null) => void;
-  setMetrics: (metrics: { totalTrips: number; totalIndents: number }) => void;
+  setMetrics: (metrics: { totalIndents: number; totalIndentsUnique: number }) => void;
   setIsLoading: (loading: boolean) => void;
   setError: (error: string | null) => void;
 }
@@ -41,7 +41,7 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
     from: subDays(new Date(), 30),
     to: new Date(),
   });
-  const [metrics, setMetrics] = useState({ totalTrips: 0, totalIndents: 0 });
+  const [metrics, setMetrics] = useState({ totalIndents: 0, totalIndentsUnique: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

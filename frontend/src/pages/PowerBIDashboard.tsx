@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import CompactHeader from '../components/phase4/CompactHeader';
 import KPICardsRow from '../components/phase4/KPICardsRow';
 import RangeDonutChart from '../components/phase4/RangeDonutChart';
@@ -8,15 +9,32 @@ import CompactFulfillmentTable from '../components/phase4/CompactFulfillmentTabl
 import TopLocationsTable from '../components/phase4/TopLocationsTable';
 import KPILoadTrendChart from '../components/phase4/KPILoadTrendChart';
 import KPIFulfillmentTrendChart from '../components/phase4/KPIFulfillmentTrendChart';
-import { BackgroundRippleEffect } from '../components/BackgroundRippleEffect';
+import { BackgroundBeams } from '../components/ui/background-beams';
+import { useTheme } from '../context/ThemeContext';
 
 export default function PowerBIDashboard() {
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+  }, [theme]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-orange-50/30 relative">
-      {/* Background Ripple Effect */}
-      <div className="absolute inset-0 overflow-hidden opacity-60">
-        <BackgroundRippleEffect />
-      </div>
+    <div className={`min-h-screen relative ${
+      theme === 'light'
+        ? 'bg-[#F1F1F1]'
+        : 'bg-gradient-to-b from-[#0a0e27] to-[#08101e]'
+    }`}>
+      {/* Background Beams Effect - Only for dark theme */}
+      {theme === 'dark' && (
+        <div className="absolute inset-0 overflow-hidden">
+          <BackgroundBeams className="pointer-events-none" />
+        </div>
+      )}
       
       {/* Header */}
       <div className="relative z-50">

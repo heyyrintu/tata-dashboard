@@ -53,8 +53,8 @@ export default function FileUpload({ onClose }: FileUploadProps) {
       // Fetch analytics after successful upload
       const analytics = await getAnalytics();
       setMetrics({
-        totalTrips: analytics.totalTrips,
         totalIndents: analytics.totalIndents,
+        totalIndentsUnique: analytics.totalIndentsUnique,
       });
 
       // Reset date range to last 30 days

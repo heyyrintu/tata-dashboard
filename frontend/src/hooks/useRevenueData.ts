@@ -14,16 +14,13 @@ export const useRevenueData = (granularity: 'daily' | 'weekly' | 'monthly' = 'da
     setError(null);
 
     try {
-      console.log('Fetching revenue data:', { granularity, from: dateRange.from, to: dateRange.to });
       const response = await getRevenueAnalytics(
         granularity,
         dateRange.from || undefined,
         dateRange.to || undefined
       );
-      console.log('Revenue data received:', response);
       setData(response);
     } catch (err) {
-      console.error('Error fetching revenue data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch revenue data');
       setData(null);
     } finally {

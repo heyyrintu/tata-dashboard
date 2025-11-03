@@ -5,6 +5,31 @@ interface ExcelRow {
   [key: string]: any;
 }
 
+// Normalize range values to standard format
+const normalizeRange = (range: string | null | undefined): string => {
+  if (!range || typeof range !== 'string') return '';
+  
+  // Trim whitespace and convert to lowercase for comparison
+  const normalized = range.trim().toLowerCase();
+  
+  // Handle various formats: "0-100km", "0-100Km", "0-100KM", "0-100 km", etc.
+  if (normalized.startsWith('0-100') || normalized.startsWith('0 100')) {
+    return '0-100Km';
+  }
+  if (normalized.startsWith('101-250') || normalized.startsWith('101 250')) {
+    return '101-250Km';
+  }
+  if (normalized.startsWith('251-400') || normalized.startsWith('251 400')) {
+    return '251-400Km';
+  }
+  if (normalized.startsWith('401-600') || normalized.startsWith('401 600')) {
+    return '401-600Km';
+  }
+  
+  // Return original if no match (empty string will be filtered out)
+  return '';
+};
+
 export const parseExcelFile = (filePath: string): ITrip[] => {
   try {
     const workbook = XLSX.readFile(filePath, { type: 'file', cellDates: true });
@@ -30,7 +55,7 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
     }
 
     // Map Excel data to Trip model
-    const trips: ITrip[] = data.map((row, index) => {
+    const indents: ITrip[] = data.map((row, index) => {
       return {
         sNo: row['S.NO'] || index + 1,
         indentDate: convertToDate(row['Indent Date']),
@@ -51,12 +76,12 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         unloadingCharge: parseFloat(row['Unloading Charge']) || 0,
         actualRunning: parseFloat(row['Actual Running']) || 0,
         billableRunning: parseFloat(row['Billable Running']) || 0,
-        range: row['Range'] || '',
+        range: normalizeRange(row['Range']),
       } as any;
     });
 
-    // Filter out rows with missing critical data
-    return trips.filter(trip => trip.indent && trip.allocationDate);
+    // Filter out rows with missing critical data - use indentDate instead of allocationDate
+    return indents.filter(indent => indent.indent && indent.indentDate);
   } catch (error) {
     throw new Error(`Failed to parse Excel file: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }

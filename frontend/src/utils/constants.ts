@@ -6,6 +6,35 @@ export const BUCKET_RATES: Record<string, number> = {
   '401-600Km': 105
 };
 
+export const BARREL_RATES: Record<string, number> = {
+  '0-100Km': 220.5,
+  '101-250Km': 420,
+  '251-400Km': 714,
+  '401-600Km': 1081.5
+};
+
+// Material type constants
+export const MATERIAL_TYPES = {
+  BUCKET: '20L Buckets',
+  BARREL: '210L Barrels'
+};
+
+// Bucket colors (light shades)
+export const BUCKET_COLORS = [
+  '#3B82F6',  // Light Blue (0-100km)
+  '#10B981',  // Light Green (100-250km)
+  '#F59E0B',  // Light Orange (250-400km)
+  '#EF4444'   // Light Red (400-600km)
+];
+
+// Barrel colors (dark shades)
+export const BARREL_COLORS = [
+  '#1E40AF',  // Dark Blue (0-100km)
+  '#065F46',  // Dark Green (100-250km)
+  '#B45309',  // Dark Orange (250-400km)
+  '#991B1B'   // Dark Red (400-600km)
+];
+
 // Range colors for visualization consistency
 export const RANGE_COLORS: Record<string, string> = {
   '0-100Km': '#3B82F6',     // Blue

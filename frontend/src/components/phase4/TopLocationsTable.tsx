@@ -1,6 +1,6 @@
 import { useRangeData } from '../../hooks/useRangeData';
 import { LoadingSpinner } from '../LoadingSpinner';
-import { sortLocationsByTrips } from '../../utils/phase4Calculations';
+import { sortLocationsByIndents } from '../../utils/phase4Calculations';
 
 export default function TopLocationsTable() {
   const { data, loading } = useRangeData();
@@ -21,8 +21,8 @@ export default function TopLocationsTable() {
     );
   }
 
-  const topLocations = sortLocationsByTrips(data.locations, 10);
-  const maxCount = topLocations[0]?.tripCount || 1;
+  const topLocations = sortLocationsByIndents(data.locations, 10);
+  const maxCount = topLocations[0]?.indentCount || 1;
 
   return (
     <div className="enhanced-glass-card p-6 h-96 flex flex-col">
@@ -38,11 +38,11 @@ export default function TopLocationsTable() {
               <div className="flex-1 h-4 bg-gray-200 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-gradient-to-r from-red-500 to-yellow-500 transition-all duration-300"
-                  style={{ width: `${(location.tripCount / maxCount) * 100}%` }}
+                  style={{ width: `${(location.indentCount / maxCount) * 100}%` }}
                 />
               </div>
               <div className="w-12 text-gray-800 font-medium text-right">
-                {location.tripCount}
+                {location.indentCount}
               </div>
             </div>
           ))}

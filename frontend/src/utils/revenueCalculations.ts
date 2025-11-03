@@ -8,7 +8,7 @@ export const formatIndianNumber = (num: number): string => {
 
 // Format currency with Indian notation
 export const formatCurrency = (amount: number): string => {
-  return `${formatIndianNumber(amount)} RS`;
+  return `₹${formatIndianNumber(amount)}`;
 };
 
 // Calculate revenue by range from range data
@@ -35,14 +35,14 @@ export const calculateTotalRevenue = (revenueByRange: RevenueByRange[]): number 
 export const calculateRevenueMetrics = (
   totalRevenue: number,
   totalBuckets: number,
-  totalTrips: number
+  totalIndents: number
 ): RevenueMetrics => {
   return {
     totalRevenue,
     totalBuckets,
-    revenuePerTrip: totalTrips > 0 ? totalRevenue / totalTrips : 0,
+    revenuePerIndent: totalIndents > 0 ? totalRevenue / totalIndents : 0,
     revenuePerBucket: totalBuckets > 0 ? totalRevenue / totalBuckets : 0,
-    avgBucketsPerTrip: totalTrips > 0 ? totalBuckets / totalTrips : 0
+    avgBucketsPerIndent: totalIndents > 0 ? totalBuckets / totalIndents : 0
   };
 };
 

@@ -1,74 +1,125 @@
+import React from 'react';
 import { useRevenueData } from '../../hooks/useRevenueData';
+import { useTheme } from '../../context/ThemeContext';
 import { LoadingSpinner } from '../LoadingSpinner';
-import { formatCurrency, formatBucketCount } from '../../utils/revenueCalculations';
+import { formatCurrency } from '../../utils/revenueCalculations';
+import { formatBucketBarrelCount } from '../../utils/rangeCalculations';
 
 export default function RevenueTable() {
   const { data, loading, error } = useRevenueData();
+  const { theme } = useTheme();
+
+  const gradientWrapper = (content: React.ReactNode) => (
+    <div className={`rounded-2xl ${
+      theme === 'light' 
+        ? 'p-[2px] shadow-lg' 
+        : 'shadow-xl border border-blue-900/30'
+    }`} style={theme === 'light' ? {
+      background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
+      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
+    } : {}}>
+      <div className={`rounded-2xl p-6 h-full ${
+        theme === 'light' ? 'bg-[#F1F1F1] border-0' : 'glass-card'
+      }`} style={theme === 'light' ? { border: 'none' } : {}}>
+        {content}
+      </div>
+    </div>
+  );
 
   if (loading) {
-    return (
-      <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-        <h2 className="text-lg font-semibold text-white mb-4">Revenue by Distance Range</h2>
+    return gradientWrapper(
+      <>
+        <h2 className={`text-lg font-semibold mb-4 ${
+          theme === 'light' ? 'text-black' : 'text-white'
+        }`}>Revenue by Distance Range</h2>
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner />
         </div>
-      </div>
+      </>
     );
   }
 
   if (error) {
-    return (
-      <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-        <h2 className="text-lg font-semibold text-white mb-4">Revenue by Distance Range</h2>
+    return gradientWrapper(
+      <>
+        <h2 className={`text-lg font-semibold mb-4 ${
+          theme === 'light' ? 'text-black' : 'text-white'
+        }`}>Revenue by Distance Range</h2>
         <div className="text-center py-12">
           <div className="text-red-400 mb-2">Error loading revenue data</div>
-          <div className="text-sm text-slate-400">{error}</div>
+          <div className={`text-sm ${
+            theme === 'light' ? 'text-black' : 'text-slate-400'
+          }`}>{error}</div>
         </div>
-      </div>
+      </>
     );
   }
 
   if (!data || !data.revenueByRange || data.revenueByRange.length === 0) {
-    return (
-      <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-        <h2 className="text-lg font-semibold text-white mb-4">Revenue by Distance Range</h2>
-        <div className="text-center py-12 text-slate-400">
+    return gradientWrapper(
+      <>
+        <h2 className={`text-lg font-semibold mb-4 ${
+          theme === 'light' ? 'text-black' : 'text-white'
+        }`}>Revenue by Distance Range</h2>
+        <div className={`text-center py-12 ${
+          theme === 'light' ? 'text-black' : 'text-slate-400'
+        }`}>
           No revenue data available for the selected date range
         </div>
-      </div>
+      </>
     );
   }
 
-  const totalBuckets = data.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0);
   const totalRevenue = data.revenueByRange.reduce((sum, item) => sum + item.revenue, 0);
+  const totalBuckets = data.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0);
+  const totalBarrels = data.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0);
 
-  return (
-    <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
-      <h2 className="text-lg font-semibold text-white mb-4">Revenue by Distance Range</h2>
+  return gradientWrapper(
+    <>
+      <h2 className={`text-lg font-semibold mb-4 ${
+        theme === 'light' ? 'text-gray-800' : 'text-white'
+      }`}>Revenue by Distance Range</h2>
 
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-blue-900/30">
-              <th className="text-left py-3 px-4 text-sm font-medium text-slate-300">Range (Rate)</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-slate-300">Buckets Count</th>
-              <th className="text-left py-3 px-4 text-sm font-medium text-slate-300">Revenue (RS)</th>
+            <tr className={theme === 'light' ? 'border-b border-gray-200' : 'border-b border-blue-900/30'}>
+              <th className={`text-left py-3 px-4 text-sm font-medium ${
+                theme === 'light' ? 'text-black' : 'text-slate-300'
+              }`}>Range (Rates)</th>
+              <th className={`text-left py-3 px-4 text-sm font-medium ${
+                theme === 'light' ? 'text-black' : 'text-slate-300'
+              }`}>Bucket+Barrel Count</th>
+              <th className={`text-left py-3 px-4 text-sm font-medium ${
+                theme === 'light' ? 'text-black' : 'text-slate-300'
+              }`}>Revenue</th>
             </tr>
           </thead>
           <tbody>
             {data.revenueByRange.map((item, index) => (
               <tr
                 key={index}
-                className="border-b border-blue-900/20 hover:bg-blue-900/10 transition-colors duration-200"
+                className={`border-b transition-colors duration-200 ${
+                  theme === 'light'
+                    ? 'border-gray-100 hover:bg-gray-50'
+                    : 'border-blue-900/20 hover:bg-blue-900/10'
+                }`}
               >
-                <td className="py-3 px-4 text-slate-200">
+                <td className={`py-3 px-4 ${
+                  theme === 'light' ? 'text-black' : 'text-slate-200'
+                }`}>
                   <div>
                     <div className="font-medium">{item.range}</div>
-                    <div className="text-xs text-slate-400">(@{item.rate} RS)</div>
+                    <div className={`text-xs ${
+                      theme === 'light' ? 'text-black' : 'text-slate-400'
+                    }`}>Bucket: ₹{item.bucketRate}</div>
+                    <div className={`text-xs ${
+                      theme === 'light' ? 'text-black' : 'text-slate-400'
+                    }`}>Barrel: ₹{item.barrelRate}</div>
                   </div>
                 </td>
                 <td className="py-3 px-4 text-emerald-400 font-medium">
-                  {formatBucketCount(item.bucketCount)}
+                  {formatBucketBarrelCount(item.bucketCount, item.barrelCount)}
                 </td>
                 <td className="py-3 px-4 text-cyan-400 font-medium">
                   {formatCurrency(item.revenue)}
@@ -76,18 +127,23 @@ export default function RevenueTable() {
               </tr>
             ))}
             {/* Total Row */}
-            <tr className="border-t-2 border-blue-900/40 bg-blue-900/5">
-              <td className="py-3 px-4 text-white font-semibold">TOTAL</td>
+            <tr className={theme === 'light' 
+              ? 'border-t-2 border-gray-300 bg-gray-100' 
+              : 'border-t-2 border-blue-900/40 bg-blue-900/5'
+            }>
+              <td className={`py-3 px-4 font-semibold ${
+                theme === 'light' ? 'text-black' : 'text-white'
+              }`}>TOTAL</td>
               <td className="py-3 px-4 text-emerald-300 font-semibold">
-                {formatBucketCount(totalBuckets)} Buckets
+                {formatBucketBarrelCount(totalBuckets, totalBarrels)} Units
               </td>
               <td className="py-3 px-4 text-cyan-300 font-semibold">
-                {formatCurrency(totalRevenue)} RS
+                {formatCurrency(totalRevenue)}
               </td>
             </tr>
           </tbody>
         </table>
       </div>
-    </div>
+    </>
   );
 }

@@ -4,15 +4,16 @@ import { getRangeWiseAnalytics } from '../services/api';
 
 interface RangeWiseData {
   range: string;
-  tripCount: number;
+  indentCount: number;
   totalLoad: number;
   percentage: number;
   bucketCount: number;
+  barrelCount: number;
 }
 
 interface LocationData {
   name: string;
-  tripCount: number;
+  indentCount: number;
   totalLoad: number;
   range: string;
   lat?: number;

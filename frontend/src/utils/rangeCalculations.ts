@@ -1,17 +1,25 @@
 interface RangeWiseData {
   range: string;
-  tripCount: number;
+  indentCount: number;
   totalLoad: number;
   percentage: number;
   bucketCount: number;
+  barrelCount: number;
 }
 
 export const formatLoad = (load: number): string => {
   return new Intl.NumberFormat('en-IN').format(load);
 };
 
-export const formatBucketCount = (load: number): number => {
-  return Math.round((load / 20) * 100) / 100;
+export const formatBucketCount = (load: number): string => {
+  const bucketCount = Math.round((load / 20) * 100) / 100;
+  return new Intl.NumberFormat('en-IN').format(bucketCount);
+};
+
+export const formatBucketBarrelCount = (bucketCount: number, barrelCount: number): string => {
+  const bucketStr = new Intl.NumberFormat('en-IN').format(bucketCount);
+  const barrelStr = new Intl.NumberFormat('en-IN').format(barrelCount);
+  return `${bucketStr} + ${barrelStr}`;
 };
 
 export const formatPercentage = (percentage: number): string => {

@@ -30,7 +30,7 @@ export default function CompactRangeTable() {
           <thead>
             <tr className="border-b border-gray-200">
               <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Radius</th>
-              <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Trips</th>
+              <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Indents</th>
               <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">%</th>
               <th className="text-right py-3 px-4 text-sm font-semibold text-gray-700">Load</th>
             </tr>
@@ -39,7 +39,7 @@ export default function CompactRangeTable() {
             {data.rangeData.map((item, index) => (
               <tr key={index} className="border-b border-gray-100 hover:bg-red-50/30 transition-colors">
                 <td className="py-3 px-4 text-sm text-gray-800">{item.range}</td>
-                <td className="py-3 px-4 text-sm text-gray-800 font-medium text-right">{item.tripCount}</td>
+                <td className="py-3 px-4 text-sm text-gray-800 font-medium text-right">{item.indentCount}</td>
                 <td className="py-3 px-4 text-sm text-red-600 font-medium text-right">{formatPercentage(item.percentage)}</td>
                 <td className="py-3 px-4 text-sm text-gray-600 text-right">{formatLoad(item.totalLoad)}</td>
               </tr>

@@ -14,6 +14,7 @@ import { Chart } from 'react-chartjs-2';
 import { useLoadOverTime } from '../hooks/useLoadOverTime';
 import { LoadingSpinner } from './LoadingSpinner';
 import TimeGranularityToggle from './TimeGranularityToggle';
+import { useTheme } from '../context/ThemeContext';
 
 ChartJS.register(
   CategoryScale,
@@ -29,10 +30,15 @@ ChartJS.register(
 export default function LoadOverTimeGraph() {
   const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const { data, loading } = useLoadOverTime(granularity);
+  const { theme } = useTheme();
 
   if (loading) {
     return (
-      <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
+      <div className={`glass-card rounded-2xl p-6 ${
+        theme === 'light' 
+          ? 'border-2 border-blue-500/35 shadow-lg shadow-blue-500/20' 
+          : 'shadow-xl border border-blue-900/30'
+      }`}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-white">Load Over Time</h2>
           <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
@@ -46,7 +52,11 @@ export default function LoadOverTimeGraph() {
 
   if (!data || !data.data || data.data.length === 0) {
     return (
-      <div className="glass-card rounded-2xl p-6 shadow-xl border border-blue-900/30">
+      <div className={`glass-card rounded-2xl p-6 ${
+        theme === 'light' 
+          ? 'border-2 border-blue-500/35 shadow-lg shadow-blue-500/20' 
+          : 'shadow-xl border border-blue-900/30'
+      }`}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-lg font-semibold text-white">Load Over Time</h2>
           <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
