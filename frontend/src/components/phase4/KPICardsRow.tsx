@@ -1,12 +1,15 @@
 import { useDashboard } from '../../context/DashboardContext';
 import { useRangeData } from '../../hooks/useRangeData';
 import { useFulfillmentData } from '../../hooks/useFulfillmentData';
+import { useTheme } from '../../context/ThemeContext';
 import { calculateTotalLoad, calculateAvgFulfillment, formatCompactNumber } from '../../utils/phase4Calculations';
+import { LoadingSpinner } from '../LoadingSpinner';
 
 export default function KPICardsRow() {
-  const { metrics } = useDashboard();
-  const { data: rangeData } = useRangeData();
-  const { data: fulfillmentData } = useFulfillmentData();
+  const { metrics, isLoading } = useDashboard();
+  const { data: rangeData, loading: rangeLoading } = useRangeData();
+  const { data: fulfillmentData, loading: fulfillmentLoading } = useFulfillmentData();
+  const { theme } = useTheme();
 
   const totalLoad = rangeData?.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0;
   const avgFulfillment = fulfillmentData?.fulfillmentData ? calculateAvgFulfillment(fulfillmentData.fulfillmentData) : 0;
@@ -14,47 +17,139 @@ export default function KPICardsRow() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       {/* Total Indents */}
-      <div className="enhanced-glass-card p-6 flex flex-col items-center justify-center h-32">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-500 to-red-600 flex items-center justify-center mb-3">
-          <div className="text-2xl">📋</div>
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(224, 30, 31, 0.25)',
+        border: '1px solid rgba(224, 30, 31, 0.5)'
+      } : {}}>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
+        )}
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-black' : 'text-slate-400'
+            }`}>Total Indents</p>
+            {isLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>{formatCompactNumber(metrics.totalIndents)}</p>
+            )}
+          </div>
+          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📋</div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-gray-800 mb-1">{formatCompactNumber(metrics.totalIndents)}</div>
-          <div className="text-sm text-gray-600">Total Indents</div>
-        </div>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-black' : 'text-slate-500'
+        }`}>Total number of indents</p>
       </div>
 
       {/* Unique Indents */}
-      <div className="enhanced-glass-card p-6 flex flex-col items-center justify-center h-32">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600 flex items-center justify-center mb-3">
-          <div className="text-2xl">🔢</div>
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(254, 165, 25, 0.25)',
+        border: '1px solid rgba(254, 165, 25, 0.5)'
+      } : {}}>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
+        )}
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-gray-600' : 'text-slate-400'
+            }`}>Unique Indents</p>
+            {isLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>{formatCompactNumber(metrics.totalIndentsUnique)}</p>
+            )}
+          </div>
+          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">🔢</div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-gray-800 mb-1">{formatCompactNumber(metrics.totalIndentsUnique)}</div>
-          <div className="text-sm text-gray-600">Unique Indents</div>
-        </div>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-gray-500' : 'text-slate-500'
+        }`}>Count of unique indents</p>
       </div>
 
       {/* Total Load */}
-      <div className="enhanced-glass-card p-6 flex flex-col items-center justify-center h-32">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-red-600 to-yellow-500 flex items-center justify-center mb-3">
-          <div className="text-2xl">⚖️</div>
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(224, 30, 31, 0.25)',
+        border: '1px solid rgba(224, 30, 31, 0.5)'
+      } : {}}>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
+        )}
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-black' : 'text-slate-400'
+            }`}>Total Load</p>
+            {isLoading || rangeLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>{formatCompactNumber(totalLoad)}</p>
+            )}
+          </div>
+          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">⚖️</div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-gray-800 mb-1">{formatCompactNumber(totalLoad)}</div>
-          <div className="text-sm text-gray-600">Total Load (Kgs)</div>
-        </div>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-gray-500' : 'text-slate-500'
+        }`}>Total load in kilograms</p>
       </div>
 
       {/* Avg Fulfillment */}
-      <div className="enhanced-glass-card p-6 flex flex-col items-center justify-center h-32">
-        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-yellow-600 to-red-500 flex items-center justify-center mb-3">
-          <div className="text-2xl">📊</div>
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(254, 165, 25, 0.25)',
+        border: '1px solid rgba(254, 165, 25, 0.5)'
+      } : {}}>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
+        )}
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-gray-600' : 'text-slate-400'
+            }`}>Avg Fulfillment</p>
+            {isLoading || fulfillmentLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>{avgFulfillment.toFixed(1)}%</p>
+            )}
+          </div>
+          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📊</div>
         </div>
-        <div className="text-center">
-          <div className="text-2xl font-bold text-gray-800 mb-1">{avgFulfillment.toFixed(1)}%</div>
-          <div className="text-sm text-gray-600">Avg Fulfillment</div>
-        </div>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-gray-500' : 'text-slate-500'
+        }`}>Average fulfillment percentage</p>
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { HoverBorderGradient } from '../HoverBorderGradient';
+import { Button } from '../ui/moving-border';
 import { TypewriterEffect } from '../ui/typewriter-effect';
+import { cn } from '../../lib/utils';
 
 export default function CompactHeader() {
   const navigate = useNavigate();
@@ -11,13 +12,21 @@ export default function CompactHeader() {
   ];
 
   return (
-    <header className={`sticky top-0 z-50 ${
+    <header className={`sticky top-0 z-50 backdrop-blur-lg shadow-xl ${
       theme === 'light' 
-        ? 'border-b-2 border-red-500/20' 
+        ? 'relative' 
         : 'enhanced-glass-card border-b-2 border-red-500/30'
     }`} style={theme === 'light' ? {
       background: 'linear-gradient(to right, rgba(239, 68, 68, 0.2), rgba(234, 179, 8, 0.2))'
     } : {}}>
+      {theme === 'light' && (
+        <div 
+          className="absolute bottom-0 left-0 right-0 h-[2px]"
+          style={{
+            background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))'
+          }}
+        />
+      )}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between py-[10px]">
           {/* Logo */}
@@ -52,12 +61,24 @@ export default function CompactHeader() {
 
           {/* Right: Back Button */}
           <div className="flex items-center">
-            <HoverBorderGradient
+            <Button
               onClick={() => navigate('/')}
-              className="bg-gradient-to-r from-red-500 to-yellow-500 text-white px-4 py-2 text-sm font-medium"
+              borderRadius="0.5rem"
+              containerClassName="h-auto w-auto"
+              className={cn(
+                'px-4 py-2 text-sm font-bold whitespace-nowrap',
+                theme === 'light'
+                  ? '!bg-white !text-[#FEA519] !border-neutral-200' // Yellow text
+                  : 'bg-slate-900 text-white border-slate-800'
+              )}
+              borderClassName={
+                theme === 'light'
+                  ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)]' // Red border
+                  : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)]'
+              }
             >
               Back to Dashboard
-            </HoverBorderGradient>
+            </Button>
           </div>
         </div>
       </div>
