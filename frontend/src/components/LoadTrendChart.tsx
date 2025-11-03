@@ -67,8 +67,8 @@ export default function LoadTrendChart() {
       {
         label: 'Bucket Count',
         data: data.data.map(item => item.bucketCount),
-        backgroundColor: 'rgba(59, 130, 246, 0.8)', // Blue
-        borderColor: 'rgba(59, 130, 246, 1)',
+        backgroundColor: 'rgba(224, 30, 31, 0.6)', // Red theme color with 60% opacity
+        borderColor: 'rgba(224, 30, 31, 0.6)',
         borderWidth: 1,
       },
     ],

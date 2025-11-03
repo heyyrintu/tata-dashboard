@@ -285,10 +285,10 @@ export default function RevenueBreakdownChart() {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <div className={`text-2xl font-bold ${
-              theme === 'light' ? 'text-black' : 'text-white'
+              theme === 'light' ? '!text-black' : 'text-white'
             }`}>₹{formatIndianNumber(totalRevenue)}</div>
             <div className={`text-xs ${
-              theme === 'light' ? 'text-black' : 'text-slate-400'
+              theme === 'light' ? '!text-black' : 'text-slate-400'
             }`}>Total Revenue</div>
           </div>
         </div>

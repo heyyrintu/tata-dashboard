@@ -4,6 +4,7 @@ import { useTheme } from '../../context/ThemeContext';
 import { LoadingSpinner } from '../LoadingSpinner';
 import { formatCurrency } from '../../utils/revenueCalculations';
 import { formatBucketBarrelCount } from '../../utils/rangeCalculations';
+import { RANGE_COLORS } from '../../utils/constants';
 
 export default function RevenueTable() {
   const { data, loading, error } = useRevenueData();
@@ -96,36 +97,39 @@ export default function RevenueTable() {
             </tr>
           </thead>
           <tbody>
-            {data.revenueByRange.map((item, index) => (
-              <tr
-                key={index}
-                className={`border-b transition-colors duration-200 ${
-                  theme === 'light'
-                    ? 'border-gray-100 hover:bg-gray-50'
-                    : 'border-blue-900/20 hover:bg-blue-900/10'
-                }`}
-              >
-                <td className={`py-3 px-4 ${
-                  theme === 'light' ? 'text-black' : 'text-slate-200'
-                }`}>
-                  <div>
-                    <div className="font-medium">{item.range}</div>
-                    <div className={`text-xs ${
-                      theme === 'light' ? 'text-black' : 'text-slate-400'
-                    }`}>Bucket: ₹{item.bucketRate}</div>
-                    <div className={`text-xs ${
-                      theme === 'light' ? 'text-black' : 'text-slate-400'
-                    }`}>Barrel: ₹{item.barrelRate}</div>
-                  </div>
-                </td>
-                <td className="py-3 px-4 text-emerald-400 font-medium">
-                  {formatBucketBarrelCount(item.bucketCount, item.barrelCount)}
-                </td>
-                <td className="py-3 px-4 text-cyan-400 font-medium">
-                  {formatCurrency(item.revenue)}
-                </td>
-              </tr>
-            ))}
+            {data.revenueByRange.map((item, index) => {
+              const rangeColor = RANGE_COLORS[item.range] || '#E01E1F';
+              return (
+                <tr
+                  key={index}
+                  className={`border-b transition-colors duration-200 ${
+                    theme === 'light'
+                      ? 'border-gray-100 hover:bg-gray-50'
+                      : 'border-blue-900/20 hover:bg-blue-900/10'
+                  }`}
+                >
+                  <td className={`py-3 px-4 ${
+                    theme === 'light' ? 'text-black' : 'text-slate-200'
+                  }`}>
+                    <div>
+                      <div className="font-medium">{item.range}</div>
+                      <div className={`text-xs ${
+                        theme === 'light' ? 'text-black' : 'text-slate-400'
+                      }`}>Bucket: ₹{item.bucketRate}</div>
+                      <div className={`text-xs ${
+                        theme === 'light' ? 'text-black' : 'text-slate-400'
+                      }`}>Barrel: ₹{item.barrelRate}</div>
+                    </div>
+                  </td>
+                  <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>
+                    {formatBucketBarrelCount(item.bucketCount, item.barrelCount)}
+                  </td>
+                  <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>
+                    {formatCurrency(item.revenue)}
+                  </td>
+                </tr>
+              );
+            })}
             {/* Total Row */}
             <tr className={theme === 'light' 
               ? 'border-t-2 border-gray-300 bg-gray-100' 
@@ -134,10 +138,10 @@ export default function RevenueTable() {
               <td className={`py-3 px-4 font-semibold ${
                 theme === 'light' ? 'text-black' : 'text-white'
               }`}>TOTAL</td>
-              <td className="py-3 px-4 text-emerald-300 font-semibold">
+              <td className="py-3 px-4 font-semibold" style={{ color: theme === 'light' ? '#E01E1F' : '#FEA519' }}>
                 {formatBucketBarrelCount(totalBuckets, totalBarrels)} Units
               </td>
-              <td className="py-3 px-4 text-cyan-300 font-semibold">
+              <td className="py-3 px-4 font-semibold" style={{ color: theme === 'light' ? '#FEA519' : '#FF6B35' }}>
                 {formatCurrency(totalRevenue)}
               </td>
             </tr>

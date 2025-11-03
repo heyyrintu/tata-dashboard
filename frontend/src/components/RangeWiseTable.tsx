@@ -2,6 +2,7 @@ import { useRangeData } from '../hooks/useRangeData';
 import { useTheme } from '../context/ThemeContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import { formatLoad, formatPercentage, formatBucketBarrelCount } from '../utils/rangeCalculations';
+import { RANGE_COLORS } from '../utils/constants';
 
 export default function RangeWiseTable() {
   const { data, loading } = useRangeData();
@@ -50,30 +51,33 @@ export default function RangeWiseTable() {
               </tr>
             </thead>
             <tbody>
-              {data.rangeData.map((item, index) => (
-                <tr
-                  key={`${item.range}-${index}`}
-                  className={`border-b transition-colors duration-200 ${
-                    theme === 'light'
-                      ? 'border-gray-100 hover:bg-gray-50'
-                      : 'border-blue-900/20 hover:bg-blue-900/10'
-                  }`}
-                >
-                  <td className={`py-3 px-4 ${
-                    theme === 'light' ? 'text-black' : 'text-slate-200'
-                  }`}>{item.range}</td>
-                  <td className={`py-3 px-4 font-medium ${
-                    theme === 'light' ? 'text-black' : 'text-white'
-                  }`}>{item.indentCount}</td>
-                  <td className="py-3 px-4 text-cyan-400 font-medium">{formatPercentage(item.percentage)}</td>
-                  <td className={`py-3 px-4 ${
-                    theme === 'light' ? 'text-black' : 'text-slate-300'
-                  }`}>
-                    {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(item.totalLoad / 1000)} <span className="text-[18px]">Ton</span>
-                  </td>
-                  <td className="py-3 px-4 text-emerald-400 font-medium">{formatBucketBarrelCount(item.bucketCount, item.barrelCount)}</td>
-                </tr>
-              ))}
+              {data.rangeData.map((item, index) => {
+                const rangeColor = RANGE_COLORS[item.range] || '#E01E1F';
+                return (
+                  <tr
+                    key={`${item.range}-${index}`}
+                    className={`border-b transition-colors duration-200 ${
+                      theme === 'light'
+                        ? 'border-gray-100 hover:bg-gray-50'
+                        : 'border-blue-900/20 hover:bg-blue-900/10'
+                    }`}
+                  >
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-slate-200'
+                    }`}>{item.range}</td>
+                    <td className={`py-3 px-4 font-medium ${
+                      theme === 'light' ? 'text-black' : 'text-white'
+                    }`}>{item.indentCount}</td>
+                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatPercentage(item.percentage)}</td>
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-slate-300'
+                    }`}>
+                      {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(item.totalLoad / 1000)} <span className="text-[18px]">Ton</span>
+                    </td>
+                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatBucketBarrelCount(item.bucketCount, item.barrelCount)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

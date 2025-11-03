@@ -117,12 +117,12 @@
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(239, 68, 68, 0.5);
+  background: rgba(224, 30, 31, 0.6); /* Red theme color with 60% opacity */
   border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(239, 68, 68, 0.7);
+  background: rgba(254, 165, 25, 0.8); /* Orange theme color with 80% opacity */
 }
 
 /* Animation for card hover effects */

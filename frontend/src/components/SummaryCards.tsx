@@ -28,7 +28,9 @@ export default function SummaryCards() {
         boxShadow: '0 25px 50px -12px rgba(224, 30, 31, 0.25)',
         border: '1px solid rgba(224, 30, 31, 0.5)'
       } : {}}>
-        <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
+        )}
         <div className="flex items-center justify-between relative z-10">
           <div>
             <p className={`text-sm font-medium mb-2 ${
@@ -37,7 +39,11 @@ export default function SummaryCards() {
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <p className="text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">{metrics.totalIndents}</p>
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>{metrics.totalIndents}</p>
             )}
           </div>
           <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">🚛</div>
@@ -56,7 +62,9 @@ export default function SummaryCards() {
         boxShadow: '0 25px 50px -12px rgba(254, 165, 25, 0.25)',
         border: '1px solid rgba(254, 165, 25, 0.5)'
       } : {}}>
-        <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
+        )}
         <div className="flex items-center justify-between relative z-10">
           <div>
             <p className={`text-sm font-medium mb-2 ${
@@ -65,7 +73,11 @@ export default function SummaryCards() {
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <p className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">{metrics.totalIndentsUnique}</p>
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>{metrics.totalIndentsUnique}</p>
             )}
           </div>
           <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📋</div>
@@ -84,7 +96,9 @@ export default function SummaryCards() {
         boxShadow: '0 25px 50px -12px rgba(224, 30, 31, 0.25)',
         border: '1px solid rgba(224, 30, 31, 0.5)'
       } : {}}>
-        <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
+        )}
         <div className="flex items-center justify-between relative z-10">
           <div>
             <p className={`text-sm font-medium mb-2 ${
@@ -93,9 +107,17 @@ export default function SummaryCards() {
             {isLoading || rangeLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <p className="text-4xl font-bold bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent">
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>
                 {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(totalLoad)}
-                <span className="text-[18px] bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent"> Ton</span>
+                <span className={`text-[18px] ${
+                  theme === 'light'
+                    ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
+                    : 'text-white'
+                }`}> Ton</span>
               </p>
             )}
           </div>
@@ -115,7 +137,9 @@ export default function SummaryCards() {
         boxShadow: '0 25px 50px -12px rgba(254, 165, 25, 0.25)',
         border: '1px solid rgba(254, 165, 25, 0.5)'
       } : {}}>
-        <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
+        )}
         <div className="flex items-center justify-between relative z-10">
           <div>
             <p className={`text-sm font-medium mb-2 ${
@@ -124,7 +148,11 @@ export default function SummaryCards() {
             {isLoading || revenueLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
-              <p className="text-4xl font-bold bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent">{formatCurrency(totalRevenue)}</p>
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>{formatCurrency(totalRevenue)}</p>
             )}
           </div>
           <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">💰</div>

@@ -69,11 +69,11 @@ export default function FulfillmentTrendChart() {
       {
         label: 'Avg Fulfillment %',
         data: data.data.map(item => item.avgFulfillment),
-        borderColor: 'rgba(34, 197, 94, 1)', // Green
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+        borderColor: 'rgba(224, 30, 31, 0.6)', // Red theme color with 60% opacity
+        backgroundColor: 'rgba(224, 30, 31, 0.1)', // Light background fill
         tension: 0.4,
         fill: true,
-        pointBackgroundColor: 'rgba(34, 197, 94, 1)',
+        pointBackgroundColor: '#E01E1F', // Solid red for points
         pointBorderColor: '#FFFFFF',
         pointBorderWidth: 2,
         pointRadius: 4,
@@ -158,7 +158,7 @@ export default function FulfillmentTrendChart() {
                   drawBorder: false,
                 },
                 beginAtZero: true,
-                max: 100,
+                max: 120,
               },
             },
           }}

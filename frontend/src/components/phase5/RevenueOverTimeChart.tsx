@@ -83,12 +83,12 @@ export default function RevenueOverTimeChart() {
       {
         label: 'Revenue',
         data: data.revenueOverTime.map(item => item.revenue),
-        borderColor: 'rgba(59, 130, 246, 1)',
-        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        borderColor: '#FEA519', // Orange theme color
+        backgroundColor: 'rgba(254, 165, 25, 0.1)',
         borderWidth: 2,
         fill: true,
         tension: 0.4,
-        pointBackgroundColor: 'rgba(59, 130, 246, 1)',
+        pointBackgroundColor: '#FEA519',
         pointBorderColor: '#ffffff',
         pointBorderWidth: 2,
         pointRadius: 4,

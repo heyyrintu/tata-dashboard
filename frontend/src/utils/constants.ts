@@ -19,28 +19,36 @@ export const MATERIAL_TYPES = {
   BARREL: '210L Barrels'
 };
 
-// Bucket colors (light shades)
+// Bucket colors (light shades) - Red/Orange theme with more variants
 export const BUCKET_COLORS = [
-  '#3B82F6',  // Light Blue (0-100km)
-  '#10B981',  // Light Green (100-250km)
-  '#F59E0B',  // Light Orange (250-400km)
-  '#EF4444'   // Light Red (400-600km)
+  '#E01E1F',  // Red (0-100km) - theme color
+  '#FEA519',  // Orange/Yellow (100-250km) - theme color
+  '#FF6B35',  // Orange-Red (250-400km) - variation
+  '#FF8C42',  // Light Orange (400-600km) - variation
+  '#FF9500',  // Bright Orange - additional variant
+  '#FFB347',  // Light Orange-Yellow - additional variant
+  '#FF6347',  // Tomato Red - additional variant
+  '#FF7F50'   // Coral - additional variant
 ];
 
-// Barrel colors (dark shades)
+// Barrel colors (dark shades) - Red/Orange theme with more variants
 export const BARREL_COLORS = [
-  '#1E40AF',  // Dark Blue (0-100km)
-  '#065F46',  // Dark Green (100-250km)
-  '#B45309',  // Dark Orange (250-400km)
-  '#991B1B'   // Dark Red (400-600km)
+  '#C62300',  // Dark Red (0-100km) - darker variation of theme red
+  '#E67E22',  // Dark Orange (100-250km) - darker variation of theme orange
+  '#CC5500',  // Dark Orange-Red (250-400km) - darker variation
+  '#D2691E',  // Darker Orange (400-600km) - darker variation
+  '#B8860B',  // Dark Goldenrod - additional variant
+  '#CD853F',  // Peru - additional variant
+  '#A0522D',  // Sienna - additional variant
+  '#8B4513'   // Saddle Brown - additional variant
 ];
 
-// Range colors for visualization consistency
+// Range colors for visualization consistency - Red/Orange theme
 export const RANGE_COLORS: Record<string, string> = {
-  '0-100Km': '#3B82F6',     // Blue
-  '101-250Km': '#10B981',   // Green
-  '251-400Km': '#F59E0B',   // Orange
-  '401-600Km': '#EF4444'    // Red
+  '0-100Km': '#E01E1F',     // Red - theme color
+  '101-250Km': '#FEA519',   // Orange/Yellow - theme color
+  '251-400Km': '#FF6B35',   // Orange-Red - variation
+  '401-600Km': '#FF8C42'    // Light Orange - variation
 };
 
 // Range mapping for normalization

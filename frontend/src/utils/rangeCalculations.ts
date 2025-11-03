@@ -31,17 +31,17 @@ export const calculateChartData = (rangeData: RangeWiseData[]) => {
   const data = rangeData.map(item => item.bucketCount);
   
   const colors = [
-    'rgba(34, 211, 238, 0.8)',   // cyan
-    'rgba(96, 165, 250, 0.8)',   // blue
-    'rgba(168, 85, 247, 0.8)',   // purple
-    'rgba(192, 132, 252, 0.8)',  // light purple
+    'rgba(224, 30, 31, 0.8)',   // Red - theme color
+    'rgba(254, 165, 25, 0.8)',   // Orange/Yellow - theme color
+    'rgba(255, 107, 53, 0.8)',   // Orange-Red - variation
+    'rgba(255, 140, 66, 0.8)',   // Light Orange - variation
   ];
 
   const borderColors = [
-    'rgba(34, 211, 238, 1)',
-    'rgba(96, 165, 250, 1)',
-    'rgba(168, 85, 247, 1)',
-    'rgba(192, 132, 252, 1)',
+    '#E01E1F',  // Red
+    '#FEA519',  // Orange/Yellow
+    '#FF6B35',  // Orange-Red
+    '#FF8C42',  // Light Orange
   ];
 
   return {

@@ -118,9 +118,17 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
     <div className="w-full">
       <div className={`rounded-2xl max-w-3xl w-full mx-auto relative ${
         theme === 'light'
-          ? 'bg-[#F1EFEC] border-2 border-blue-500/35 shadow-lg shadow-blue-500/20'
+          ? 'p-[2px] shadow-lg'
           : 'glass-card border border-blue-900/50 shadow-2xl'
-      }`}>
+      }`} style={theme === 'light' ? {
+        background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
+        boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
+      } : {}}>
+        <div className={`rounded-2xl w-full mx-auto relative ${
+          theme === 'light'
+            ? 'bg-[#F1EFEC] border-0'
+            : ''
+        }`} style={theme === 'light' ? { border: 'none' } : {}}>
         <div className="p-8">
           <div className="flex justify-between items-center mb-6">
             <h2 className={`text-2xl font-bold ${
@@ -301,6 +309,7 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
               {uploading ? 'Processing...' : '🚀 Process File'}
             </Button>
           </div>
+        </div>
         </div>
       </div>
     </div>
