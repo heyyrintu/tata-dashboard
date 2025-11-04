@@ -85,6 +85,27 @@ export default function KPILoadTrendChart() {
     ],
   };
 
+  // Plugin to display values above bars
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((dataset: any, i: number) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((bar: any, index: number) => {
+          const value = dataset.data[index];
+          ctx.save();
+          ctx.fillStyle = 'rgba(31, 41, 55, 0.7)';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(Math.round(value / 1000) + 'K', bar.x, bar.y - 5);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
   return (
     <div className={`rounded-2xl relative ${
       theme === 'light'
@@ -108,6 +129,7 @@ export default function KPILoadTrendChart() {
         <div className="flex-1">
           <Bar
             data={chartData}
+            plugins={[valuePlugin]}
             options={{
               responsive: true,
               maintainAspectRatio: false,

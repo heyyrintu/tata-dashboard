@@ -35,7 +35,7 @@ export default function SummaryCards() {
           <div>
             <p className={`text-sm font-medium mb-2 ${
               theme === 'light' ? 'text-black' : 'text-slate-400'
-            }`}>Total Trips</p>
+            }`}>Total Indents</p>
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
@@ -46,11 +46,11 @@ export default function SummaryCards() {
               }`}>{metrics.totalIndents}</p>
             )}
           </div>
-          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">🚛</div>
+          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📋</div>
         </div>
         <p className={`text-xs mt-4 relative z-10 ${
           theme === 'light' ? 'text-black' : 'text-slate-500'
-        }`}>Total number of trips</p>
+        }`}>Total number of indents</p>
       </div>
 
       {/* Total Indents Card */}
@@ -69,7 +69,7 @@ export default function SummaryCards() {
           <div>
             <p className={`text-sm font-medium mb-2 ${
               theme === 'light' ? 'text-gray-600' : 'text-slate-400'
-            }`}>Total Indents</p>
+            }`}>Total Trips</p>
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
@@ -80,11 +80,11 @@ export default function SummaryCards() {
               }`}>{metrics.totalIndentsUnique}</p>
             )}
           </div>
-          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📋</div>
+          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">🚛</div>
         </div>
         <p className={`text-xs mt-4 relative z-10 ${
           theme === 'light' ? 'text-gray-500' : 'text-slate-500'
-        }`}>Count of unique indents</p>
+        }`}>Total number of trips</p>
       </div>
 
       {/* Total Load Card */}

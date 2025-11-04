@@ -113,12 +113,12 @@ export default function RevenueBreakdownChart() {
         ? 'p-[2px] shadow-lg' 
         : 'shadow-xl border border-blue-900/30'
     }`} style={theme === 'light' ? {
-      height: '450px',
       background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
-    } : { height: '450px' }}>
-      <div className={`rounded-2xl p-6 pb-[82px] h-full flex flex-col ${
-        theme === 'light' ? 'bg-[#F1F1F1] border-0' : 'glass-card'
+      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)',
+      height: '520px'
+    } : { height: '520px' }}>
+      <div className={`rounded-2xl p-6 h-full flex flex-col ${
+        theme === 'light' ? 'bg-white border-0' : 'bg-white'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
       </div>
@@ -185,8 +185,8 @@ export default function RevenueBreakdownChart() {
           const range = item ? item.range : '';
           
           ctx.save();
-          ctx.fillStyle = theme === 'light' ? '#111827' : '#FFFFFF';
-          ctx.font = 'bold 14px sans-serif';
+          ctx.fillStyle = '#1F2937';
+          ctx.font = 'bold 12px sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           
@@ -240,9 +240,9 @@ export default function RevenueBreakdownChart() {
         }
       },
       tooltip: {
-        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.8)',
-        titleColor: theme === 'light' ? '#111827' : '#FFFFFF',
-        bodyColor: theme === 'light' ? '#111827' : '#FFFFFF',
+        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: theme === 'light' ? '#111827' : '#111827',
+        bodyColor: theme === 'light' ? '#111827' : '#111827',
         borderColor: theme === 'light' ? '#E5E7EB' : '#374151',
         borderWidth: 1,
         cornerRadius: 8,
@@ -269,11 +269,11 @@ export default function RevenueBreakdownChart() {
     <>
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-lg font-semibold text-left ${
-          theme === 'light' ? 'text-black' : 'text-white'
+          theme === 'light' ? 'text-black' : 'text-black'
         }`}>Range wise Revenue %</h3>
       </div>
       <div className="flex-1 relative flex items-center justify-center">
-        <div className="w-full h-full max-w-[361px] max-h-[361px]">
+        <div className="w-full h-full max-w-[379px] max-h-[379px]">
           <Doughnut
             data={chartData}
             options={chartOptions}
@@ -285,10 +285,10 @@ export default function RevenueBreakdownChart() {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center">
             <div className={`text-2xl font-bold ${
-              theme === 'light' ? '!text-black' : 'text-white'
+              theme === 'light' ? '!text-black' : '!text-black'
             }`}>₹{formatIndianNumber(totalRevenue)}</div>
             <div className={`text-xs ${
-              theme === 'light' ? '!text-black' : 'text-slate-400'
+              theme === 'light' ? '!text-black' : '!text-black'
             }`}>Total Revenue</div>
           </div>
         </div>

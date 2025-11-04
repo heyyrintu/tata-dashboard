@@ -38,7 +38,7 @@ export default function LoadTrendChart() {
       boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
     } : {}}>
       <div className={`rounded-2xl p-6 h-full flex flex-col ${
-        theme === 'light' ? 'bg-[#F1F1F1] border-0' : 'glass-card'
+        theme === 'light' ? 'bg-white border-0' : 'bg-white'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
       </div>
@@ -74,17 +74,39 @@ export default function LoadTrendChart() {
     ],
   };
 
+  // Plugin to display values above bars
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((dataset: any, i: number) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((bar: any, index: number) => {
+          const value = dataset.data[index];
+          ctx.save();
+          ctx.fillStyle = 'rgba(31, 41, 55, 0.7)';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(value, bar.x, bar.y - 5);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
   return gradientWrapper(
     <>
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-lg font-semibold text-left ${
-          theme === 'light' ? 'text-black' : 'text-white'
+          theme === 'light' ? 'text-black' : 'text-black'
         }`}>Time vs Bucket Count</h3>
         <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
       </div>
       <div className="flex-1">
         <Bar
           data={chartData}
+          plugins={[valuePlugin]}
           options={{
             responsive: true,
             maintainAspectRatio: false,
@@ -103,13 +125,13 @@ export default function LoadTrendChart() {
                     weight: theme === 'light' ? '600' : 'normal',
                   },
                   padding: 5,
-                  color: theme === 'light' ? '#1e3a8a' : '#E5E7EB'
+                  color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
                 }
               },
               tooltip: {
-                backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.8)',
-                titleColor: theme === 'light' ? '#1e3a8a' : '#FFFFFF',
-                bodyColor: theme === 'light' ? '#1e3a8a' : '#FFFFFF',
+                backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                titleColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
+                bodyColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                 borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : '#374151',
                 borderWidth: 1,
                 cornerRadius: 8,
@@ -128,7 +150,7 @@ export default function LoadTrendChart() {
                     size: 10,
                     weight: theme === 'light' ? '600' : 'normal',
                   },
-                  color: theme === 'light' ? '#1e3a8a' : '#9CA3AF',
+                  color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   maxRotation: 0
                 },
                 grid: {
@@ -141,7 +163,7 @@ export default function LoadTrendChart() {
                     size: 10,
                     weight: theme === 'light' ? '600' : 'normal',
                   },
-                  color: theme === 'light' ? '#1e3a8a' : '#9CA3AF',
+                  color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                 },
                 grid: {
                   color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(75, 85, 99, 0.3)',

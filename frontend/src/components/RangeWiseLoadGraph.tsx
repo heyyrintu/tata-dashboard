@@ -29,8 +29,8 @@ export default function RangeWiseLoadGraph() {
       background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
       boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
     } : {}}>
-      <div className={`rounded-2xl p-6 h-full ${
-        theme === 'light' ? 'bg-[#F1F1F1] border-0' : 'glass-card'
+      <div className={`rounded-2xl p-6 h-full flex flex-col ${
+        theme === 'light' ? 'bg-white border-0' : 'bg-white'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
       </div>
@@ -40,10 +40,10 @@ export default function RangeWiseLoadGraph() {
   if (loading) {
     return gradientBorderWrapper(
       <>
-        <h2 className={`text-lg font-semibold mb-4 ${
-          theme === 'light' ? 'text-black' : 'text-white'
+        <h2 className={`text-lg font-semibold mb-4 flex-shrink-0 ${
+          theme === 'light' ? 'text-black' : 'text-black'
         }`}>Range-Wise Bucket Count Graph</h2>
-        <div className="flex justify-center items-center h-64">
+        <div className="flex justify-center items-center flex-1 min-h-0">
           <LoadingSpinner />
         </div>
       </>
@@ -53,10 +53,10 @@ export default function RangeWiseLoadGraph() {
   if (!data || data.rangeData.length === 0) {
     return gradientBorderWrapper(
       <>
-        <h2 className={`text-lg font-semibold mb-4 ${
-          theme === 'light' ? 'text-black' : 'text-white'
+        <h2 className={`text-lg font-semibold mb-4 flex-shrink-0 ${
+          theme === 'light' ? 'text-black' : 'text-black'
         }`}>Range-Wise Bucket Count Graph</h2>
-        <div className="text-center py-12 text-slate-400">
+        <div className="flex justify-center items-center flex-1 min-h-0 text-black">
           No data available for the selected date range
         </div>
       </>
@@ -65,14 +65,36 @@ export default function RangeWiseLoadGraph() {
 
   const chartData = calculateChartData(data.rangeData);
 
+  // Plugin to display values above bars
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((dataset: any, i: number) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((bar: any, index: number) => {
+          const value = dataset.data[index];
+          ctx.save();
+          ctx.fillStyle = 'rgba(31, 41, 55, 0.7)';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(value, bar.x, bar.y - 5);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
   return gradientBorderWrapper(
     <>
-      <h2 className={`text-lg font-semibold mb-4 ${
-        theme === 'light' ? 'text-black' : 'text-white'
+      <h2 className={`text-lg font-semibold mb-4 flex-shrink-0 ${
+        theme === 'light' ? 'text-black' : 'text-black'
       }`}>Range-Wise Bucket Count Graph</h2>
-      <div className="h-64">
+      <div className="flex-1 min-h-0">
         <Bar
           data={chartData}
+          plugins={[valuePlugin]}
           options={{
             responsive: true,
             maintainAspectRatio: false,
@@ -82,9 +104,9 @@ export default function RangeWiseLoadGraph() {
               },
               tooltip: {
                 enabled: true,
-                backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.95)',
-                titleColor: theme === 'light' ? '#1e3a8a' : '#e2e8f0',
-                bodyColor: theme === 'light' ? '#1e3a8a' : '#e2e8f0',
+                backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                titleColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
+                bodyColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                 borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : 'rgba(30, 58, 138, 0.5)',
                 borderWidth: 1,
                 titleFont: {
@@ -103,20 +125,20 @@ export default function RangeWiseLoadGraph() {
             scales: {
               y: {
                 ticks: {
-                  color: theme === 'light' ? '#1e3a8a' : '#e2e8f0',
+                  color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   font: {
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? '600' : '600',
                   },
                 },
                 grid: {
-                  color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.3)',
+                  color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
                 },
               },
               x: {
                 ticks: {
-                  color: theme === 'light' ? '#1e3a8a' : '#e2e8f0',
+                  color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   font: {
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? '600' : '600',
                   },
                 },
                 grid: {

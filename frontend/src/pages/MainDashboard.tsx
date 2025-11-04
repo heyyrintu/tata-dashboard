@@ -119,17 +119,22 @@ function MainDashboard() {
 
             {/* Phase 5: Revenue Analytics */}
             <div className="space-y-6 mt-6">
+              {/* First Row: Revenue Table and Range wise Revenue % - matching heights */}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 {/* Left Column: Revenue Table (40% width) */}
-                <div className="lg:col-span-2 space-y-4">
+                <div className="lg:col-span-2">
                   <RevenueTable />
                 </div>
                 
-                {/* Right Column: Revenue Charts (60% width) */}
-                <div className="lg:col-span-3 space-y-6">
-                  <RevenueOverTimeChart />
+                {/* Right Column: Range wise Revenue % - matching height */}
+                <div className="lg:col-span-3">
                   <RevenueBreakdownChart />
                 </div>
+              </div>
+              
+              {/* Second Row: Revenue Over Time */}
+              <div>
+                <RevenueOverTimeChart />
               </div>
             </div>
           </>

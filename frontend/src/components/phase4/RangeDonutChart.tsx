@@ -77,6 +77,49 @@ export default function RangeDonutChart() {
 
   const totalIndents = data.rangeData.reduce((sum, item) => sum + item.indentCount, 0);
 
+  // Plugin to display percentages on donut segments
+  const percentagePlugin = {
+    id: 'percentageLabels',
+    afterDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      const data = chart.data;
+      const meta = chart.getDatasetMeta(0);
+      
+      if (!data.labels || data.labels.length === 0) return;
+      
+      const total = data.datasets[0].data.reduce((a: number, b: number) => a + b, 0);
+      
+      meta.data.forEach((segment: any, index: number) => {
+        const value = data.datasets[0].data[index];
+        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+        
+        // Only show label if segment is large enough (at least 5%)
+        if (parseFloat(percentage) >= 5) {
+          const arc = segment;
+          const angle = (arc.startAngle + arc.endAngle) / 2;
+          const radius = (arc.innerRadius + arc.outerRadius) / 2;
+          const centerX = arc.x;
+          const centerY = arc.y;
+          const x = centerX + Math.cos(angle) * radius;
+          const y = centerY + Math.sin(angle) * radius;
+          
+          const range = data.labels[index];
+          
+          ctx.save();
+          ctx.fillStyle = 'rgba(31, 41, 55, 0.7)';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          
+          // Display range and percentage
+          ctx.fillText(range, x, y - 6);
+          ctx.fillText(`${percentage}%`, x, y + 6);
+          ctx.restore();
+        }
+      });
+    }
+  };
+
   return (
     <div className={`rounded-2xl relative ${
       theme === 'light'
@@ -99,6 +142,7 @@ export default function RangeDonutChart() {
           <div className="w-full h-full max-w-[280px] max-h-[280px]">
             <Doughnut
               data={chartData}
+              plugins={[percentagePlugin]}
               options={{
                 maintainAspectRatio: true,
                 aspectRatio: 1,

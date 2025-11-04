@@ -85,18 +85,18 @@ export default function IndiaMap() {
       boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
     } : { height: '581px' }}>
       <div className={`rounded-2xl p-6 flex flex-col ${
-        theme === 'light' ? 'bg-[#F1F1F1] border-0' : 'glass-card'
+        theme === 'light' ? 'bg-white border-0' : 'bg-white'
       }`} style={theme === 'light' ? { border: 'none', height: '100%' } : { height: '100%' }}>
         <div className="flex justify-between items-center mb-4 flex-shrink-0">
         <h2 className={`text-lg font-semibold ${
-          theme === 'light' ? 'text-black' : 'text-white'
+          theme === 'light' ? 'text-black' : 'text-black'
         }`}>Delivery Locations Map</h2>
         
         {/* Distance Legend */}
         <div className="flex gap-4 text-xs">
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['0-100Km'] || '#E01E1F' }}></div>
-            <span className={theme === 'light' ? 'text-black' : 'text-white'}>0-100 Km</span>
+            <span className={theme === 'light' ? 'text-black' : 'text-black'}>0-100 Km</span>
           </div>
           <div className="flex items-center gap-1">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['101-250Km'] || '#FEA519' }}></div>
@@ -119,7 +119,7 @@ export default function IndiaMap() {
           <LoadingSpinner />
         </div>
       ) : !data || data.locations.length === 0 ? (
-        <div className="text-center py-12 text-slate-400 flex items-center justify-center h-full">
+        <div className="text-center py-12 text-black flex items-center justify-center h-full">
           No data available for the selected date range
         </div>
       ) : (

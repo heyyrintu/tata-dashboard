@@ -18,10 +18,10 @@ export default function RangeWiseTable() {
       boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
     } : {}}>
       <div className={`rounded-2xl p-6 h-full ${
-        theme === 'light' ? 'bg-[#F1F1F1] border-0' : 'glass-card'
+        theme === 'light' ? 'bg-white border-0' : 'bg-white'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         <h2 className={`text-lg font-semibold mb-4 ${
-          theme === 'light' ? 'text-black' : 'text-white'
+          theme === 'light' ? 'text-black' : 'text-black'
         }`}>Range-Wise Indents</h2>
 
       {loading ? (
@@ -32,21 +32,21 @@ export default function RangeWiseTable() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className={theme === 'light' ? 'border-b border-gray-200' : 'border-b border-blue-900/30'}>
+              <tr className={theme === 'light' ? 'border-b border-gray-200' : 'border-b border-gray-300'}>
                 <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-slate-300'
+                  theme === 'light' ? 'text-black' : 'text-black'
                 }`}>Radius</th>
                 <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-slate-300'
+                  theme === 'light' ? 'text-black' : 'text-black'
                 }`}>Indent Count</th>
                 <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-slate-300'
+                  theme === 'light' ? 'text-black' : 'text-black'
                 }`}>Percentage</th>
                 <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-slate-300'
+                  theme === 'light' ? 'text-black' : 'text-black'
                 }`}>Load</th>
                 <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-slate-300'
+                  theme === 'light' ? 'text-black' : 'text-black'
                 }`}>Bucket+Barrel Count</th>
               </tr>
             </thead>
@@ -59,18 +59,18 @@ export default function RangeWiseTable() {
                     className={`border-b transition-colors duration-200 ${
                       theme === 'light'
                         ? 'border-gray-100 hover:bg-gray-50'
-                        : 'border-blue-900/20 hover:bg-blue-900/10'
+                        : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
                     <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-slate-200'
+                      theme === 'light' ? 'text-black' : 'text-black'
                     }`}>{item.range}</td>
                     <td className={`py-3 px-4 font-medium ${
-                      theme === 'light' ? 'text-black' : 'text-white'
+                      theme === 'light' ? 'text-black' : 'text-black'
                     }`}>{item.indentCount}</td>
                     <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatPercentage(item.percentage)}</td>
                     <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-slate-300'
+                      theme === 'light' ? 'text-black' : 'text-black'
                     }`}>
                       {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(item.totalLoad / 1000)} <span className="text-[18px]">Ton</span>
                     </td>
@@ -83,7 +83,7 @@ export default function RangeWiseTable() {
         </div>
       ) : (
         <div className={`text-center py-12 ${
-          theme === 'light' ? 'text-black' : 'text-slate-400'
+          theme === 'light' ? 'text-black' : 'text-black'
         }`}>
           No data available for the selected date range
         </div>

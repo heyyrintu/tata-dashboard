@@ -34,7 +34,7 @@ export default function RevenueOverTimeChart() {
   const { theme } = useTheme();
 
   const gradientWrapper = (content: React.ReactNode) => (
-    <div className={`rounded-2xl h-80 ${
+    <div className={`rounded-2xl h-[368px] ${
       theme === 'light' 
         ? 'p-[2px] shadow-lg' 
         : 'shadow-xl border border-blue-900/30'
@@ -43,7 +43,7 @@ export default function RevenueOverTimeChart() {
       boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
     } : {}}>
       <div className={`rounded-2xl p-6 h-full flex flex-col ${
-        theme === 'light' ? 'bg-[#F1F1F1] border-0' : 'glass-card'
+        theme === 'light' ? 'bg-white border-0' : 'bg-white'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
       </div>
@@ -115,13 +115,13 @@ export default function RevenueOverTimeChart() {
             weight: theme === 'light' ? '600' : 'normal',
           },
           padding: 5,
-          color: theme === 'light' ? '#1e3a8a' : '#E5E7EB'
+          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
         }
       },
       tooltip: {
-        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(0, 0, 0, 0.8)',
-        titleColor: theme === 'light' ? '#1e3a8a' : '#FFFFFF',
-        bodyColor: theme === 'light' ? '#1e3a8a' : '#FFFFFF',
+        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
+        bodyColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
         borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : '#374151',
         borderWidth: 1,
         cornerRadius: 8,
@@ -145,7 +145,7 @@ export default function RevenueOverTimeChart() {
             size: 10,
             weight: theme === 'light' ? '600' : 'normal',
           },
-          color: theme === 'light' ? '#1e3a8a' : '#9CA3AF',
+          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           maxRotation: 0
         },
         grid: {
@@ -158,13 +158,13 @@ export default function RevenueOverTimeChart() {
             size: 10,
             weight: theme === 'light' ? '600' : 'normal',
           },
-          color: theme === 'light' ? '#1e3a8a' : '#9CA3AF',
+          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           callback: function(value: any) {
             return formatIndianNumber(Number(value));
           }
         },
         grid: {
-          color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(75, 85, 99, 0.3)',
+          color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
         },
         beginAtZero: true,
       },
@@ -175,7 +175,7 @@ export default function RevenueOverTimeChart() {
     <>
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-lg font-semibold text-left ${
-          theme === 'light' ? 'text-black' : 'text-white'
+          theme === 'light' ? 'text-black' : 'text-black'
         }`}>Revenue Over Time</h3>
         <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
       </div>

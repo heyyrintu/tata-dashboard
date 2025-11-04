@@ -37,7 +37,7 @@ export default function CompactHeader() {
                 : 'bg-white/10 border border-white/20 hover:bg-white/15'
             }`}>
               <img 
-                src="https://cdn.dribbble.com/userupload/45188200/file/49510167ef68236a40dd16a5212e595e.png?resize=400x400&vertical=center" 
+                src="https://cdn.dribbble.com/userupload/45564127/file/6c01b78a863edd968c45d2287bcd5854.png?resize=752x470&vertical=center" 
                 alt="Drona Logo" 
                 className="h-[63px] w-auto object-contain hover:scale-105 transition-transform duration-300 cursor-pointer"
               />
@@ -53,8 +53,8 @@ export default function CompactHeader() {
             }`}>
               <TypewriterEffect
                 words={words}
-                className={theme === 'light' ? 'text-[#132440] font-bold' : 'text-red-400 font-bold'}
-                cursorClassName={theme === 'light' ? 'text-[#132440]' : 'text-red-500'}
+                className={theme === 'light' ? 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent font-bold' : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent font-bold'}
+                cursorClassName={theme === 'light' ? 'bg-gradient-to-r from-red-600 to-yellow-500' : 'bg-gradient-to-r from-red-600 to-yellow-500'}
               />
             </div>
           </div>

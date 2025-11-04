@@ -87,6 +87,27 @@ export default function LoadBarChart() {
     ],
   };
 
+  // Plugin to display values on bars (horizontal bar chart)
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((dataset: any, i: number) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((bar: any, index: number) => {
+          const value = dataset.data[index];
+          ctx.save();
+          ctx.fillStyle = 'rgba(31, 41, 55, 0.7)';
+          ctx.font = 'bold 10px sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(formatCompactNumber(value), bar.x + 5, bar.y);
+          ctx.restore();
+        });
+      });
+    }
+  };
+
   return (
     <div className={`rounded-2xl relative ${
       theme === 'light'
@@ -107,6 +128,7 @@ export default function LoadBarChart() {
         <div className="flex-1">
           <Bar
             data={chartData}
+            plugins={[valuePlugin]}
             options={{
               indexAxis: 'y' as const,
               responsive: true,
