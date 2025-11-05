@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import DateRangeSelector from '../components/DateRangeSelector';
 import SummaryCards from '../components/SummaryCards';
@@ -14,12 +15,12 @@ import MonthOnMonthTripsChart from '../components/MonthOnMonthTripsChart';
 import { useDashboard } from '../context/DashboardContext';
 import { useTheme } from '../context/ThemeContext';
 import { getAnalytics } from '../services/api';
-import { FileUploadNew } from '../components/FileUploadNew';
 import { BackgroundBeams } from '../components/ui/background-beams';
 
 function MainDashboard() {
-  const { uploadedFileName, dateRange, setMetrics, setIsLoading, setError } = useDashboard();
+  const { uploadedFileName, dateRange, setMetrics, setIsLoading, setError, setUploadedFileName } = useDashboard();
   const { theme } = useTheme();
+  const navigate = useNavigate();
 
   const fetchInitialData = useCallback(async () => {
     setIsLoading(true);
@@ -29,19 +30,29 @@ function MainDashboard() {
         totalIndents: data.totalIndents,
         totalIndentsUnique: data.totalIndentsUnique,
       });
+      // If we have data, set uploadedFileName so dashboard shows content
+      if (data.totalIndents > 0 && !uploadedFileName) {
+        setUploadedFileName('email-processed');
+      }
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Failed to fetch analytics');
     } finally {
       setIsLoading(false);
     }
-  }, [dateRange.from, dateRange.to, setMetrics, setIsLoading, setError]);
+  }, [dateRange.from, dateRange.to, setMetrics, setIsLoading, setError, uploadedFileName, setUploadedFileName]);
 
-  // Fetch analytics when component mounts or when date range changes
+  // Check for data on mount (even without uploadedFileName)
+  useEffect(() => {
+    // Always try to fetch data on mount to check if data exists
+    fetchInitialData();
+  }, []);
+
+  // Fetch analytics when date range changes (if we have data)
   useEffect(() => {
     if (uploadedFileName) {
       fetchInitialData();
     }
-  }, [uploadedFileName, fetchInitialData]);
+  }, [dateRange.from, dateRange.to, uploadedFileName]);
 
   useEffect(() => {
     if (theme === 'light') {
@@ -72,13 +83,36 @@ function MainDashboard() {
       
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
-        {!uploadedFileName && (
-          <div className="mb-8">
-            <FileUploadNew onClose={() => {}} />
+        {!uploadedFileName ? (
+          <div className="flex flex-col items-center justify-center min-h-[60vh]">
+            <div className={`text-center p-8 rounded-lg ${
+              theme === 'light' 
+                ? 'bg-white shadow-lg' 
+                : 'bg-slate-800/50 border border-slate-700'
+            }`}>
+              <h2 className={`text-2xl font-bold mb-4 ${
+                theme === 'light' ? 'text-gray-800' : 'text-white'
+              }`}>
+                No Data Available
+              </h2>
+              <p className={`mb-6 ${
+                theme === 'light' ? 'text-gray-600' : 'text-gray-300'
+              }`}>
+                Please upload an Excel file to view the dashboard.
+              </p>
+              <button
+                onClick={() => navigate('/upload')}
+                className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                  theme === 'light'
+                    ? 'bg-[#E01E1F] text-white hover:bg-[#C01A1B]'
+                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                }`}
+              >
+                Go to Upload Page
+              </button>
+            </div>
           </div>
-        )}
-
-        {uploadedFileName && (
+        ) : (
           <>
             <DateRangeSelector />
             <SummaryCards />

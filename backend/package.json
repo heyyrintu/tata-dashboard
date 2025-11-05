@@ -8,6 +8,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "clear-db": "ts-node src/scripts/clearDatabase.ts",
+    "check-email": "ts-node src/scripts/checkEmailService.ts",
+    "test-permissions": "ts-node src/scripts/testGraphPermissions.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -15,6 +17,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@azure/identity": "^4.0.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.4",
     "@types/multer": "^2.0.0",

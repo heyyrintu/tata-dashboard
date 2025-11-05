@@ -110,10 +110,10 @@ export default function RangeWiseLoadGraph() {
                 borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : 'rgba(30, 58, 138, 0.5)',
                 borderWidth: 1,
                 titleFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? ('bold' as const) : 'normal',
                 },
                 bodyFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? ('bold' as const) : 'normal',
                 },
                 callbacks: {
                   label: function (context) {
@@ -127,7 +127,7 @@ export default function RangeWiseLoadGraph() {
                 ticks: {
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   font: {
-                    weight: theme === 'light' ? '600' : '600',
+                    weight: theme === 'light' ? ('bold' as const) : ('bold' as const),
                   },
                 },
                 grid: {
@@ -138,7 +138,7 @@ export default function RangeWiseLoadGraph() {
                 ticks: {
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   font: {
-                    weight: theme === 'light' ? '600' : '600',
+                    weight: theme === 'light' ? ('bold' as const) : ('bold' as const),
                   },
                 },
                 grid: {
