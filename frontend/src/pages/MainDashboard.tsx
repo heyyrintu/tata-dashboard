@@ -9,9 +9,8 @@ import FulfillmentTable from '../components/FulfillmentTable';
 import FulfillmentGraph from '../components/FulfillmentGraph';
 import LoadTrendChart from '../components/LoadTrendChart';
 import FulfillmentTrendChart from '../components/FulfillmentTrendChart';
-import RevenueTable from '../components/phase5/RevenueTable';
-import RevenueOverTimeChart from '../components/phase5/RevenueOverTimeChart';
-import RevenueBreakdownChart from '../components/phase5/RevenueBreakdownChart';
+import MonthOnMonthIndentsChart from '../components/MonthOnMonthIndentsChart';
+import MonthOnMonthTripsChart from '../components/MonthOnMonthTripsChart';
 import { useDashboard } from '../context/DashboardContext';
 import { useTheme } from '../context/ThemeContext';
 import { getAnalytics } from '../services/api';
@@ -84,23 +83,18 @@ function MainDashboard() {
             <DateRangeSelector />
             <SummaryCards />
             
-            {/* Phase 2: Range Analytics and Map */}
+            {/* Phase 2: Range Analytics */}
             <div className="space-y-6 mt-6">
               {/* Second Row: Range-Wise Trips and Range-Wise Load Graph */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <RangeWiseTable />
                 <RangeWiseLoadGraph />
               </div>
-              
-              {/* Third Row: Delivery Locations Map */}
-              <div>
-                <IndiaMap />
-              </div>
             </div>
 
             {/* Phase 3: Fulfillment Analytics */}
             <div className="space-y-6 mt-6">
-              {/* Fulfillment Utilization Row */}
+              {/* Fulfillment Trends Row */}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
                 <div className="lg:col-span-2">
                   <FulfillmentTable />
@@ -117,24 +111,18 @@ function MainDashboard() {
               </div>
             </div>
 
-            {/* Phase 5: Revenue Analytics */}
+            {/* Phase 4: Month-on-Month Analytics */}
             <div className="space-y-6 mt-6">
-              {/* First Row: Revenue Table and Range wise Revenue % - matching heights */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                {/* Left Column: Revenue Table (40% width) */}
-                <div className="lg:col-span-2">
-                  <RevenueTable />
-                </div>
-                
-                {/* Right Column: Range wise Revenue % - matching height */}
-                <div className="lg:col-span-3">
-                  <RevenueBreakdownChart />
-                </div>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <MonthOnMonthIndentsChart />
+                <MonthOnMonthTripsChart />
               </div>
-              
-              {/* Second Row: Revenue Over Time */}
+            </div>
+
+            {/* Delivery Locations Map - Bottom Section */}
+            <div className="space-y-6 mt-6">
               <div>
-                <RevenueOverTimeChart />
+                <IndiaMap />
               </div>
             </div>
           </>

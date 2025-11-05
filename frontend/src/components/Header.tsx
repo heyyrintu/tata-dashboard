@@ -49,8 +49,8 @@ export default function Header() {
           <div className="flex-1 flex justify-center">
             <div className={`backdrop-blur-md px-6 py-3 shadow-lg ${
               theme === 'light'
-                ? 'bg-gray-100/50 border border-gray-300'
-                : 'bg-white/10 border border-white/20'
+                ? 'bg-gray-100/70 border border-gray-300'
+                : 'bg-white/70 border border-white/20'
             }`}>
               <TypewriterEffect
                 words={words}

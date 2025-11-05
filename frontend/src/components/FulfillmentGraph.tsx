@@ -17,7 +17,7 @@ import { useTheme } from '../context/ThemeContext';
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 export default function FulfillmentGraph() {
-  const { data, loading } = useFulfillmentData();
+  const { data, loading, error } = useFulfillmentData();
   const { theme } = useTheme();
 
   const gradientWrapper = (content: React.ReactNode) => (
@@ -42,9 +42,24 @@ export default function FulfillmentGraph() {
       <>
         <h2 className={`text-lg font-semibold mb-4 ${
           theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Fulfillment Utilization Graph</h2>
+        }`}>Fulfillment Trends graph</h2>
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner />
+        </div>
+      </>
+    );
+  }
+
+  if (error) {
+    return gradientWrapper(
+      <>
+        <h2 className={`text-lg font-semibold mb-4 ${
+          theme === 'light' ? 'text-black' : 'text-black'
+        }`}>Fulfillment Trends graph</h2>
+        <div className={`flex justify-center items-center h-64 ${
+          theme === 'light' ? 'text-red-600' : 'text-red-400'
+        }`}>
+          Error: {error}
         </div>
       </>
     );
@@ -55,7 +70,7 @@ export default function FulfillmentGraph() {
       <>
         <h2 className={`text-lg font-semibold mb-4 ${
           theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Fulfillment Utilization Graph</h2>
+        }`}>Fulfillment Trends graph</h2>
         <div className="text-center py-12 text-black">
           No data available for the selected date range
         </div>
@@ -89,8 +104,8 @@ export default function FulfillmentGraph() {
   return gradientWrapper(
     <>
       <h2 className={`text-lg font-semibold mb-4 ${
-        theme === 'light' ? 'text-black' : 'text-white'
-      }`}>Fulfillment Utilization Graph</h2>
+        theme === 'light' ? 'text-black' : 'text-black'
+      }`}>Fulfillment Trends graph</h2>
       <div className="h-64">
         <Bar
           data={chartData}

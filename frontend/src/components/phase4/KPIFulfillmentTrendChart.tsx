@@ -109,7 +109,7 @@ export default function KPIFulfillmentTrendChart() {
         <div className="flex justify-between items-center mb-4">
           <h3 className={`text-lg font-semibold text-left ${
             theme === 'light' ? 'text-black' : 'text-gray-800'
-          }`}>Time vs Avg Fulfillment (%)</h3>
+          }`}>Fulfillment Percentage Trends</h3>
           <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
         </div>
         <div className="flex-1">

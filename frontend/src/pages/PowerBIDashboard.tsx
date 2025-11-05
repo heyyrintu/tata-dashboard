@@ -1,14 +1,9 @@
 import { useEffect } from 'react';
 import CompactHeader from '../components/phase4/CompactHeader';
-import KPICardsRow from '../components/phase4/KPICardsRow';
-import RangeDonutChart from '../components/phase4/RangeDonutChart';
-import FulfillmentDonutChart from '../components/phase4/FulfillmentDonutChart';
-import LoadBarChart from '../components/phase4/LoadBarChart';
-import CompactRangeTable from '../components/phase4/CompactRangeTable';
-import CompactFulfillmentTable from '../components/phase4/CompactFulfillmentTable';
-import TopLocationsTable from '../components/phase4/TopLocationsTable';
-import KPILoadTrendChart from '../components/phase4/KPILoadTrendChart';
-import KPIFulfillmentTrendChart from '../components/phase4/KPIFulfillmentTrendChart';
+import RevenueCard from '../components/phase4/RevenueCard';
+import RevenueTable from '../components/phase5/RevenueTable';
+import RevenueOverTimeChart from '../components/phase5/RevenueOverTimeChart';
+import RevenueBreakdownChart from '../components/phase5/RevenueBreakdownChart';
 import { BackgroundBeams } from '../components/ui/background-beams';
 import { useTheme } from '../context/ThemeContext';
 
@@ -44,32 +39,33 @@ export default function PowerBIDashboard() {
       </div>
 
       {/* Main Content with proper spacing */}
-      <div className="relative z-10 max-w-7xl mx-auto px-6 py-8 space-y-8">
-        {/* KPI Cards */}
-        <div className="mb-8">
-          <KPICardsRow />
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Revenue Card */}
+        <div className="max-w-md mx-auto mb-8">
+          <RevenueCard />
         </div>
 
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <RangeDonutChart />
-          <FulfillmentDonutChart />
-          <LoadBarChart />
+        {/* Revenue Analytics Section */}
+        <div className="space-y-6 mt-6">
+          {/* First Row: Revenue Table and Range wise Revenue % - matching heights */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+            {/* Left Column: Revenue Table (40% width) */}
+            <div className="lg:col-span-2">
+              <RevenueTable />
+            </div>
+            
+            {/* Right Column: Range wise Revenue % - matching height */}
+            <div className="lg:col-span-3">
+              <RevenueBreakdownChart />
+            </div>
+          </div>
+          
+          {/* Second Row: Revenue Over Time */}
+          <div>
+            <RevenueOverTimeChart />
+          </div>
         </div>
-
-        {/* Tables Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-          <CompactRangeTable />
-          <CompactFulfillmentTable />
-          <TopLocationsTable />
-        </div>
-
-        {/* Trend Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <KPILoadTrendChart />
-          <KPIFulfillmentTrendChart />
-        </div>
-      </div>
+      </main>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useRangeData } from '../hooks/useRangeData';
 import { useTheme } from '../context/ThemeContext';
+import { useDashboard } from '../context/DashboardContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import { formatLoad, formatPercentage, formatBucketBarrelCount } from '../utils/rangeCalculations';
 import { RANGE_COLORS } from '../utils/constants';
@@ -7,6 +8,7 @@ import { RANGE_COLORS } from '../utils/constants';
 export default function RangeWiseTable() {
   const { data, loading } = useRangeData();
   const { theme } = useTheme();
+  const { metrics } = useDashboard();
 
   return (
     <div className={`rounded-2xl ${
@@ -22,7 +24,7 @@ export default function RangeWiseTable() {
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         <h2 className={`text-lg font-semibold mb-4 ${
           theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Range-Wise Indents</h2>
+        }`}>Range-Wise Summary</h2>
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -67,7 +69,7 @@ export default function RangeWiseTable() {
                     }`}>{item.range}</td>
                     <td className={`py-3 px-4 font-medium ${
                       theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{item.indentCount}</td>
+                    }`}>{item.uniqueIndentCount}</td>
                     <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatPercentage(item.percentage)}</td>
                     <td className={`py-3 px-4 ${
                       theme === 'light' ? 'text-black' : 'text-black'
@@ -78,6 +80,44 @@ export default function RangeWiseTable() {
                   </tr>
                 );
               })}
+              {/* Total Row */}
+              {(() => {
+                // Use globally unique indent count calculated logically from backend
+                // This accounts for indents that appear in multiple ranges
+                const totalIndents = data.totalUniqueIndents;
+                // Total percentage: if close to 100% (99.99-100.01), show exactly 100%
+                const summedPercentage = data.rangeData.reduce((sum, item) => sum + item.percentage, 0);
+                const totalPercentage = (summedPercentage >= 99.99 && summedPercentage <= 100.01) ? 100.00 : parseFloat(summedPercentage.toFixed(2));
+                const totalLoad = data.rangeData.reduce((sum, item) => sum + item.totalLoad, 0);
+                const totalBuckets = data.rangeData.reduce((sum, item) => sum + item.bucketCount, 0);
+                const totalBarrels = data.rangeData.reduce((sum, item) => sum + item.barrelCount, 0);
+                
+                return (
+                  <tr className={`border-t-2 font-bold ${
+                    theme === 'light'
+                      ? 'border-gray-300 bg-gray-50'
+                      : 'border-gray-400 bg-gray-100'
+                  }`}>
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-black'
+                    }`}>Total</td>
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-black'
+                    }`}>{totalIndents}</td>
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-black'
+                    }`}>{formatPercentage(totalPercentage)}</td>
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-black'
+                    }`}>
+                      {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(totalLoad / 1000)} <span className="text-[18px]">Ton</span>
+                    </td>
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-black'
+                    }`}>{formatBucketBarrelCount(totalBuckets, totalBarrels)}</td>
+                  </tr>
+                );
+              })()}
             </tbody>
           </table>
         </div>

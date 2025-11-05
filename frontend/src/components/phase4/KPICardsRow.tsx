@@ -126,7 +126,7 @@ export default function KPICardsRow() {
         }`}>Total load in Tons</p>
       </div>
 
-      {/* Total Units */}
+      {/* Total Counts */}
       <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
         theme === 'light'
           ? 'shadow-2xl'
@@ -142,7 +142,7 @@ export default function KPICardsRow() {
           <div>
             <p className={`text-sm font-medium mb-2 ${
               theme === 'light' ? 'text-gray-600' : 'text-slate-400'
-            }`}>Total Units</p>
+            }`}>Total Counts</p>
             {isLoading || revenueLoading ? (
               <LoadingSpinner size="sm" />
             ) : (

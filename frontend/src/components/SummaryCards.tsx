@@ -3,8 +3,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useRevenueData } from '../hooks/useRevenueData';
 import { useRangeData } from '../hooks/useRangeData';
 import { LoadingSpinner } from './LoadingSpinner';
-import { formatCurrency } from '../utils/revenueCalculations';
-import { calculateTotalLoad } from '../utils/phase4Calculations';
+import { calculateTotalLoad, formatCompactNumber } from '../utils/phase4Calculations';
 
 export default function SummaryCards() {
   const { metrics, isLoading } = useDashboard();
@@ -12,14 +11,18 @@ export default function SummaryCards() {
   const { data: revenueData, loading: revenueLoading } = useRevenueData();
   const { data: rangeData, loading: rangeLoading } = useRangeData();
 
-  // Get total revenue from revenue analytics endpoint (same source as RevenueTable)
-  const totalRevenue = revenueData?.totalRevenue || 0;
   const totalLoadKg = rangeData?.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0;
   const totalLoad = totalLoadKg / 1000; // Convert kg to tons
+  
+  // Calculate revenue metrics for Total Units and Avg Buckets/Trip
+  const totalBuckets = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0) : 0;
+  const totalBarrels = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0) : 0;
+  const totalUnits = totalBuckets + totalBarrels;
+  const avgBucketsPerTrip = metrics.totalIndents > 0 ? totalBuckets / metrics.totalIndents : 0;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-6">
-      {/* Total Trips Card */}
+    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
+      {/* Total Indents Card */}
       <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
         theme === 'light'
           ? 'shadow-2xl'
@@ -53,7 +56,7 @@ export default function SummaryCards() {
         }`}>Total number of indents</p>
       </div>
 
-      {/* Total Indents Card */}
+      {/* Total Trip Card */}
       <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
         theme === 'light'
           ? 'shadow-2xl'
@@ -69,7 +72,7 @@ export default function SummaryCards() {
           <div>
             <p className={`text-sm font-medium mb-2 ${
               theme === 'light' ? 'text-gray-600' : 'text-slate-400'
-            }`}>Total Trips</p>
+            }`}>Total Trip</p>
             {isLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
@@ -128,7 +131,7 @@ export default function SummaryCards() {
         }`}>Total load in tons</p>
       </div>
 
-      {/* Total Revenue Card */}
+      {/* Total Counts Card */}
       <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
         theme === 'light'
           ? 'shadow-2xl'
@@ -144,7 +147,7 @@ export default function SummaryCards() {
           <div>
             <p className={`text-sm font-medium mb-2 ${
               theme === 'light' ? 'text-gray-600' : 'text-slate-400'
-            }`}>Total Revenue</p>
+            }`}>Total Counts</p>
             {isLoading || revenueLoading ? (
               <LoadingSpinner size="sm" />
             ) : (
@@ -152,14 +155,55 @@ export default function SummaryCards() {
                 theme === 'light'
                   ? 'bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'
                   : 'text-white'
-              }`}>{formatCurrency(totalRevenue)}</p>
+              }`}>{formatCompactNumber(totalUnits)}</p>
             )}
           </div>
-          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">💰</div>
+          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📦</div>
         </div>
         <p className={`text-xs mt-4 relative z-10 ${
           theme === 'light' ? 'text-gray-500' : 'text-slate-500'
-        }`}>Revenue calculated from bucket and barrel counts</p>
+        }`}>Total buckets and barrels delivered</p>
+      </div>
+
+      {/* Avg Buckets per Trip Card */}
+      <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
+        theme === 'light'
+          ? 'shadow-2xl'
+          : 'hover:shadow-2xl hover:shadow-blue-900/30 border border-blue-900/30'
+      }`} style={theme === 'light' ? { 
+        boxShadow: '0 25px 50px -12px rgba(224, 30, 31, 0.25)',
+        border: '1px solid rgba(224, 30, 31, 0.5)'
+      } : {}}>
+        {theme === 'light' && (
+          <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(224, 30, 31, 0.1))` }}></div>
+        )}
+        <div className="flex items-center justify-between relative z-10">
+          <div>
+            <p className={`text-sm font-medium mb-2 ${
+              theme === 'light' ? 'text-black' : 'text-slate-400'
+            }`}>Avg Buckets/Trip</p>
+            {isLoading || revenueLoading ? (
+              <LoadingSpinner size="sm" />
+            ) : (
+              <p className={`text-4xl font-bold ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
+                  : 'text-white'
+              }`}>{avgBucketsPerTrip.toFixed(1)}</p>
+            )}
+          </div>
+          <div className="opacity-80 group-hover:scale-110 transition-transform duration-300">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-gray-700 dark:text-gray-300">
+              <path d="M3 8L5 20H19L21 8H3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M7 8V6C7 4.89543 7.89543 4 9 4H15C16.1046 4 17 4.89543 17 6V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M10 16H14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+        </div>
+        <p className={`text-xs mt-4 relative z-10 ${
+          theme === 'light' ? 'text-gray-500' : 'text-slate-500'
+        }`}>Average buckets per trip</p>
       </div>
     </div>
   );

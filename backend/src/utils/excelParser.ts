@@ -32,7 +32,8 @@ const normalizeRange = (range: string | null | undefined): string => {
 
 export const parseExcelFile = (filePath: string): ITrip[] => {
   try {
-    const workbook = XLSX.readFile(filePath, { type: 'file', cellDates: true });
+    // Read WITHOUT cellDates to get raw values, then parse manually as DD-MM-YYYY
+    const workbook = XLSX.readFile(filePath, { type: 'file', cellDates: false });
     
     // Find 'OPs Data' sheet
     let sheetName = 'OPs Data';
@@ -77,6 +78,8 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         actualRunning: parseFloat(row['Actual Running']) || 0,
         billableRunning: parseFloat(row['Billable Running']) || 0,
         range: normalizeRange(row['Range']),
+        remarks: row['REMARKS'] || row['Remarks'] || '',
+        freightTigerMonth: convertFreightTigerMonth(row['Freight Tiger Month']),
       } as any;
     });
 
@@ -88,18 +91,50 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
 };
 
 const convertToDate = (value: any): Date => {
-  if (!value) return new Date();
+  if (!value && value !== 0) return new Date();
   
+  // If it's already a Date object (shouldn't happen with cellDates: false, but handle it)
   if (value instanceof Date) {
     return value;
   }
   
+  // Excel serial date number (days since 1900-01-01)
   if (typeof value === 'number') {
-    // Excel serial date
-    return XLSX.SSF.parse_date_code(value);
+    // Excel epoch: Dec 31, 1899
+    // Excel serial 1 = Jan 1, 1900
+    // Use 1899-12-31 as epoch to match Excel's display format (DD-MM-YYYY)
+    const excelEpoch = new Date(1899, 11, 31); // Dec 31, 1899 (month is 0-indexed)
+    const daysSinceEpoch = value - 1; // Serial 1 = day 0 from Dec 31, 1899 = Jan 1, 1900
+    const date = new Date(excelEpoch.getTime() + daysSinceEpoch * 24 * 60 * 60 * 1000);
+    // Return date in local timezone (not UTC) to match Excel's display
+    return date;
   }
   
+  // String format - parse as DD-MM-YYYY (Indian format)
   if (typeof value === 'string') {
+    const trimmed = value.trim();
+    
+    // Try DD-MM-YYYY or DD/MM/YYYY pattern first (Indian format)
+    const ddmmyyyyPattern = /^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/;
+    const match = trimmed.match(ddmmyyyyPattern);
+    
+    if (match) {
+      const day = parseInt(match[1], 10);
+      const month = parseInt(match[2], 10);
+      const year = parseInt(match[3], 10);
+      
+      // Always treat as DD-MM-YYYY for Indian date format
+      // If day > 12, it's definitely DD-MM-YYYY
+      // If day <= 12, we still assume DD-MM-YYYY (Indian format)
+      if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
+        const date = new Date(year, month - 1, day);
+        if (!isNaN(date.getTime())) {
+          return date;
+        }
+      }
+    }
+    
+    // Try standard Date parsing as fallback
     const parsed = new Date(value);
     if (!isNaN(parsed.getTime())) {
       return parsed;
@@ -107,5 +142,50 @@ const convertToDate = (value: any): Date => {
   }
   
   return new Date();
+};
+
+// Convert Freight Tiger Month (Excel serial date or string) to month format
+const convertFreightTigerMonth = (value: any): string => {
+  if (!value && value !== 0) return '';
+  
+  // If it's already a string, try to use it as-is
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    // If it's already a month format, return it
+    if (trimmed.length > 0 && isNaN(Number(trimmed))) {
+      return trimmed;
+    }
+    // If it's a number as string, convert it
+    const numValue = parseFloat(trimmed);
+    if (!isNaN(numValue)) {
+      value = numValue;
+    }
+  }
+  
+  // If it's a number (Excel serial date), convert to date then to month format
+  if (typeof value === 'number') {
+    // Excel epoch: Dec 31, 1899
+    const excelEpoch = new Date(1899, 11, 31);
+    const daysSinceEpoch = value - 1;
+    const date = new Date(excelEpoch.getTime() + daysSinceEpoch * 24 * 60 * 60 * 1000);
+    
+    // Format as "MMM'yy" (e.g., "May'25")
+    if (!isNaN(date.getTime())) {
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = monthNames[date.getMonth()];
+      const year = String(date.getFullYear()).slice(-2);
+      return `${month}'${year}`;
+    }
+  }
+  
+  // If it's a Date object, format it
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = monthNames[value.getMonth()];
+    const year = String(value.getFullYear()).slice(-2);
+    return `${month}'${year}`;
+  }
+  
+  return '';
 };
 

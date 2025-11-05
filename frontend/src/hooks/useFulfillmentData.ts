@@ -4,6 +4,7 @@ import { getFulfillmentAnalytics } from '../services/api';
 
 interface FulfillmentData {
   range: string;
+  bucketRange?: string;
   indentCount: number;
 }
 

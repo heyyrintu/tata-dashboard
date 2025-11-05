@@ -146,7 +146,7 @@ export default function FulfillmentDonutChart() {
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         <h3 className={`text-lg font-semibold mb-4 text-left ${
           theme === 'light' ? 'text-black' : 'text-gray-800'
-        }`}>Fulfillment Utilization</h3>
+        }`}>Fulfillment Trends</h3>
         
         <div className="flex-1 relative flex items-center justify-center">
           <div className="w-full h-full max-w-[280px] max-h-[280px] relative z-10">

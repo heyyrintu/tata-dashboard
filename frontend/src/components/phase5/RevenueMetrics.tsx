@@ -51,7 +51,7 @@ export default function RevenueMetrics() {
           </span>
         </div>
         <div className="flex justify-between items-center border-t border-blue-900/30 pt-2">
-          <span className="text-sm text-slate-400 font-medium">Total Units:</span>
+          <span className="text-sm text-slate-400 font-medium">Total Counts:</span>
           <span className="text-sm font-semibold text-white">
             {new Intl.NumberFormat('en-IN').format(totalUnits)}
           </span>

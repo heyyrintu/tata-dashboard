@@ -100,7 +100,7 @@ export default function LoadTrendChart() {
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-lg font-semibold text-left ${
           theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Time vs Bucket Count</h3>
+        }`}>Bucket Count Trends</h3>
         <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
       </div>
       <div className="flex-1">

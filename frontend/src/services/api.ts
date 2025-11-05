@@ -21,6 +21,7 @@ interface UploadResponse {
 interface RangeWiseData {
   range: string;
   indentCount: number;
+  uniqueIndentCount: number;
   totalLoad: number;
   percentage: number;
   bucketCount: number;
@@ -40,6 +41,7 @@ interface RangeWiseResponse {
   success: boolean;
   rangeData: RangeWiseData[];
   locations: LocationData[];
+  totalUniqueIndents: number;
   dateRange: {
     from: string | null;
     to: string | null;
@@ -48,6 +50,7 @@ interface RangeWiseResponse {
 
 interface FulfillmentData {
   range: string;
+  bucketRange?: string;
   indentCount: number;
 }
 
@@ -84,6 +87,9 @@ const api = axios.create({
   baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    'Pragma': 'no-cache',
+    'Expires': '0',
   },
 });
 
@@ -193,6 +199,24 @@ export const getRevenueAnalytics = async (granularity: 'daily' | 'weekly' | 'mon
   }
 
   const response = await api.get<RevenueAnalyticsResponse>(`/analytics/revenue?${params.toString()}`);
+  return response.data;
+};
+
+interface MonthOnMonthDataPoint {
+  month: string;
+  indentCount: number;
+  tripCount: number;
+}
+
+interface MonthOnMonthResponse {
+  success: boolean;
+  data: MonthOnMonthDataPoint[];
+}
+
+export const getMonthOnMonthAnalytics = async (): Promise<MonthOnMonthResponse> => {
+  // Add timestamp to prevent browser caching
+  const timestamp = new Date().getTime();
+  const response = await api.get<MonthOnMonthResponse>(`/analytics/month-on-month?t=${timestamp}`);
   return response.data;
 };
 

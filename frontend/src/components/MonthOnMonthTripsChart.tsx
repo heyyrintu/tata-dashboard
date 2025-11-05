@@ -1,34 +1,36 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  LineElement,
-  PointElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
 } from 'chart.js';
-import { Line } from 'react-chartjs-2';
-import { useLoadOverTime } from '../hooks/useLoadOverTime';
+import { Bar } from 'react-chartjs-2';
+import { useMonthOnMonthData } from '../hooks/useMonthOnMonthData';
 import { LoadingSpinner } from './LoadingSpinner';
-import TimeGranularityToggle from './TimeGranularityToggle';
 import { useTheme } from '../context/ThemeContext';
+import { formatIndentCount } from '../utils/fulfillmentCalculations';
 
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  LineElement,
-  PointElement,
+  BarElement,
   Title,
   Tooltip,
   Legend
 );
 
-export default function FulfillmentTrendChart() {
-  const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily');
-  const { data, loading } = useLoadOverTime(granularity);
+export default function MonthOnMonthTripsChart() {
+  const { data, loading, error, refetch } = useMonthOnMonthData();
   const { theme } = useTheme();
+  
+  // Force refresh on mount to get latest data
+  React.useEffect(() => {
+    refetch();
+  }, [refetch]);
 
   const gradientWrapper = (content: React.ReactNode) => (
     <div className={`rounded-2xl h-80 ${
@@ -55,7 +57,21 @@ export default function FulfillmentTrendChart() {
     );
   }
 
+  if (error) {
+    return gradientWrapper(
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className={`text-sm mb-2 ${
+            theme === 'light' ? 'text-red-600' : 'text-red-400'
+          }`}>Error loading data</div>
+          <div className="text-xs text-gray-400">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
   if (!data || !data.data || data.data.length === 0) {
+    console.log('[MonthOnMonthTripsChart] No data:', { data, hasData: !!data, dataLength: data?.data?.length });
     return gradientWrapper(
       <div className="flex items-center justify-center h-full">
         <div className="text-sm text-gray-400">No data available</div>
@@ -64,21 +80,37 @@ export default function FulfillmentTrendChart() {
   }
 
   const chartData = {
-    labels: data.data.map(item => item.date),
+    labels: data.data.map(item => item.month),
     datasets: [
       {
-        label: 'Avg Fulfillment %',
-        data: data.data.map(item => item.avgFulfillment),
-        borderColor: 'rgba(224, 30, 31, 0.6)', // Red theme color with 60% opacity
-        backgroundColor: 'rgba(224, 30, 31, 0.1)', // Light background fill
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: '#E01E1F', // Solid red for points
-        pointBorderColor: '#FFFFFF',
-        pointBorderWidth: 2,
-        pointRadius: 4,
+        label: 'Trip Count',
+        data: data.data.map(item => item.tripCount),
+        backgroundColor: 'rgba(254, 165, 25, 0.75)', // Orange/Yellow theme color with 75% opacity
+        borderColor: 'rgba(254, 165, 25, 0.75)',
+        borderWidth: 1,
       },
     ],
+  };
+
+  // Plugin to display values above bars
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((dataset: any, i: number) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((bar: any, index: number) => {
+          const value = dataset.data[index];
+          ctx.save();
+          ctx.fillStyle = 'rgba(31, 41, 55, 0.7)';
+          ctx.font = 'bold 12px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.fillText(formatIndentCount(value), bar.x, bar.y - 5);
+          ctx.restore();
+        });
+      });
+    }
   };
 
   return gradientWrapper(
@@ -86,12 +118,12 @@ export default function FulfillmentTrendChart() {
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-lg font-semibold text-left ${
           theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Fulfillment Percentage Trends</h3>
-        <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
+        }`}>Month on Month Trips</h3>
       </div>
       <div className="flex-1">
-        <Line
+        <Bar
           data={chartData}
+          plugins={[valuePlugin]}
           options={{
             responsive: true,
             maintainAspectRatio: false,
@@ -103,13 +135,14 @@ export default function FulfillmentTrendChart() {
               legend: {
                 display: true,
                 position: 'top' as const,
+                align: 'end' as const,
                 labels: {
-                  boxWidth: 8,
+                  boxWidth: 12,
                   font: { 
-                    size: 10,
+                    size: 11,
                     weight: theme === 'light' ? '600' : 'normal',
                   },
-                  padding: 5,
+                  padding: 10,
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
                 }
               },
@@ -136,7 +169,8 @@ export default function FulfillmentTrendChart() {
                     weight: theme === 'light' ? '600' : 'normal',
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-                  maxRotation: 0
+                  maxRotation: 0,
+                  minRotation: 0
                 },
                 grid: {
                   display: false
@@ -149,16 +183,11 @@ export default function FulfillmentTrendChart() {
                     weight: theme === 'light' ? '600' : 'normal',
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-                  callback: function (value) {
-                    return `${value}%`;
-                  }
                 },
                 grid: {
-                  color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
-                  drawBorder: false,
+                  color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(75, 85, 99, 0.3)',
                 },
                 beginAtZero: true,
-                max: 120,
               },
             },
           }}
@@ -167,3 +196,4 @@ export default function FulfillmentTrendChart() {
     </>
   );
 }
+
