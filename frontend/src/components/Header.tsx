@@ -1,4 +1,3 @@
-import { TypewriterEffect } from './ui/typewriter-effect';
 import { Button } from './ui/moving-border';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
@@ -8,9 +7,6 @@ export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
-  const words = [
-    { text: "TML DEF Dashboard" },
-  ];
 
   return (
     <header className={`sticky top-0 z-50 backdrop-blur-lg shadow-xl ${
@@ -45,18 +41,20 @@ export default function Header() {
             </div>
           </div>
 
-          {/* Center: Typewriter Effect */}
+          {/* Center: Dashboard Title */}
           <div className="flex-1 flex justify-center">
             <div className={`backdrop-blur-md px-6 py-3 shadow-lg ${
               theme === 'light'
                 ? 'bg-gray-100/70 border border-gray-300'
                 : 'bg-white/70 border border-white/20'
             }`}>
-              <TypewriterEffect
-                words={words}
-                className={theme === 'light' ? 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent font-bold' : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent font-bold'}
-                cursorClassName={theme === 'light' ? 'bg-gradient-to-r from-red-600 to-yellow-500' : 'bg-gradient-to-r from-red-600 to-yellow-500'}
-              />
+              <div className={`text-center text-2xl font-bold ${
+                theme === 'light' 
+                  ? 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent' 
+                  : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent'
+              }`}>
+                TML DEF Dashboard
+              </div>
             </div>
           </div>
 

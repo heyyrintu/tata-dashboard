@@ -55,6 +55,11 @@ export default function FulfillmentTable() {
                 // If not available, calculate from bucket ranges
                 let bucketRange = item.bucketRange;
                 
+                // Replace "251+" with "251 - 300" for display
+                if (bucketRange === '251+') {
+                  bucketRange = '251 - 300';
+                }
+                
                 if (!bucketRange) {
                   // Map percentage ranges to bucket ranges (calculated from bucket ranges)
                   // Include both new and old percentage ranges for backward compatibility

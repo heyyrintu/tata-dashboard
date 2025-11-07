@@ -406,52 +406,184 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    // Build date filter query using indentDate
-    const dateFilter: any = {};
-    if (fromDate || toDate) {
-      dateFilter.indentDate = {};
-      if (fromDate) {
-        dateFilter.indentDate.$gte = fromDate;
-      }
-      if (toDate) {
+    // Query all trips (we'll filter by Freight Tiger Month or indentDate, same as getAnalytics)
+    const allIndents = await Trip.find({});
+    console.log(`[getFulfillmentAnalytics] Total indents from DB: ${allIndents.length}`);
+
+    // Apply same date filtering logic as getAnalytics - include ALL indents (including cancelled)
+    let filteredIndents = [...allIndents];
+    
+    if (fromDate && toDate) {
+      // Check if the date range represents a single month
+      const fromMonth = format(fromDate, 'yyyy-MM');
+      const toMonth = format(toDate, 'yyyy-MM');
+      
+      console.log(`[getFulfillmentAnalytics] Date filter: ${fromDate?.toISOString().split('T')[0]} to ${toDate?.toISOString().split('T')[0]}`);
+      console.log(`[getFulfillmentAnalytics] Month keys: ${fromMonth} to ${toMonth}`);
+      
+      if (fromMonth === toMonth) {
+        // Single month filter - use Freight Tiger Month to match other analytics
+        console.log(`[getFulfillmentAnalytics] Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
+        const targetMonthKey = fromMonth;
         const endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
-        dateFilter.indentDate.$lte = endDate;
+        
+        filteredIndents = filteredIndents.filter(indent => {
+          // Primary: Use Freight Tiger Month if available
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth === targetMonthKey) {
+              return true;
+            }
+          }
+          // Fallback: Use indentDate if Freight Tiger Month is not available
+          if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
+            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
+          }
+          return false;
+        });
+        
+        // If no results using Freight Tiger Month, fallback to indentDate only
+        if (filteredIndents.length === 0) {
+          console.log(`[getFulfillmentAnalytics] No matches found with Freight Tiger Month, falling back to indentDate only`);
+          filteredIndents = allIndents.filter(indent => {
+            if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
+            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
+          });
+        }
+      } else {
+        // Multiple months or date range - filter by indentDate (primary) and also check Freight Tiger Month
+        console.log(`[getFulfillmentAnalytics] Date range filter: ${fromMonth} to ${toMonth}, using indentDate with Freight Tiger Month fallback`);
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        
+        filteredIndents = filteredIndents.filter(indent => {
+          // Check if indentDate matches the range
+          const dateMatches = indent.indentDate && 
+                             indent.indentDate instanceof Date && 
+                             !isNaN(indent.indentDate.getTime()) &&
+                             indent.indentDate >= fromDate && 
+                             indent.indentDate <= endDate;
+          
+          // Also check if Freight Tiger Month matches any month in the range
+          let freightTigerMatches = false;
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth) {
+              // Check if normalized month falls within the date range
+              const monthDate = new Date(normalizedMonth + '-01');
+              freightTigerMatches = monthDate >= fromDate && monthDate <= endDate;
+            }
+          }
+          
+          return dateMatches || freightTigerMatches;
+        });
       }
+    } else if (fromDate) {
+      // Only fromDate - filter by indentDate
+      console.log(`[getFulfillmentAnalytics] From date filter only: ${fromDate?.toISOString().split('T')[0]}`);
+      filteredIndents = filteredIndents.filter(indent => {
+        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
+          return indent.indentDate >= fromDate;
+        }
+        return false;
+      });
+    } else if (toDate) {
+      // Only toDate - filter by indentDate
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      console.log(`[getFulfillmentAnalytics] To date filter only: ${toDate?.toISOString().split('T')[0]}`);
+      filteredIndents = filteredIndents.filter(indent => {
+        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
+          return indent.indentDate <= endDate;
+        }
+        return false;
+      });
     }
-
-    // Query database with date filter
-    const indents = await Trip.find(dateFilter);
+    // else: No date filter - use all indents (already set above)
+    
+    console.log(`[getFulfillmentAnalytics] Filtered indents (including cancelled): ${filteredIndents.length}`);
+    
+    // Filter to only include indents with Range value (exclude cancelled indents)
+    // This matches Card 2 (Total Trip) logic - only count indents that have a range
+    const indents = filteredIndents.filter(indent => indent.range && indent.range.trim() !== '');
+    console.log(`[getFulfillmentAnalytics] Valid indents (with range, excluding cancelled): ${indents.length}`);
 
     // Calculate bucket count for each indent (only count 20L Buckets)
     const MAX_BUCKETS = 300; // Maximum buckets capacity
     
     // Define bucket ranges - these are the primary calculation method
     // Percentage ranges are calculated FROM bucket ranges
+    // Last range (251+) includes all indents with bucketCount >= 251
     const bucketRanges = [
       { min: 0, max: 150, minPercent: 0, maxPercent: 50 },      // 0-150 → 0-50%
       { min: 151, max: 200, minPercent: 50, maxPercent: 67 },    // 151-200 → 50-67%
       { min: 201, max: 250, minPercent: 67, maxPercent: 83 },    // 201-250 → 67-83%
-      { min: 251, max: 300, minPercent: 84, maxPercent: 100 }   // 251-300 → 84-100%
+      { min: 251, max: Infinity, minPercent: 84, maxPercent: 100 }   // 251+ → 84-100%
     ];
 
-    // Calculate bucket count for each indent (only 20L Buckets)
-    const indentBucketData = indents.map(indent => {
-      const material = (indent.material || '').trim();
-      const bucketCount = material === '20L Buckets' ? (indent.noOfBuckets || 0) : 0;
-      return { bucketCount };
+    // Optimized calculation: Single pass through indents
+    // Use Map to group unique indents by bucket range
+    const rangeIndentSets = new Map<string, Set<string>>();
+    
+    // Initialize all ranges (no "Other" needed - last range covers 251+)
+    bucketRanges.forEach(range => {
+      const key = `${range.min}-${range.max === Infinity ? 'inf' : range.max}`;
+      rangeIndentSets.set(key, new Set());
     });
-
-    // Count indents in each bucket range and calculate percentage from bucket range
-    const rangeCounts = bucketRanges.map(range => {
-      const count = indentBucketData.filter(item => 
-        item.bucketCount >= range.min && 
-        item.bucketCount <= range.max
-      ).length;
+    
+    // Track all unique indents for total count
+    const allUniqueIndents = new Set<string>();
+    
+    // Single pass: Calculate bucketCount and assign to range
+    for (const indent of indents) {
+      if (!indent.indent) continue; // Skip indents without indent value
       
-      // Use exact percentage ranges calculated from bucket ranges
+      const material = (indent.material || '').trim();
+      const noOfBuckets = indent.noOfBuckets || 0;
+      let bucketCount = 0;
+      
+      // Calculate bucket count
+      if (material === '20L Buckets') {
+        bucketCount = noOfBuckets;
+      } else if (material === '210L Barrels') {
+        bucketCount = noOfBuckets * 10.5; // Convert: 1 barrel = 10.5 buckets
+      }
+      
+      // Add to all unique indents set
+      allUniqueIndents.add(indent.indent);
+      
+      // Find which range this indent belongs to
+      for (const range of bucketRanges) {
+        if (range.max === Infinity) {
+          // Last range: 251+ (includes all >= 251)
+          if (bucketCount >= range.min) {
+            const key = `${range.min}-inf`;
+            rangeIndentSets.get(key)!.add(indent.indent);
+            break;
+          }
+        } else {
+          // Regular range: min to max
+          if (bucketCount >= range.min && bucketCount <= range.max) {
+            const key = `${range.min}-${range.max}`;
+            rangeIndentSets.get(key)!.add(indent.indent);
+            break;
+          }
+        }
+      }
+    }
+    
+    // Build range counts from the Map
+    const rangeCounts = bucketRanges.map(range => {
+      const key = `${range.min}-${range.max === Infinity ? 'inf' : range.max}`;
+      const uniqueIndents = rangeIndentSets.get(key)!;
+      const count = uniqueIndents.size;
+      
       const percentageLabel = `${range.minPercent} - ${range.maxPercent}%`;
-      const bucketLabel = `${range.min} - ${range.max}`;
+      // For last range (251+), show "251+" instead of "251 - inf"
+      const bucketLabel = range.max === Infinity 
+        ? '251+' 
+        : `${range.min} - ${range.max}`;
       
       return {
         range: percentageLabel,
@@ -459,12 +591,17 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
         indentCount: count
       };
     });
+    
+    // Calculate total unique indents (should match Card 2)
+    const totalUniqueIndents = allUniqueIndents.size;
+    console.log(`[getFulfillmentAnalytics] Total unique indents (matching Card 2): ${totalUniqueIndents}`);
 
     // Always return all ranges, even if counts are 0
     // This ensures the table always displays the 4 bucket ranges
     res.json({
       success: true,
       fulfillmentData: rangeCounts,
+      totalUniqueIndents: totalUniqueIndents, // Total unique indents (matches Card 2)
       dateRange: {
         from: fromDate?.toISOString().split('T')[0] || null,
         to: toDate?.toISOString().split('T')[0] || null
@@ -484,22 +621,117 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
     const granularity = req.query.granularity as string || 'daily';
 
-    // Build date filter query using indentDate
-    const dateFilter: any = {};
-    if (fromDate || toDate) {
-      dateFilter.indentDate = {};
-      if (fromDate) {
-        dateFilter.indentDate.$gte = fromDate;
-      }
-      if (toDate) {
+    // Query all indents first (we'll filter in memory to match 4th card logic)
+    // This matches the same date filtering logic as calculateRangeWiseSummary
+    let allIndents = await Trip.find({});
+    
+    console.log(`[getLoadOverTime] Total indents fetched: ${allIndents.length}`);
+    console.log(`[getLoadOverTime] Granularity: ${granularity}`);
+    
+    // For monthly granularity, show all available months (like month-on-month graphs)
+    // For daily/weekly, apply date filtering
+    let filteredIndents = [...allIndents];
+    
+    if (granularity === 'monthly') {
+      // For monthly granularity, ignore date filters and show all available months
+      console.log(`[getLoadOverTime] Monthly granularity detected - showing all available months (ignoring date filter)`);
+      // Don't filter by date - use all indents
+      filteredIndents = allIndents;
+    } else {
+      // For daily/weekly, apply date filtering
+      if (fromDate && toDate) {
+      // Check if the date range represents a single month
+      const fromMonth = format(fromDate, 'yyyy-MM');
+      const toMonth = format(toDate, 'yyyy-MM');
+      
+      console.log(`[getLoadOverTime] Date filter: ${fromDate?.toISOString().split('T')[0]} to ${toDate?.toISOString().split('T')[0]}`);
+      console.log(`[getLoadOverTime] Month keys: ${fromMonth} to ${toMonth}`);
+      
+      if (fromMonth === toMonth) {
+        // Single month filter - use Freight Tiger Month to match 4th card logic
+        console.log(`[getLoadOverTime] Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
+        const targetMonthKey = fromMonth;
         const endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
-        dateFilter.indentDate.$lte = endDate;
+        
+        filteredIndents = filteredIndents.filter(indent => {
+          // Primary: Use Freight Tiger Month if available
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth === targetMonthKey) {
+              return true;
+            }
+          }
+          // Fallback: Use indentDate if Freight Tiger Month is not available
+          if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
+            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
+          }
+          return false;
+        });
+        
+        // If no results using Freight Tiger Month, fallback to indentDate only
+        if (filteredIndents.length === 0) {
+          console.log(`[getLoadOverTime] No matches found with Freight Tiger Month, falling back to indentDate only`);
+          filteredIndents = allIndents.filter(indent => {
+            if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
+            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
+          });
+        }
+      } else {
+        // Multiple months or date range - filter by indentDate (primary) and also check Freight Tiger Month
+        console.log(`[getLoadOverTime] Date range filter: ${fromMonth} to ${toMonth}, using indentDate with Freight Tiger Month fallback`);
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        
+        filteredIndents = filteredIndents.filter(indent => {
+          // Check if indentDate matches the range
+          const dateMatches = indent.indentDate && 
+                             indent.indentDate instanceof Date && 
+                             !isNaN(indent.indentDate.getTime()) &&
+                             indent.indentDate >= fromDate && 
+                             indent.indentDate <= endDate;
+          
+          // Also check if Freight Tiger Month matches any month in the range
+          let freightTigerMatches = false;
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth) {
+              // Check if normalized month falls within the date range
+              const monthDate = new Date(normalizedMonth + '-01');
+              freightTigerMatches = monthDate >= fromDate && monthDate <= endDate;
+            }
+          }
+          
+          return dateMatches || freightTigerMatches;
+        });
       }
+    } else if (fromDate) {
+      // Only fromDate - filter by indentDate
+      console.log(`[getLoadOverTime] From date filter only: ${fromDate?.toISOString().split('T')[0]}`);
+      filteredIndents = filteredIndents.filter(indent => {
+        if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
+          return false;
+        }
+        return indent.indentDate >= fromDate;
+      });
+    } else if (toDate) {
+      // Only toDate - filter by indentDate
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      console.log(`[getLoadOverTime] To date filter only: ${toDate?.toISOString().split('T')[0]}`);
+      filteredIndents = filteredIndents.filter(indent => {
+        if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
+          return false;
+        }
+        return indent.indentDate <= endDate;
+      });
+      }
+      // else: No date filter - use all indents (already set above)
     }
-
-    // Query database with date filter
-    const indents = await Trip.find(dateFilter);
+    
+    console.log(`[getLoadOverTime] Filtered indents after date filter: ${filteredIndents.length}`);
+    
+    const indents = filteredIndents;
 
     // Truck capacity varies by material type:
     // - 20L Buckets: 6000 kg capacity
@@ -507,7 +739,7 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
     const BUCKET_CAPACITY = 6000;
     const BARREL_CAPACITY = 6300;
     
-    const groupedData: Record<string, { totalLoad: number; indentCount: number; totalFulfillment: number; bucketCount: number }> = {};
+    const groupedData: Record<string, { totalLoad: number; indentCount: number; totalFulfillment: number; bucketCount: number; barrelCount: number }> = {};
 
     // Debug: Log total indents fetched
     console.log(`[getLoadOverTime] Total indents fetched: ${indents.length}`);
@@ -515,7 +747,8 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
     indents.forEach(indent => {
       let key: string;
 
-      // Group by time period based on granularity using indentDate
+      // Group by time period based on granularity
+      // For monthly, use Freight Tiger Month if available (like month-on-month graphs)
       switch (granularity) {
         case 'daily':
           key = format(indent.indentDate, 'yyyy-MM-dd');
@@ -526,14 +759,26 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
           key = `Week ${week}, ${year}`;
           break;
         case 'monthly':
-          key = format(indent.indentDate, 'yyyy-MM');
+          // For monthly, prioritize Freight Tiger Month (like month-on-month graphs)
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth) {
+              key = normalizedMonth;
+            } else {
+              // Fallback to indentDate if normalization fails
+              key = format(indent.indentDate, 'yyyy-MM');
+            }
+          } else {
+            // Fallback to indentDate if Freight Tiger Month is not available
+            key = format(indent.indentDate, 'yyyy-MM');
+          }
           break;
         default:
           key = format(indent.indentDate, 'yyyy-MM-dd');
       }
 
       if (!groupedData[key]) {
-        groupedData[key] = { totalLoad: 0, indentCount: 0, totalFulfillment: 0, bucketCount: 0 };
+        groupedData[key] = { totalLoad: 0, indentCount: 0, totalFulfillment: 0, bucketCount: 0, barrelCount: 0 };
       }
 
       const load = indent.totalLoad || 0;
@@ -543,42 +788,56 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
       const truckCapacity = material === '210L Barrels' ? BARREL_CAPACITY : BUCKET_CAPACITY;
       const fulfillmentPercentage = (load / truckCapacity) * 100;
       
-      // IMPORTANT: Calculate bucket count ONLY from noOfBuckets field, NOT from totalLoad
-      // Differentiate between buckets and barrels using Material column
-      // Convert barrels to buckets: 1 barrel = 10.5 buckets
+      // IMPORTANT: Calculate bucket and barrel counts separately to match 4th card calculation
+      // Count buckets and barrels separately (no conversion)
+      // This matches the 4th card which shows buckets and barrels separately
       const noOfBuckets = Number(indent.noOfBuckets) || 0;
       let buckets = 0;
+      let barrels = 0;
       
-      // Only count buckets/barrels based on material type
+      // Count buckets and barrels separately
       if (material === '20L Buckets') {
         // Direct bucket count from "No. of Buckets/Barrels" column
         buckets = noOfBuckets;
       } else if (material === '210L Barrels') {
-        // Convert barrels to buckets: 1 barrel = 10.5 buckets
-        buckets = noOfBuckets * 10.5;
+        // Direct barrel count from "No. of Buckets/Barrels" column
+        barrels = noOfBuckets;
       }
-      // For any other material or empty material, buckets = 0
+      // For any other material, both buckets and barrels = 0
 
       groupedData[key].totalLoad += load;
       groupedData[key].indentCount += 1;
       groupedData[key].totalFulfillment += fulfillmentPercentage;
       groupedData[key].bucketCount += buckets;
+      groupedData[key].barrelCount += barrels;
     });
 
     // Convert to array and format labels
     const sortedKeys = Object.keys(groupedData).sort();
     const timeSeriesData = sortedKeys.map(key => {
       const data = groupedData[key];
-      const formattedKey = formatTimeLabel(key, granularity);
-      // Round bucket count to 2 decimal places (since barrels convert to 10.5 buckets)
-      // Ensure we're using the calculated bucketCount, not deriving from load
-      const bucketCount = parseFloat((data.bucketCount || 0).toFixed(2));
+      let formattedKey: string;
+      if (granularity === 'monthly') {
+        // Format monthly labels like month-on-month graphs (MMM'yy format)
+        try {
+          const monthDate = new Date(key + '-01');
+          formattedKey = format(monthDate, "MMM''yy");
+        } catch (e) {
+          formattedKey = key;
+        }
+      } else {
+        formattedKey = formatTimeLabel(key, granularity);
+      }
+      // Bucket and barrel counts are separate (no conversion) to match 4th card
+      const bucketCount = Math.round(data.bucketCount || 0);
+      const barrelCount = Math.round(data.barrelCount || 0);
       return {
         date: formattedKey,
         totalLoad: Math.round(data.totalLoad),
         avgFulfillment: data.indentCount > 0 ? parseFloat((data.totalFulfillment / data.indentCount).toFixed(2)) : 0,
         indentCount: data.indentCount,
-        bucketCount: bucketCount
+        bucketCount: bucketCount,
+        barrelCount: barrelCount
       };
     });
 
@@ -590,7 +849,7 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
         bucketCount: sep29Data.bucketCount,
         totalLoad: sep29Data.totalLoad,
         indentCount: sep29Data.indentCount,
-        calculatedFrom: 'noOfBuckets field (buckets + barrels*10.5)'
+        calculatedFrom: 'noOfBuckets field (buckets only, no barrel conversion) - matches 4th card'
       });
     }
     
@@ -801,21 +1060,24 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
 export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
   try {
     // Query all trips from database (no date filter - show all available months)
-    const indents = await Trip.find({});
+    const allIndents = await Trip.find({});
 
-    console.log(`[getMonthOnMonthAnalytics] Total indents fetched: ${indents.length}`);
+    console.log(`[getMonthOnMonthAnalytics] Total indents fetched: ${allIndents.length}`);
 
-    // Filter to only include indents with Range value (same as getAnalytics - canceled indents don't have range)
-    const validIndents = indents.filter(indent => indent.range && indent.range.trim() !== '');
+    // For Card 1 (Indent Count): Use ALL indents (including cancelled ones with blank range)
+    // For Card 2 (Trip Count): Filter to only include indents with Range value (canceled indents don't have range)
+    const validIndents = allIndents.filter(indent => indent.range && indent.range.trim() !== '');
 
-    console.log(`[getMonthOnMonthAnalytics] Valid indents (with range): ${validIndents.length}`);
+    console.log(`[getMonthOnMonthAnalytics] All indents (including cancelled): ${allIndents.length}`);
+    console.log(`[getMonthOnMonthAnalytics] Valid indents (with range, excluding cancelled): ${validIndents.length}`);
 
     // Find all unique months using 'Freight Tiger Month' column from Excel
+    // Use ALL indents (including cancelled) to find all available months - matches Card 1 logic
     const monthKeys = new Set<string>();
     let freightTigerMonthCount = 0;
     let indentDateFallbackCount = 0;
     
-    validIndents.forEach(indent => {
+    allIndents.forEach(indent => {
       // Use 'Freight Tiger Month' column if available, otherwise fallback to indentDate
       if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
         const monthValue = indent.freightTigerMonth.trim();
@@ -854,17 +1116,15 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
       console.log(`[getMonthOnMonthAnalytics] Processing month: ${monthKey}`);
       console.log(`[getMonthOnMonthAnalytics] Month range: ${monthStart.toISOString()} to ${monthEnd.toISOString()}`);
 
-      // Filter validIndents to this month using 'Freight Tiger Month' column
-      // First try to match by Freight Tiger Month, then fallback to indentDate
-      const monthIndents = validIndents.filter(indent => {
+      // Filter ALL indents (including cancelled) to this month for Card 1 (Indent Count)
+      // Use same date filtering logic as getAnalytics
+      let allIndentsForMonth = allIndents.filter(indent => {
         // Primary: Use Freight Tiger Month column if available
         if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
           const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
-          // If normalization succeeds, check if it matches
           if (normalizedMonth === monthKey) {
             return true;
           }
-          // If normalization fails (returns null), fall through to indentDate check
           if (normalizedMonth === null) {
             // Fall through to indentDate check below
           } else {
@@ -879,45 +1139,50 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
         return false;
       });
 
-      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Filtered ${monthIndents.length} indents for this month`);
+      // If no results using Freight Tiger Month, fallback to indentDate only (same as getAnalytics)
+      if (allIndentsForMonth.length === 0) {
+        console.log(`[getMonthOnMonthAnalytics] ${monthKey}: No matches found with Freight Tiger Month, falling back to indentDate only`);
+        allIndentsForMonth = allIndents.filter(indent => {
+          if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
+          return indent.indentDate >= monthStart && indent.indentDate <= monthEnd;
+        });
+      }
+
+      // Filter validIndents (excluding cancelled) from the date-filtered allIndentsForMonth
+      // This matches getAnalytics logic: validIndents = allIndentsFiltered.filter(indent => indent.range && indent.range.trim() !== '')
+      const validIndentsForMonth = allIndentsForMonth.filter(indent => indent.range && indent.range.trim() !== '');
+
+      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: All indents (including cancelled): ${allIndentsForMonth.length}`);
+      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Valid indents (excluding cancelled): ${validIndentsForMonth.length}`);
       
       // Sample dates for debugging
-      if (monthIndents.length > 0) {
-        const sampleDates = monthIndents.slice(0, 3).map(i => ({
+      if (allIndentsForMonth.length > 0) {
+        const sampleDates = allIndentsForMonth.slice(0, 3).map(i => ({
           indent: i.indent,
           indentDate: i.indentDate?.toISOString(),
-          vehicle: i.vehicleNumber
+          vehicle: i.vehicleNumber,
+          hasRange: !!i.range
         }));
         console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Sample dates:`, sampleDates);
       }
 
-      // Calculate Indent Count (Card 1 logic - EXACTLY matching getAnalytics lines 34-35)
-      const uniqueIndents = new Set(monthIndents.filter(t => t.indent).map(t => t.indent));
+      // Calculate Indent Count (Card 1 logic): count unique indents from ALL indents (including cancelled)
+      const uniqueIndents = new Set(allIndentsForMonth.filter(t => t.indent).map(t => t.indent));
       const indentCount = uniqueIndents.size;
+      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Indent count (Card 1 logic): ${indentCount}`);
 
-      // Calculate Trip Count: Use indentDate first, then group by vehicle number
-      // Logic:
-      // 1. Take indentDate (actual date from indent)
-      // 2. Find associated vehicle number for that date
-      // 3. Calculate unique vehicle numbers per date (group by date + vehicle)
-      // 4. Check remarks: if "2nd trip" → count 2, otherwise count 1
-      const tripDocuments = monthIndents.map(indent => ({
-        indentDate: indent.indentDate, // Use indentDate first (not Freight Tiger Month)
-        vehicleNumber: indent.vehicleNumber,
-        remarks: indent.remarks
-      }));
-      
-      // Don't pass date filters - we've already filtered by Freight Tiger Month for month grouping
-      // The trip calculation itself uses indentDate to group trips by date+vehicle
-      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Counting trips using indentDate + vehicleNumber grouping`);
-      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Trip documents count: ${tripDocuments.length}`);
-      const { totalTrips } = calculateTripsByVehicleDay(tripDocuments);
+      // Calculate Trip Count (Card 2 logic): Use validIndents (excluding cancelled)
+      // Apply OLD Card 1 logic - count unique indent values from validIndents (excluded cancelled)
+      // This matches Card 2 logic exactly
+      const uniqueIndentsForTrips = new Set(validIndentsForMonth.filter(t => t.indent).map(t => t.indent));
+      const tripCount = uniqueIndentsForTrips.size;
+      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Trip count (Card 2 logic): ${tripCount}`);
 
-      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: indentCount=${indentCount}, tripCount=${totalTrips}`);
+      console.log(`[getMonthOnMonthAnalytics] ${monthKey}: indentCount=${indentCount}, tripCount=${tripCount}`);
 
       // Format month label - use Freight Tiger Month format if available, otherwise format from date
       let formattedMonth: string;
-      const sampleIndent = monthIndents.find(i => i.freightTigerMonth);
+      const sampleIndent = allIndentsForMonth.find(i => i.freightTigerMonth);
       if (sampleIndent && sampleIndent.freightTigerMonth) {
         // Use the original Freight Tiger Month value (e.g., "May 2025" or "May'25")
         // Normalize to "MMM'yy" format for consistency
@@ -947,8 +1212,8 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
       
       return {
         month: formattedMonth,
-        indentCount: indentCount, // Unique indent count (Card 1 logic)
-        tripCount: totalTrips // Vehicle-day trip count (Card 2 logic)
+        indentCount: indentCount, // Unique indent count (Card 1 logic - including cancelled)
+        tripCount: tripCount // Unique indent count (Card 2 logic - excluding cancelled)
       };
     });
 

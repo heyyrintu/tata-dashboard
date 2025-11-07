@@ -67,14 +67,21 @@ export default function LoadTrendChart() {
       {
         label: 'Bucket Count',
         data: data.data.map(item => item.bucketCount),
-        backgroundColor: 'rgba(224, 30, 31, 0.6)', // Red theme color with 60% opacity
-        borderColor: 'rgba(224, 30, 31, 0.6)',
+        backgroundColor: 'rgba(224, 30, 31, 0.8)', // Red color for buckets
+        borderColor: '#E01E1F',
+        borderWidth: 1,
+      },
+      {
+        label: 'Barrel Count',
+        data: data.data.map(item => item.barrelCount || 0),
+        backgroundColor: 'rgba(254, 165, 25, 0.8)', // Yellow/Orange color for barrels
+        borderColor: '#FEA519',
         borderWidth: 1,
       },
     ],
   };
 
-  // Plugin to display values above bars
+  // Plugin to display values above bars for both datasets
   const valuePlugin = {
     id: 'valueLabels',
     afterDatasetsDraw: (chart: any) => {
@@ -83,13 +90,16 @@ export default function LoadTrendChart() {
         const meta = chart.getDatasetMeta(i);
         meta.data.forEach((bar: any, index: number) => {
           const value = dataset.data[index];
-          ctx.save();
-          ctx.fillStyle = 'rgba(31, 41, 55, 0.7)';
-          ctx.font = 'bold 12px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(value, bar.x, bar.y - 5);
-          ctx.restore();
+          // Only show value if it's greater than 0
+          if (value > 0) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(31, 41, 55, 0.7)';
+            ctx.font = 'bold 12px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(value, bar.x, bar.y - 5);
+            ctx.restore();
+          }
         });
       });
     }
@@ -119,12 +129,12 @@ export default function LoadTrendChart() {
                 display: true,
                 position: 'top' as const,
                 labels: {
-                  boxWidth: 8,
+                  boxWidth: 12,
                   font: { 
-                    size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    size: 11,
+                    weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
                   },
-                  padding: 5,
+                  padding: 10,
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
                 }
               },

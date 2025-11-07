@@ -30,7 +30,7 @@ export default function RangeWiseTable() {
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner />
         </div>
-      ) : data && data.rangeData.length > 0 ? (
+      ) : data && data.rangeData ? (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -53,9 +53,15 @@ export default function RangeWiseTable() {
               </tr>
             </thead>
             <tbody>
-              {data.rangeData.map((item, index) => {
-                const rangeColor = RANGE_COLORS[item.range] || '#E01E1F';
-                return (
+              {data.rangeData
+                .filter(item => item.range !== 'Duplicate Indents') // Filter out duplicate indents row for now
+                .map((item, index) => {
+                  const rangeColor = RANGE_COLORS[item.range] || '#E01E1F';
+                  // Debug log for "Other" row
+                  if (item.range === 'Other') {
+                    console.log('[RangeWiseTable] Rendering "Other" row:', item);
+                  }
+                  return (
                   <tr
                     key={`${item.range}-${index}`}
                     className={`border-b transition-colors duration-200 ${
@@ -69,7 +75,7 @@ export default function RangeWiseTable() {
                     }`}>{item.range}</td>
                     <td className={`py-3 px-4 font-medium ${
                       theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{item.uniqueIndentCount}</td>
+                    }`}>{item.uniqueIndentCount ?? item.indentCount}</td>
                     <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatPercentage(item.percentage)}</td>
                     <td className={`py-3 px-4 ${
                       theme === 'light' ? 'text-black' : 'text-black'
@@ -80,17 +86,48 @@ export default function RangeWiseTable() {
                   </tr>
                 );
               })}
+              {/* Duplicate Indents Row - Above Total */}
+              {(() => {
+                const duplicateRow = data.rangeData.find(item => item.range === 'Duplicate Indents');
+                if (!duplicateRow) return null;
+                
+                const rangeColor = RANGE_COLORS['Duplicate Indents'] || '#9CA3AF';
+                return (
+                  <tr
+                    className={`border-b transition-colors duration-200 ${
+                      theme === 'light'
+                        ? 'border-gray-100 hover:bg-gray-50'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-black'
+                    }`}>Duplicate Indents</td>
+                    <td className={`py-3 px-4 font-medium ${
+                      theme === 'light' ? 'text-black' : 'text-black'
+                    }`}>{duplicateRow.uniqueIndentCount ?? duplicateRow.indentCount}</td>
+                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatPercentage(duplicateRow.percentage)}</td>
+                    <td className={`py-3 px-4 ${
+                      theme === 'light' ? 'text-black' : 'text-black'
+                    }`}>
+                      {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(duplicateRow.totalLoad / 1000)} <span className="text-[18px]">Ton</span>
+                    </td>
+                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatBucketBarrelCount(duplicateRow.bucketCount, duplicateRow.barrelCount)}</td>
+                  </tr>
+                );
+              })()}
               {/* Total Row */}
               {(() => {
-                // Use globally unique indent count calculated logically from backend
-                // This accounts for indents that appear in multiple ranges
-                const totalIndents = data.totalUniqueIndents;
+                // Use globally unique indent count from backend (matches Card 2)
+                const totalIndents = data.totalUniqueIndents || 0;
                 // Total percentage: if close to 100% (99.99-100.01), show exactly 100%
                 const summedPercentage = data.rangeData.reduce((sum, item) => sum + item.percentage, 0);
                 const totalPercentage = (summedPercentage >= 99.99 && summedPercentage <= 100.01) ? 100.00 : parseFloat(summedPercentage.toFixed(2));
-                const totalLoad = data.rangeData.reduce((sum, item) => sum + item.totalLoad, 0);
-                const totalBuckets = data.rangeData.reduce((sum, item) => sum + item.bucketCount, 0);
-                const totalBarrels = data.rangeData.reduce((sum, item) => sum + item.barrelCount, 0);
+                // Use total load from backend (calculated from all indents in date range)
+                const totalLoad = data.totalLoad || 0;
+                // Use total buckets and barrels from backend (calculated from all range data)
+                const totalBuckets = data.totalBuckets || data.rangeData.reduce((sum, item) => sum + item.bucketCount, 0);
+                const totalBarrels = data.totalBarrels || data.rangeData.reduce((sum, item) => sum + item.barrelCount, 0);
                 
                 return (
                   <tr className={`border-t-2 font-bold ${

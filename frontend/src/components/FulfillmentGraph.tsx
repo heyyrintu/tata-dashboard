@@ -80,6 +80,10 @@ export default function FulfillmentGraph() {
 
   const chartData = calculateFulfillmentChartData(data.fulfillmentData);
 
+  // Calculate max y-axis value: find the highest indent count and add 10 extra points
+  const maxIndentCount = Math.max(...data.fulfillmentData.map(item => item.indentCount), 0);
+  const yAxisMax = maxIndentCount + 10;
+
   // Plugin to display values above bars
   const valuePlugin = {
     id: 'valueLabels',
@@ -151,6 +155,8 @@ export default function FulfillmentGraph() {
                 grid: {
                   color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
                 },
+                beginAtZero: true,
+                max: yAxisMax,
               },
               x: {
                 ticks: {

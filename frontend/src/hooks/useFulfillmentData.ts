@@ -11,6 +11,7 @@ interface FulfillmentData {
 interface FulfillmentResponse {
   success: boolean;
   fulfillmentData: FulfillmentData[];
+  totalUniqueIndents?: number; // Total unique indents (matches Card 2)
   dateRange: {
     from: string | null;
     to: string | null;

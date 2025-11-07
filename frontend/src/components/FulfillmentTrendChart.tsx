@@ -150,6 +150,10 @@ export default function FulfillmentTrendChart() {
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   callback: function (value) {
+                    // Hide the 120% label
+                    if (value === 120) {
+                      return '';
+                    }
                     return `${value}%`;
                   }
                 },
@@ -158,7 +162,7 @@ export default function FulfillmentTrendChart() {
                   drawBorder: false,
                 },
                 beginAtZero: true,
-                max: 120,
+                max: 120, // Set to 120% to add space at the top inside the chart area
               },
             },
           }}

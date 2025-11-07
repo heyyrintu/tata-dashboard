@@ -1,0 +1,157 @@
+/**
+ * Glassmorphism effect styles
+ * Used for cards, containers, and UI elements
+ */
+
+/* Power BI White Theme Styles */
+.glass-card-white {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+}
+
+.glass-card-white:hover {
+  transform: scale(1.02);
+  box-shadow: 0 12px 40px 0 rgba(239, 68, 68, 0.15);
+}
+
+/* Enhanced Glassmorphism Effect - Black Theme */
+.enhanced-glass-card {
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(0, 0, 0, 0.5),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.1),
+    inset 0 0 20px 10px rgba(0, 0, 0, 0.1);
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.enhanced-glass-card:hover {
+  transform: scale(1.02);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.15),
+    inset 0 0 25px 15px rgba(0, 0, 0, 0.15);
+}
+
+.enhanced-glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 0, 0, 0.8),
+    transparent
+  );
+  z-index: 1;
+}
+
+.enhanced-glass-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.8),
+    transparent,
+    rgba(0, 0, 0, 0.3)
+  );
+  z-index: 1;
+}
+
+.red-yellow-gradient {
+  background: linear-gradient(135deg, #EF4444 0%, #F59E0B 100%);
+}
+
+.donut-center-text {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Chart.js custom styles for white theme */
+.chartjs-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #E5E7EB !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.chartjs-tooltip-title {
+  color: #374151 !important;
+  font-weight: 600 !important;
+}
+
+.chartjs-tooltip-body {
+  color: #374151 !important;
+}
+
+/* Animation for card hover effects */
+@keyframes cardHover {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.08);
+  }
+  100% {
+    transform: scale(1.02);
+    box-shadow: 0 12px 40px 0 rgba(239, 68, 68, 0.15);
+  }
+}
+
+.card-hover-animation {
+  animation: cardHover 0.3s ease forwards;
+}
+
+/* Gradient text effects */
+.gradient-text-red {
+  background: linear-gradient(135deg, #EF4444, #DC2626);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-yellow {
+  background: linear-gradient(135deg, #F59E0B, #FBBF24);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Loading spinner for white theme */
+.white-spinner {
+  border: 3px solid rgba(239, 68, 68, 0.1);
+  border-top: 3px solid #EF4444;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+

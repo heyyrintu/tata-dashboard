@@ -5,6 +5,7 @@ import { getRangeWiseAnalytics } from '../services/api';
 interface RangeWiseData {
   range: string;
   indentCount: number;
+  uniqueIndentCount?: number; // Added to match backend response
   totalLoad: number;
   percentage: number;
   bucketCount: number;
@@ -24,6 +25,18 @@ interface RangeWiseResponse {
   success: boolean;
   rangeData: RangeWiseData[];
   locations: LocationData[];
+  totalUniqueIndents?: number;
+  totalLoad?: number; // Total load from all indents in date range (in kg)
+  totalBuckets?: number;
+  totalBarrels?: number;
+  totalRows?: number;
+  totalLoadDetails?: {
+    totalRows: number;
+    rowsWithLoad: number;
+    rowsWithoutRange: number;
+    uniqueIndents: number;
+    duplicates: number;
+  };
   dateRange: {
     from: string | null;
     to: string | null;
@@ -42,8 +55,30 @@ export const useRangeData = () => {
 
     try {
       const response = await getRangeWiseAnalytics(dateRange.from || undefined, dateRange.to || undefined);
-      setData(response);
+      console.log('[useRangeData] API Response received:', {
+        success: response.success,
+        rangeDataLength: response.rangeData?.length || 0,
+        rangeDataRanges: response.rangeData?.map(r => r.range) || [],
+        hasOther: response.rangeData?.some(r => r.range === 'Other') || false,
+        totalUniqueIndents: response.totalUniqueIndents,
+        totalLoad: response.totalLoad,
+        totalRows: response.totalRows
+      });
+      
+      // Check if we have valid data
+      if (response.success && response.rangeData && response.rangeData.length > 0) {
+        setData(response);
+      } else if (response.success && response.rangeData && response.rangeData.length === 0) {
+        // Even if rangeData is empty, set the response so we can show totals
+        console.log('[useRangeData] Range data is empty, but response is valid');
+        setData(response);
+      } else {
+        console.warn('[useRangeData] Invalid response structure:', response);
+        setError('Invalid response from server');
+        setData(null);
+      }
     } catch (err) {
+      console.error('[useRangeData] Error fetching data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch range-wise data');
       setData(null);
     } finally {

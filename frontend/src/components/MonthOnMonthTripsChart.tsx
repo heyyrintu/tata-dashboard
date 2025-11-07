@@ -84,7 +84,7 @@ export default function MonthOnMonthTripsChart() {
     datasets: [
       {
         label: 'Trip Count',
-        data: data.data.map(item => item.tripCount),
+        data: data.data.map(item => item.tripCount), // Use tripCount from API (Card 2 logic)
         backgroundColor: 'rgba(254, 165, 25, 0.75)', // Orange/Yellow theme color with 75% opacity
         borderColor: 'rgba(254, 165, 25, 0.75)',
         borderWidth: 1,

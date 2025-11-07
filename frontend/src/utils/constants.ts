@@ -48,7 +48,9 @@ export const RANGE_COLORS: Record<string, string> = {
   '0-100Km': '#E01E1F',     // Red - theme color
   '101-250Km': '#FEA519',   // Orange/Yellow - theme color
   '251-400Km': '#FF6B35',   // Orange-Red - variation
-  '401-600Km': '#FF8C42'    // Light Orange - variation
+  '401-600Km': '#FF8C42',   // Light Orange - variation
+  'Other': '#9CA3AF',       // Gray for Other category
+  'Duplicate Indents': '#9CA3AF'  // Gray for Duplicate Indents category
 };
 
 // Range mapping for normalization

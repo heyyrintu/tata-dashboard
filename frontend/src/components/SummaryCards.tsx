@@ -3,7 +3,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useRevenueData } from '../hooks/useRevenueData';
 import { useRangeData } from '../hooks/useRangeData';
 import { LoadingSpinner } from './LoadingSpinner';
-import { calculateTotalLoad, formatCompactNumber } from '../utils/phase4Calculations';
+import { calculateTotalLoad } from '../utils/phase4Calculations';
 
 export default function SummaryCards() {
   const { metrics, isLoading } = useDashboard();
@@ -11,14 +11,59 @@ export default function SummaryCards() {
   const { data: revenueData, loading: revenueLoading } = useRevenueData();
   const { data: rangeData, loading: rangeLoading } = useRangeData();
 
-  const totalLoadKg = rangeData?.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0;
-  const totalLoad = totalLoadKg / 1000; // Convert kg to tons
+  // Calculate total load: use totalLoad from API if available, otherwise sum from rangeData
+  // Convert from kg to tons (divide by 1000)
+  const totalLoadKg = rangeData?.totalLoad !== undefined 
+    ? rangeData.totalLoad 
+    : (rangeData?.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0);
+  const totalLoad = totalLoadKg / 1000; // Convert to tons
   
-  // Calculate revenue metrics for Total Units and Avg Buckets/Trip
-  const totalBuckets = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0) : 0;
-  const totalBarrels = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0) : 0;
+  // Debug logging
+  if (rangeData) {
+    console.log('[SummaryCards] Total Load Debug:', {
+      totalLoadFromAPI_kg: rangeData.totalLoad,
+      totalLoadFromRangeData_kg: rangeData.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0,
+      finalTotalLoad_kg: totalLoadKg,
+      finalTotalLoad_tons: totalLoad,
+      rangeDataLength: rangeData.rangeData?.length || 0,
+      rangeDataItems: rangeData.rangeData?.map(item => ({ range: item.range, totalLoad: item.totalLoad }))
+    });
+  }
+  
+  // Calculate bucket and barrel counts from Range-Wise Summary (matches Range-Wise Summary table)
+  // Use totalBuckets and totalBarrels from rangeData API response (calculated from all indents in date range)
+  const totalBuckets = rangeData?.totalBuckets ?? 0;
+  const totalBarrels = rangeData?.totalBarrels ?? 0;
+  
+  // Debug logging
+  if (rangeData) {
+    console.log('[SummaryCards] Bucket+Barrel Count Debug:', {
+      totalBucketsFromAPI: rangeData.totalBuckets,
+      totalBarrelsFromAPI: rangeData.totalBarrels,
+      finalTotalBuckets: totalBuckets,
+      finalTotalBarrels: totalBarrels
+    });
+  }
+  
+  // Keep revenue metrics for other calculations if needed
+  const revenueTotalBuckets = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0) : 0;
+  const revenueTotalBarrels = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0) : 0;
   const totalUnits = totalBuckets + totalBarrels;
-  const avgBucketsPerTrip = metrics.totalIndents > 0 ? totalBuckets / metrics.totalIndents : 0;
+  
+  // Calculate Avg Buckets/Trip: Convert barrels to buckets (1 barrel = 10.5 buckets) and divide by Card 2 (Total Trip)
+  const totalBucketsIncludingBarrels = totalBuckets + (totalBarrels * 10.5);
+  const avgBucketsPerTrip = metrics.totalIndentsUnique > 0 ? totalBucketsIncludingBarrels / metrics.totalIndentsUnique : 0;
+  const avgBucketsPerTripRounded = Math.round(avgBucketsPerTrip);
+  
+  // Debug logging
+  console.log('[SummaryCards] Avg Buckets/Trip Calculation:', {
+    totalBuckets,
+    totalBarrels,
+    barrelsConvertedToBuckets: totalBarrels * 10.5,
+    totalBucketsIncludingBarrels,
+    totalTripCount: metrics.totalIndentsUnique,
+    avgBucketsPerTrip
+  });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
@@ -52,8 +97,8 @@ export default function SummaryCards() {
           <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📋</div>
         </div>
         <p className={`text-xs mt-4 relative z-10 ${
-          theme === 'light' ? 'text-black' : 'text-slate-500'
-        }`}>Total number of indents</p>
+          theme === 'light' ? 'text-gray-500' : 'text-slate-500'
+        }`}>Total number of indents (including cancelled indent)</p>
       </div>
 
       {/* Total Trip Card */}
@@ -71,7 +116,7 @@ export default function SummaryCards() {
         <div className="flex items-center justify-between relative z-10">
           <div>
             <p className={`text-sm font-medium mb-2 ${
-              theme === 'light' ? 'text-gray-600' : 'text-slate-400'
+              theme === 'light' ? 'text-black' : 'text-slate-400'
             }`}>Total Trip</p>
             {isLoading ? (
               <LoadingSpinner size="sm" />
@@ -131,7 +176,7 @@ export default function SummaryCards() {
         }`}>Total load in tons</p>
       </div>
 
-      {/* Total Counts Card */}
+      {/* Bucket&Barrel Count Card */}
       <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
         theme === 'light'
           ? 'shadow-2xl'
@@ -143,22 +188,22 @@ export default function SummaryCards() {
         {theme === 'light' && (
           <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(254, 165, 25, 0.1), rgba(254, 165, 25, 0.1))` }}></div>
         )}
-        <div className="flex items-center justify-between relative z-10">
-          <div>
-            <p className={`text-sm font-medium mb-2 ${
-              theme === 'light' ? 'text-gray-600' : 'text-slate-400'
-            }`}>Total Counts</p>
-            {isLoading || revenueLoading ? (
-              <LoadingSpinner size="sm" />
-            ) : (
-              <p className={`text-4xl font-bold ${
+        <div className="relative z-10">
+          <p className={`text-sm font-medium mb-2 ${
+            theme === 'light' ? 'text-gray-600' : 'text-slate-400'
+          }`}>Bucket & Barrel Count</p>
+          {isLoading || rangeLoading ? (
+            <LoadingSpinner size="sm" />
+          ) : (
+              <div className={`text-xl font-bold ${
                 theme === 'light'
                   ? 'bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'
                   : 'text-white'
-              }`}>{formatCompactNumber(totalUnits)}</p>
-            )}
-          </div>
-          <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">📦</div>
+              }`}>
+                <p>Bucket - {new Intl.NumberFormat('en-IN').format(totalBuckets)}</p>
+                <p>Barrel - {new Intl.NumberFormat('en-IN').format(totalBarrels)}</p>
+              </div>
+          )}
         </div>
         <p className={`text-xs mt-4 relative z-10 ${
           theme === 'light' ? 'text-gray-500' : 'text-slate-500'
@@ -189,7 +234,9 @@ export default function SummaryCards() {
                 theme === 'light'
                   ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
                   : 'text-white'
-              }`}>{avgBucketsPerTrip.toFixed(1)}</p>
+              }`}>
+                {avgBucketsPerTripRounded}
+              </p>
             )}
           </div>
           <div className="opacity-80 group-hover:scale-110 transition-transform duration-300">
@@ -208,4 +255,3 @@ export default function SummaryCards() {
     </div>
   );
 }
-
