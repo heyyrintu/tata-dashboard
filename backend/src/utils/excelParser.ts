@@ -9,8 +9,11 @@ interface ExcelRow {
 const normalizeRange = (range: string | null | undefined): string => {
   if (!range || typeof range !== 'string') return '';
   
+  const trimmed = range.trim();
+  if (trimmed === '') return '';
+  
   // Trim whitespace and convert to lowercase for comparison
-  const normalized = range.trim().toLowerCase();
+  const normalized = trimmed.toLowerCase();
   
   // Handle various formats: "0-100km", "0-100Km", "0-100KM", "0-100 km", etc.
   if (normalized.startsWith('0-100') || normalized.startsWith('0 100')) {
@@ -26,8 +29,8 @@ const normalizeRange = (range: string | null | undefined): string => {
     return '401-600Km';
   }
   
-  // Return original if no match (empty string will be filtered out)
-  return '';
+  // Return original trimmed value if no match - this will be included in "Other" category
+  return trimmed;
 };
 
 export const parseExcelFile = (filePath: string): ITrip[] => {

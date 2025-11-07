@@ -81,15 +81,15 @@ export const getAnalytics = async (req: Request, res: Response) => {
     const allIndents = await Trip.find({});
     console.log(`[getAnalytics] Total indents from DB: ${allIndents.length}`);
 
-    // Filter to only include indents with Range value (canceled indents don't have range)
-    let validIndents = allIndents.filter(indent => indent.range && indent.range.trim() !== '');
-    console.log(`[getAnalytics] Valid indents (with range): ${validIndents.length}`);
+    // For Card 1 (Total Indents): Use ALL indents (including cancelled ones with blank range)
+    // For other calculations: Filter to only include indents with Range value (canceled indents don't have range)
+    console.log(`[getAnalytics] All indents (including cancelled): ${allIndents.length}`);
 
-    // Count how many have freightTigerMonth
-    const withFreightTiger = validIndents.filter(i => i.freightTigerMonth && i.freightTigerMonth.trim() !== '').length;
-    console.log(`[getAnalytics] Indents with Freight Tiger Month: ${withFreightTiger}`);
-
-    // Apply date filtering - prioritize Freight Tiger Month if date range is a single month
+    // For Card 1 (Total Indents): We need to filter ALL indents (including cancelled) by date
+    // Then count unique indent values from the filtered ALL indents
+    let allIndentsFiltered = [...allIndents]; // Start with all indents (including cancelled)
+    
+    // Apply date filtering to ALL indents (for Card 1) - prioritize Freight Tiger Month if date range is a single month
     if (fromDate && toDate) {
       // Check if the date range represents a single month
       const fromMonth = format(fromDate, 'yyyy-MM');
@@ -103,49 +103,35 @@ export const getAnalytics = async (req: Request, res: Response) => {
         console.log(`[getAnalytics] Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
         const targetMonthKey = fromMonth;
         
-        let matchedByFreightTiger = 0;
-        let matchedByIndentDate = 0;
-        
-        validIndents = validIndents.filter(indent => {
+        allIndentsFiltered = allIndentsFiltered.filter(indent => {
           // Primary: Use Freight Tiger Month if available
           if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
             const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
             if (normalizedMonth === targetMonthKey) {
-              matchedByFreightTiger++;
               return true;
             }
           }
           // Fallback: Use indentDate if Freight Tiger Month is not available
           if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
-            if (indent.indentDate >= fromDate && indent.indentDate <= toDate) {
-              matchedByIndentDate++;
-              return true;
-            }
+            return indent.indentDate >= fromDate && indent.indentDate <= toDate;
           }
           return false;
         });
         
-        console.log(`[getAnalytics] Matched by Freight Tiger Month: ${matchedByFreightTiger}`);
-        console.log(`[getAnalytics] Matched by indentDate: ${matchedByIndentDate}`);
-        
         // If no results using Freight Tiger Month, fallback to indentDate only
-        if (validIndents.length === 0) {
-          console.log(`[getAnalytics] No matches found, falling back to indentDate only`);
-          validIndents = allIndents.filter(indent => 
-            indent.range && 
-            indent.range.trim() !== '' &&
-            indent.indentDate && 
-            indent.indentDate instanceof Date && 
-            !isNaN(indent.indentDate.getTime()) &&
-            indent.indentDate >= fromDate && 
-            indent.indentDate <= toDate
-          );
-          console.log(`[getAnalytics] Fallback to indentDate: ${validIndents.length} indents matched`);
+        if (allIndentsFiltered.length === 0) {
+          console.log(`[getAnalytics] No matches found with Freight Tiger Month, falling back to indentDate only`);
+          const endDate = new Date(toDate);
+          endDate.setHours(23, 59, 59, 999);
+          allIndentsFiltered = allIndents.filter(indent => {
+            if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
+            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
+          });
         }
       } else {
         // Multiple months or date range - filter by indentDate (primary) and also check Freight Tiger Month
         console.log(`[getAnalytics] Date range filter: ${fromMonth} to ${toMonth}, using indentDate with Freight Tiger Month fallback`);
-        validIndents = validIndents.filter(indent => {
+        allIndentsFiltered = allIndentsFiltered.filter(indent => {
           // Check if indentDate matches the range
           const dateMatches = indent.indentDate && 
                              indent.indentDate instanceof Date && 
@@ -170,7 +156,7 @@ export const getAnalytics = async (req: Request, res: Response) => {
     } else if (fromDate) {
       // Only fromDate - filter by indentDate (primary)
       console.log(`[getAnalytics] From date filter only: ${fromDate?.toISOString().split('T')[0]}`);
-      validIndents = validIndents.filter(indent => {
+      allIndentsFiltered = allIndentsFiltered.filter(indent => {
         if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
           return indent.indentDate >= fromDate;
         }
@@ -181,53 +167,73 @@ export const getAnalytics = async (req: Request, res: Response) => {
       const endDate = new Date(toDate);
       endDate.setHours(23, 59, 59, 999);
       console.log(`[getAnalytics] To date filter only: ${toDate?.toISOString().split('T')[0]}`);
-      validIndents = validIndents.filter(indent => {
+      allIndentsFiltered = allIndentsFiltered.filter(indent => {
         if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
           return indent.indentDate <= endDate;
         }
         return false;
       });
-    } else {
-      // No date filter - use all valid indents
-      console.log(`[getAnalytics] No date filter - using all valid indents`);
     }
+    // else: No date filter - use all indents (already set above)
     
-    console.log(`[getAnalytics] Final filtered valid indents: ${validIndents.length}`);
+    console.log(`[getAnalytics] All indents filtered (including cancelled): ${allIndentsFiltered.length}`);
+    
+    // Now filter validIndents (for other calculations) - same date filtering logic
+    // Filter to only include indents with Range value (canceled indents don't have range)
+    // IMPORTANT: This excludes cancelled trips (blank range column) for Card 2 (Total Trips)
+    let validIndents = allIndentsFiltered.filter(indent => indent.range && indent.range.trim() !== '');
+    console.log(`[getAnalytics] Final filtered valid indents (with range, excluding cancelled): ${validIndents.length}`);
     console.log(`[getAnalytics] Sample indents (first 3):`, validIndents.slice(0, 3).map(i => ({
       indent: i.indent,
       freightTigerMonth: i.freightTigerMonth,
       indentDate: i.indentDate?.toISOString().split('T')[0]
     })));
     
-    // Total Indents (Card 1): count of unique indent values from valid indents
-    const uniqueIndents = new Set(validIndents.filter(t => t.indent).map(t => t.indent));
-    const totalIndents = uniqueIndents.size;
+    // Total Indents (Card 1): count of unique indent values from ALL indents (including cancelled)
+    const uniqueIndents = new Set(allIndentsFiltered.filter(t => t.indent).map(t => t.indent));
+    let totalIndents = uniqueIndents.size;
+    console.log(`[getAnalytics] Total unique indents (including cancelled): ${totalIndents}`);
 
-    // Total Trips (Card 2): Use indentDate first, then group by vehicle number
-    // Logic:
-    // 1. Take indentDate (actual date from indent) - this is the primary key
-    // 2. Find associated vehicle number for that date
-    // 3. Calculate unique vehicle numbers per date (group by date + vehicle)
-    // 4. Check remarks: if "2nd trip" → count 2, otherwise count 1
-    // 
-    // IMPORTANT: We use indentDate for trip grouping, not date filters
-    // The validIndents are already filtered by Freight Tiger Month or date range
-    // We don't apply additional date filters to trip counting because:
-    // - We want to count trips based on indentDate (actual trip date)
-    // - Date filters would exclude trips where Freight Tiger Month doesn't match indentDate month
-    const tripDocuments = validIndents.map(indent => ({
-      indentDate: indent.indentDate, // Use indentDate first - this is used for grouping trips
-      vehicleNumber: indent.vehicleNumber,
-      remarks: indent.remarks
-    }));
-    
-    console.log(`[getAnalytics] Card 2: Preparing ${tripDocuments.length} trip documents`);
-    console.log(`[getAnalytics] Card 2: Using indentDate + vehicleNumber grouping (no date filters)`);
-    
-    // Don't apply date filters - we've already filtered validIndents above
-    // The trip calculation uses indentDate to group trips by date+vehicle
-    // This ensures trips are counted based on their actual indentDate, not filtered dates
-    const { totalTrips } = calculateTripsByVehicleDay(tripDocuments);
+    // Total Trips (Card 2): Apply OLD Card 1 logic - count unique indent values from validIndents (excluded cancelled)
+    // This is the same logic Card 1 used to have before including cancelled indents
+    const uniqueIndentsForCard2 = new Set(validIndents.filter(t => t.indent).map(t => t.indent));
+    let totalTrips = uniqueIndentsForCard2.size;
+    console.log(`[getAnalytics] Card 2: Total unique indents (excluding cancelled): ${totalTrips}`);
+
+    // If still no data after all filtering, log warning and try to show all data
+    if (validIndents.length === 0) {
+      console.warn(`[getAnalytics] WARNING: No valid indents found after filtering!`);
+      console.warn(`[getAnalytics] Date range: ${fromDate?.toISOString().split('T')[0] || 'none'} to ${toDate?.toISOString().split('T')[0] || 'none'}`);
+      console.warn(`[getAnalytics] Total indents in DB: ${allIndents.length}`);
+      const validIndentsNoDateFilter = allIndents.filter(indent => indent.range && indent.range.trim() !== '');
+      console.warn(`[getAnalytics] Valid indents (with range, no date filter): ${validIndentsNoDateFilter.length}`);
+      
+      // Show sample dates from database
+      if (validIndentsNoDateFilter.length > 0) {
+        const sampleDates = validIndentsNoDateFilter.slice(0, 5).map(indent => ({
+          indent: indent.indent,
+          indentDate: indent.indentDate,
+          freightTigerMonth: indent.freightTigerMonth
+        }));
+        console.warn(`[getAnalytics] Sample dates from DB:`, JSON.stringify(sampleDates, null, 2));
+      }
+      
+      // If date filter is too restrictive, use all valid indents (without date filter)
+      if (fromDate && toDate) {
+        console.warn(`[getAnalytics] Date filter too restrictive, using all valid indents without date filter`);
+        validIndents = validIndentsNoDateFilter;
+        
+        // Recalculate with all data
+        const uniqueIndentsRecalc = new Set(validIndents.map(indent => indent.indent));
+        totalIndents = uniqueIndentsRecalc.size;
+        
+        // Recalculate Card 2 using old Card 1 logic (unique indents from validIndents)
+        const uniqueIndentsRecalcCard2 = new Set(validIndents.filter(t => t.indent).map(t => t.indent));
+        totalTrips = uniqueIndentsRecalcCard2.size;
+        
+        console.log(`[getAnalytics] Recalculated with all data: totalIndents=${totalIndents}, totalTrips=${totalTrips}`);
+      }
+    }
 
     console.log(`[getAnalytics] Final results: totalIndents=${totalIndents}, totalTrips=${totalTrips}`);
     
@@ -254,150 +260,63 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    // Build date filter query using indentDate
-    const dateFilter: any = {};
-    if (fromDate || toDate) {
-      dateFilter.indentDate = {};
-      if (fromDate) {
-        dateFilter.indentDate.$gte = fromDate;
-      }
-      if (toDate) {
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
-        dateFilter.indentDate.$lte = endDate;
-      }
+    console.log(`[getRangeWiseAnalytics] ===== START =====`);
+    console.log(`[getRangeWiseAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+
+    // Use the new utility function for all calculations
+    const { calculateRangeWiseSummary } = await import('../utils/rangeWiseCalculations');
+    let result;
+    try {
+      result = await calculateRangeWiseSummary(fromDate || undefined, toDate || undefined);
+      console.log(`[getRangeWiseAnalytics] Calculation result:`, {
+        rangeDataLength: result.rangeData.length,
+        totalUniqueIndents: result.totalUniqueIndents,
+        totalLoad: result.totalLoad,
+        totalRows: result.totalRows
+      });
+    } catch (calcError) {
+      console.error(`[getRangeWiseAnalytics] Error in calculateRangeWiseSummary:`, calcError);
+      throw calcError;
     }
 
-    // Query database with date filter
-    const indents = await Trip.find(dateFilter);
+    // Calculate location-wise data
+    const allIndents = await Trip.find({});
+    let validIndents = allIndents.filter(indent => indent.range && indent.range.trim() !== '');
     
-    // Filter to only include indents with Range value (canceled indents don't have range)
-    const validIndents = indents.filter(indent => indent.range && indent.range.trim() !== '');
-    const totalIndents = validIndents.length;
-
-    // Range labels - now standardized after normalization in parser
-    const rangeMappings = [
-      { label: '0-100Km' },
-      { label: '101-250Km' },
-      { label: '251-400Km' },
-      { label: '401-600Km' },
-    ];
-
-    // Calculate range-wise data using the Range column from Excel
-    // Range values are now normalized to standard format during parsing
-    const rangeData = rangeMappings.map(({ label }) => {
-      const rangeIndents = validIndents.filter(indent => {
-        // Since ranges are normalized during parsing, we can do direct comparison
-        return indent.range === label;
-      });
-      const indentCount = rangeIndents.length;
-      
-      // NEW: Calculate UNIQUE indent count for visualization (Card 1 logic)
-      const uniqueIndentsInRange = new Set(
-        rangeIndents.filter(t => t.indent).map(t => t.indent)
-      );
-      const uniqueIndentCount = uniqueIndentsInRange.size;
-      
-      const totalLoad = rangeIndents.reduce((sum, indent) => sum + (indent.totalLoad || 0), 0);
-      const percentage = totalIndents > 0 ? (indentCount / totalIndents) * 100 : 0;
-      
-      // Count buckets and barrels separately based on Material column
-      let bucketCount = 0;
-      let barrelCount = 0;
-      
-      rangeIndents.forEach(indent => {
-        const count = indent.noOfBuckets || 0;
-        const material = (indent.material || '').trim();
-        
-        if (material === '20L Buckets') {
-          bucketCount += count;
-        } else if (material === '210L Barrels') {
-          barrelCount += count;
+    // Apply same date filtering
+    if (fromDate && toDate) {
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      validIndents = validIndents.filter(indent => {
+        if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
+          return false;
         }
+        return indent.indentDate >= fromDate && indent.indentDate <= endDate;
       });
-
-      return {
-        range: label,
-        indentCount,
-        uniqueIndentCount,
-        totalLoad,
-        percentage: parseFloat(percentage.toFixed(2)),
-        bucketCount,
-        barrelCount
-      };
-    });
-
-    // Calculate "Other" category for indents that have a range but don't match any predefined range
-    const matchedRanges = new Set(rangeMappings.map(({ label }) => label));
-    const otherIndents = validIndents.filter(indent => {
-      return !matchedRanges.has(indent.range);
-    });
-    
-    // Log other indents to console for debugging
-    if (otherIndents.length > 0) {
-      console.log(`\n=== OTHER INDENTS (${otherIndents.length} total) ===`);
-      otherIndents.forEach((indent, index) => {
-        console.log(`${index + 1}. Range: "${indent.range}" | Indent: ${indent.indent || 'N/A'} | Location: ${indent.location || 'N/A'}`);
-      });
-      console.log('==========================================\n');
-    }
-    
-    // Log canceled indents (those without range) for debugging
-    const canceledIndents = indents.filter(indent => !indent.range || indent.range.trim() === '');
-    if (canceledIndents.length > 0) {
-      console.log(`\n=== CANCELED INDENTS (${canceledIndents.length} total - excluded from count) ===`);
-      canceledIndents.forEach((indent, index) => {
-        console.log(`${index + 1}. Range: "${indent.range || '(null/empty)'}" | Indent: ${indent.indent || 'N/A'} | Location: ${indent.location || 'N/A'}`);
-      });
-      console.log('==========================================\n');
-    }
-    
-    if (otherIndents.length > 0) {
-      const otherIndentCount = otherIndents.length;
-      
-      // NEW: Calculate UNIQUE indent count for "Other" category
-      const uniqueOtherIndents = new Set(
-        otherIndents.filter(t => t.indent).map(t => t.indent)
-      );
-      const uniqueIndentCount = uniqueOtherIndents.size;
-      
-      const otherTotalLoad = otherIndents.reduce((sum, indent) => sum + (indent.totalLoad || 0), 0);
-      const otherPercentage = totalIndents > 0 ? (otherIndentCount / totalIndents) * 100 : 0;
-      
-      let otherBucketCount = 0;
-      let otherBarrelCount = 0;
-      
-      otherIndents.forEach(indent => {
-        const count = indent.noOfBuckets || 0;
-        const material = (indent.material || '').trim();
-        
-        if (material === '20L Buckets') {
-          otherBucketCount += count;
-        } else if (material === '210L Barrels') {
-          otherBarrelCount += count;
+    } else if (fromDate) {
+      validIndents = validIndents.filter(indent => {
+        if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
+          return false;
         }
+        return indent.indentDate >= fromDate;
       });
-      
-      rangeData.push({
-        range: 'Other',
-        indentCount: otherIndentCount,
-        uniqueIndentCount,
-        totalLoad: otherTotalLoad,
-        percentage: parseFloat(otherPercentage.toFixed(2)),
-        bucketCount: otherBucketCount,
-        barrelCount: otherBarrelCount
+    } else if (toDate) {
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      validIndents = validIndents.filter(indent => {
+        if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
+          return false;
+        }
+        return indent.indentDate <= endDate;
       });
     }
 
-    // Calculate location-wise data using Range column from Excel
     const locationMap = new Map<string, { indentCount: number; totalLoad: number; range: string }>();
-
     validIndents.forEach(indent => {
       if (indent.location && indent.range) {
         const existing = locationMap.get(indent.location) || { indentCount: 0, totalLoad: 0, range: indent.range };
         existing.indentCount++;
         existing.totalLoad += indent.totalLoad || 0;
-        // Range is already normalized during parsing, so use directly
         existing.range = indent.range;
         locationMap.set(indent.location, existing);
       }
@@ -410,21 +329,71 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       range: data.range
     }));
 
-    // Calculate GLOBAL unique indent count (same as Card 1 logic)
-    const globalUniqueIndents = new Set(validIndents.filter(t => t.indent).map(t => t.indent));
-    const totalUniqueIndents = globalUniqueIndents.size;
+    // Get all indents in date range for total load details
+    let allIndentsInDateRange: any[] = [];
+    if (fromDate && toDate) {
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      allIndentsInDateRange = await Trip.find({
+        indentDate: {
+          $gte: fromDate,
+          $lte: endDate
+        }
+      });
+    } else if (fromDate) {
+      allIndentsInDateRange = await Trip.find({
+        indentDate: {
+          $gte: fromDate
+        }
+      });
+    } else if (toDate) {
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      allIndentsInDateRange = await Trip.find({
+        indentDate: {
+          $lte: endDate
+        }
+      });
+    } else {
+      allIndentsInDateRange = allIndents;
+    }
+
+    const indentsWithLoad = allIndentsInDateRange.filter((indent: any) => (indent.totalLoad || 0) > 0).length;
+    const indentsWithoutRange = allIndentsInDateRange.filter((indent: any) => !indent.range || indent.range.trim() === '').length;
+    const uniqueIndentValues = new Set(allIndentsInDateRange.map((indent: any) => indent.indent).filter(Boolean));
+
+    // Ensure rangeData is always an array (should never be empty due to 4 predefined ranges)
+    const finalRangeData = result.rangeData || [];
+    console.log(`[getRangeWiseAnalytics] Final response:`, {
+      rangeDataLength: finalRangeData.length,
+      totalUniqueIndents: result.totalUniqueIndents,
+      totalLoad: result.totalLoad,
+      totalRows: result.totalRows
+    });
 
     res.json({
       success: true,
-      rangeData,
-      locations,
-      totalUniqueIndents,
+      rangeData: finalRangeData,
+      locations: locations || [],
+      totalUniqueIndents: result.totalUniqueIndents || 0,
+      totalLoad: result.totalLoad || 0, // Total load in kg
+      totalBuckets: result.totalBuckets || 0,
+      totalBarrels: result.totalBarrels || 0,
+      totalRows: result.totalRows || 0,
+      totalLoadDetails: {
+        totalRows: allIndentsInDateRange.length,
+        rowsWithLoad: indentsWithLoad,
+        rowsWithoutRange: indentsWithoutRange,
+        uniqueIndents: uniqueIndentValues.size,
+        duplicates: allIndentsInDateRange.length - uniqueIndentValues.size
+      },
       dateRange: {
         from: fromDate?.toISOString().split('T')[0] || null,
         to: toDate?.toISOString().split('T')[0] || null
       }
     });
   } catch (error) {
+    console.error(`[getRangeWiseAnalytics] Error:`, error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch range-wise analytics'

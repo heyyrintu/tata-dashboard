@@ -10,6 +10,7 @@
     "clear-db": "ts-node src/scripts/clearDatabase.ts",
     "check-email": "ts-node src/scripts/checkEmailService.ts",
     "test-permissions": "ts-node src/scripts/testGraphPermissions.ts",
+    "check-september": "ts-node src/scripts/checkSeptemberIndents.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
