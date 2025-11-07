@@ -5,13 +5,13 @@ import { getFulfillmentAnalytics } from '../services/api';
 interface FulfillmentData {
   range: string;
   bucketRange?: string;
-  indentCount: number;
+  tripCount: number;
 }
 
 interface FulfillmentResponse {
   success: boolean;
   fulfillmentData: FulfillmentData[];
-  totalUniqueIndents?: number; // Total unique indents (matches Card 2)
+  totalTrips?: number; // Total trips (matches Card 2)
   dateRange: {
     from: string | null;
     to: string | null;

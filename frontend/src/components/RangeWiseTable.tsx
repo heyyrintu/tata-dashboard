@@ -118,16 +118,22 @@ export default function RangeWiseTable() {
               })()}
               {/* Total Row */}
               {(() => {
-                // Use globally unique indent count from backend (matches Card 2)
-                const totalIndents = data.totalUniqueIndents || 0;
-                // Total percentage: if close to 100% (99.99-100.01), show exactly 100%
-                const summedPercentage = data.rangeData.reduce((sum, item) => sum + item.percentage, 0);
+                // Filter out "Other" and "Duplicate Indents" rows for all total calculations
+                const standardRanges = data.rangeData.filter(item => item.range !== 'Other' && item.range !== 'Duplicate Indents');
+                
+                // Total indent count: sum of standard ranges only (exclude "Other" and "Duplicate Indents")
+                const totalIndents = standardRanges.reduce((sum, item) => sum + (item.uniqueIndentCount ?? item.indentCount), 0);
+                
+                // Total percentage: exclude "Other" and "Duplicate Indents" rows from percentage calculation
+                const summedPercentage = standardRanges.reduce((sum, item) => sum + item.percentage, 0);
                 const totalPercentage = (summedPercentage >= 99.99 && summedPercentage <= 100.01) ? 100.00 : parseFloat(summedPercentage.toFixed(2));
-                // Use total load from backend (calculated from all indents in date range)
-                const totalLoad = data.totalLoad || 0;
-                // Use total buckets and barrels from backend (calculated from all range data)
-                const totalBuckets = data.totalBuckets || data.rangeData.reduce((sum, item) => sum + item.bucketCount, 0);
-                const totalBarrels = data.totalBarrels || data.rangeData.reduce((sum, item) => sum + item.barrelCount, 0);
+                
+                // Total load: sum of standard ranges only (exclude "Other" and "Duplicate Indents")
+                const totalLoad = standardRanges.reduce((sum, item) => sum + item.totalLoad, 0);
+                
+                // Total buckets and barrels: sum of standard ranges only (exclude "Other" and "Duplicate Indents")
+                const totalBuckets = standardRanges.reduce((sum, item) => sum + item.bucketCount, 0);
+                const totalBarrels = standardRanges.reduce((sum, item) => sum + item.barrelCount, 0);
                 
                 return (
                   <tr className={`border-t-2 font-bold ${

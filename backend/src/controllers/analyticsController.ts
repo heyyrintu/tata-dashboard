@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import Trip from '../models/Trip';
 import { parseDateParam } from '../utils/dateFilter';
 import { format, startOfWeek, getISOWeek, parse } from 'date-fns';
-import { calculateTripsByVehicleDay } from '../utils/tripCount';
+import { calculateTripsByVehicleDay, type TripDocument } from '../utils/tripCount';
+import * as XLSX from 'xlsx';
 
 // Helper function to normalize Freight Tiger Month to 'yyyy-MM' format
 const normalizeFreightTigerMonth = (monthValue: string): string | null => {
@@ -406,71 +407,64 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    // Query all trips (we'll filter by Freight Tiger Month or indentDate, same as getAnalytics)
+    // STEP 1: Fetch all indents from database
     const allIndents = await Trip.find({});
-    console.log(`[getFulfillmentAnalytics] Total indents from DB: ${allIndents.length}`);
+    console.log(`[getFulfillmentAnalytics] Step 1: Total indents from DB: ${allIndents.length}`);
 
-    // Apply same date filtering logic as getAnalytics - include ALL indents (including cancelled)
+    // STEP 2: Apply date filtering (same as getAnalytics - Freight Tiger Month for single month, indentDate for ranges)
     let filteredIndents = [...allIndents];
     
     if (fromDate && toDate) {
-      // Check if the date range represents a single month
       const fromMonth = format(fromDate, 'yyyy-MM');
       const toMonth = format(toDate, 'yyyy-MM');
       
-      console.log(`[getFulfillmentAnalytics] Date filter: ${fromDate?.toISOString().split('T')[0]} to ${toDate?.toISOString().split('T')[0]}`);
-      console.log(`[getFulfillmentAnalytics] Month keys: ${fromMonth} to ${toMonth}`);
+      console.log(`[getFulfillmentAnalytics] Step 2: Date filter: ${fromDate?.toISOString().split('T')[0]} to ${toDate?.toISOString().split('T')[0]}`);
       
       if (fromMonth === toMonth) {
-        // Single month filter - use Freight Tiger Month to match other analytics
-        console.log(`[getFulfillmentAnalytics] Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
+        // Single month filter - use Freight Tiger Month
+        console.log(`[getFulfillmentAnalytics] Step 2: Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
         const targetMonthKey = fromMonth;
         const endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
         
         filteredIndents = filteredIndents.filter(indent => {
-          // Primary: Use Freight Tiger Month if available
           if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
             const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
             if (normalizedMonth === targetMonthKey) {
               return true;
             }
           }
-          // Fallback: Use indentDate if Freight Tiger Month is not available
           if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
             return indent.indentDate >= fromDate && indent.indentDate <= endDate;
           }
           return false;
         });
         
-        // If no results using Freight Tiger Month, fallback to indentDate only
+        // Fallback to indentDate only if no results
         if (filteredIndents.length === 0) {
-          console.log(`[getFulfillmentAnalytics] No matches found with Freight Tiger Month, falling back to indentDate only`);
+          console.log(`[getFulfillmentAnalytics] Step 2: No matches with Freight Tiger Month, falling back to indentDate only`);
           filteredIndents = allIndents.filter(indent => {
             if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
             return indent.indentDate >= fromDate && indent.indentDate <= endDate;
           });
         }
       } else {
-        // Multiple months or date range - filter by indentDate (primary) and also check Freight Tiger Month
-        console.log(`[getFulfillmentAnalytics] Date range filter: ${fromMonth} to ${toMonth}, using indentDate with Freight Tiger Month fallback`);
+        // Multiple months or date range - filter by indentDate with Freight Tiger Month fallback
+        console.log(`[getFulfillmentAnalytics] Step 2: Date range filter: ${fromMonth} to ${toMonth}`);
         const endDate = new Date(toDate);
         endDate.setHours(23, 59, 59, 999);
         
         filteredIndents = filteredIndents.filter(indent => {
-          // Check if indentDate matches the range
           const dateMatches = indent.indentDate && 
                              indent.indentDate instanceof Date && 
                              !isNaN(indent.indentDate.getTime()) &&
                              indent.indentDate >= fromDate && 
                              indent.indentDate <= endDate;
           
-          // Also check if Freight Tiger Month matches any month in the range
           let freightTigerMatches = false;
           if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
             const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
             if (normalizedMonth) {
-              // Check if normalized month falls within the date range
               const monthDate = new Date(normalizedMonth + '-01');
               freightTigerMatches = monthDate >= fromDate && monthDate <= endDate;
             }
@@ -480,8 +474,6 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
         });
       }
     } else if (fromDate) {
-      // Only fromDate - filter by indentDate
-      console.log(`[getFulfillmentAnalytics] From date filter only: ${fromDate?.toISOString().split('T')[0]}`);
       filteredIndents = filteredIndents.filter(indent => {
         if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
           return indent.indentDate >= fromDate;
@@ -489,10 +481,8 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
         return false;
       });
     } else if (toDate) {
-      // Only toDate - filter by indentDate
       const endDate = new Date(toDate);
       endDate.setHours(23, 59, 59, 999);
-      console.log(`[getFulfillmentAnalytics] To date filter only: ${toDate?.toISOString().split('T')[0]}`);
       filteredIndents = filteredIndents.filter(indent => {
         if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
           return indent.indentDate <= endDate;
@@ -500,117 +490,506 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
         return false;
       });
     }
-    // else: No date filter - use all indents (already set above)
     
-    console.log(`[getFulfillmentAnalytics] Filtered indents (including cancelled): ${filteredIndents.length}`);
-    
-    // Filter to only include indents with Range value (exclude cancelled indents)
-    // This matches Card 2 (Total Trip) logic - only count indents that have a range
+    console.log(`[getFulfillmentAnalytics] Step 2: Filtered indents after date filter: ${filteredIndents.length}`);
+
+    // STEP 3: Filter for non-blank range (exclude cancelled indents - same as trip count logic)
     const indents = filteredIndents.filter(indent => indent.range && indent.range.trim() !== '');
-    console.log(`[getFulfillmentAnalytics] Valid indents (with range, excluding cancelled): ${indents.length}`);
+    console.log(`[getFulfillmentAnalytics] Step 3: Valid indents (with non-blank range, including duplicates): ${indents.length}`);
 
-    // Calculate bucket count for each indent (only count 20L Buckets)
-    const MAX_BUCKETS = 300; // Maximum buckets capacity
-    
-    // Define bucket ranges - these are the primary calculation method
-    // Percentage ranges are calculated FROM bucket ranges
-    // Last range (251+) includes all indents with bucketCount >= 251
+    // STEP 4: Define bucket ranges
     const bucketRanges = [
-      { min: 0, max: 150, minPercent: 0, maxPercent: 50 },      // 0-150 → 0-50%
-      { min: 151, max: 200, minPercent: 50, maxPercent: 67 },    // 151-200 → 50-67%
-      { min: 201, max: 250, minPercent: 67, maxPercent: 83 },    // 201-250 → 67-83%
-      { min: 251, max: Infinity, minPercent: 84, maxPercent: 100 }   // 251+ → 84-100%
+      { min: 0, max: 150, label: '0 - 150' },
+      { min: 151, max: 200, label: '151 - 200' },
+      { min: 201, max: 250, label: '201 - 250' },
+      { min: 251, max: 300, label: '251 - 300' }
     ];
+    const OTHER_RANGE = { min: 301, max: Infinity, label: '300+' };
 
-    // Optimized calculation: Single pass through indents
-    // Use Map to group unique indents by bucket range
-    const rangeIndentSets = new Map<string, Set<string>>();
+    // STEP 5: Group indents by bucket range
+    // Structure: Map<rangeKey, { allIndents: TripDocument[], uniqueIndents: Set<string> }>
+    const rangeGroups = new Map<string, { 
+      allIndents: TripDocument[], 
+      uniqueIndents: Set<string>,
+      indentValues: string[]  // Track all indent values (including duplicates) for indent count
+    }>();
     
-    // Initialize all ranges (no "Other" needed - last range covers 251+)
+    // Initialize all ranges
     bucketRanges.forEach(range => {
-      const key = `${range.min}-${range.max === Infinity ? 'inf' : range.max}`;
-      rangeIndentSets.set(key, new Set());
+      rangeGroups.set(range.label, {
+        allIndents: [],
+        uniqueIndents: new Set(),
+        indentValues: []
+      });
     });
-    
-    // Track all unique indents for total count
-    const allUniqueIndents = new Set<string>();
-    
-    // Single pass: Calculate bucketCount and assign to range
+    rangeGroups.set('Other', {
+      allIndents: [],
+      uniqueIndents: new Set(),
+      indentValues: []
+    });
+
+    // STEP 6: Calculate bucket count for each indent and assign to range
     for (const indent of indents) {
-      if (!indent.indent) continue; // Skip indents without indent value
+      // Skip if no indent value
+      if (!indent.indent) continue;
       
+      // Calculate bucket count
       const material = (indent.material || '').trim();
       const noOfBuckets = indent.noOfBuckets || 0;
       let bucketCount = 0;
       
-      // Calculate bucket count
       if (material === '20L Buckets') {
         bucketCount = noOfBuckets;
       } else if (material === '210L Barrels') {
         bucketCount = noOfBuckets * 10.5; // Convert: 1 barrel = 10.5 buckets
       }
-      
-      // Add to all unique indents set
-      allUniqueIndents.add(indent.indent);
+      // If material missing/unknown, bucketCount = 0 (falls into 0-150 range)
       
       // Find which range this indent belongs to
+      let assigned = false;
       for (const range of bucketRanges) {
-        if (range.max === Infinity) {
-          // Last range: 251+ (includes all >= 251)
-          if (bucketCount >= range.min) {
-            const key = `${range.min}-inf`;
-            rangeIndentSets.get(key)!.add(indent.indent);
-            break;
-          }
+        if (bucketCount >= range.min && bucketCount <= range.max) {
+          const group = rangeGroups.get(range.label)!;
+          group.allIndents.push({
+            indentDate: indent.indentDate,
+            vehicleNumber: indent.vehicleNumber || '',
+            remarks: indent.remarks || ''
+          });
+          group.uniqueIndents.add(indent.indent);
+          group.indentValues.push(indent.indent);
+          assigned = true;
+          break;
+        }
+      }
+      
+      // If not assigned, check if it goes to "Other" (bucketCount > 300)
+      if (!assigned) {
+        if (bucketCount > 300) {
+          const group = rangeGroups.get('Other')!;
+          group.allIndents.push({
+            indentDate: indent.indentDate,
+            vehicleNumber: indent.vehicleNumber || '',
+            remarks: indent.remarks || ''
+          });
+          group.uniqueIndents.add(indent.indent);
+          group.indentValues.push(indent.indent);
         } else {
-          // Regular range: min to max
-          if (bucketCount >= range.min && bucketCount <= range.max) {
-            const key = `${range.min}-${range.max}`;
-            rangeIndentSets.get(key)!.add(indent.indent);
-            break;
-          }
+          // Fallback: assign to first range (0-150) if bucketCount is 0 or negative
+          const group = rangeGroups.get('0 - 150')!;
+          group.allIndents.push({
+            indentDate: indent.indentDate,
+            vehicleNumber: indent.vehicleNumber || '',
+            remarks: indent.remarks || ''
+          });
+          group.uniqueIndents.add(indent.indent);
+          group.indentValues.push(indent.indent);
+          console.warn(`[getFulfillmentAnalytics] Step 6: Indent ${indent.indent} with bucketCount ${bucketCount} assigned to 0-150 as fallback`);
         }
       }
     }
-    
-    // Build range counts from the Map
+
+    // STEP 7: Calculate metrics for each range
     const rangeCounts = bucketRanges.map(range => {
-      const key = `${range.min}-${range.max === Infinity ? 'inf' : range.max}`;
-      const uniqueIndents = rangeIndentSets.get(key)!;
-      const count = uniqueIndents.size;
+      const group = rangeGroups.get(range.label)!;
       
-      const percentageLabel = `${range.minPercent} - ${range.maxPercent}%`;
-      // For last range (251+), show "251+" instead of "251 - inf"
-      const bucketLabel = range.max === Infinity 
-        ? '251+' 
-        : `${range.min} - ${range.max}`;
+      // Calculate indent count (total rows including duplicates)
+      const indentCount = group.indentValues.length;
+      
+      // Calculate unique indent count
+      const uniqueIndentCount = group.uniqueIndents.size;
+      
+      // Calculate trip count using vehicle-day logic
+      const { totalTrips } = calculateTripsByVehicleDay(group.allIndents);
+      
+      console.log(`[getFulfillmentAnalytics] Step 7: Range ${range.label} - Indent Count: ${indentCount}, Unique Indent Count: ${uniqueIndentCount}, Trip Count: ${totalTrips}`);
       
       return {
-        range: percentageLabel,
-        bucketRange: bucketLabel,
-        indentCount: count
+        range: range.label,
+        bucketRange: range.label,
+        tripCount: totalTrips,
+        indentCount: indentCount,        // For debugging/logging
+        uniqueIndentCount: uniqueIndentCount  // For debugging/logging
       };
     });
     
-    // Calculate total unique indents (should match Card 2)
-    const totalUniqueIndents = allUniqueIndents.size;
-    console.log(`[getFulfillmentAnalytics] Total unique indents (matching Card 2): ${totalUniqueIndents}`);
+    // Calculate metrics for "Other" range
+    const otherGroup = rangeGroups.get('Other')!;
+    const otherIndentCount = otherGroup.indentValues.length;
+    const otherUniqueIndentCount = otherGroup.uniqueIndents.size;
+    const { totalTrips: otherTrips } = calculateTripsByVehicleDay(otherGroup.allIndents);
+    
+    console.log(`[getFulfillmentAnalytics] Step 7: Range Other (300+) - Indent Count: ${otherIndentCount}, Unique Indent Count: ${otherUniqueIndentCount}, Trip Count: ${otherTrips}`);
+    
+    // Always include "Other" row (even if 0 trips)
+    rangeCounts.push({
+      range: 'Other',
+      bucketRange: '300+',
+      tripCount: otherTrips,
+      indentCount: otherIndentCount,
+      uniqueIndentCount: otherUniqueIndentCount
+    });
 
-    // Always return all ranges, even if counts are 0
-    // This ensures the table always displays the 4 bucket ranges
+    // STEP 8: Calculate total trip count (sum of all ranges)
+    const totalTripCount = rangeCounts.reduce((sum, range) => sum + range.tripCount, 0);
+    console.log(`[getFulfillmentAnalytics] Step 8: Total trip count (sum of all ranges): ${totalTripCount}`);
+
+    // Return response
     res.json({
       success: true,
       fulfillmentData: rangeCounts,
-      totalUniqueIndents: totalUniqueIndents, // Total unique indents (matches Card 2)
+      totalTrips: totalTripCount,
       dateRange: {
         from: fromDate?.toISOString().split('T')[0] || null,
         to: toDate?.toISOString().split('T')[0] || null
       }
     });
   } catch (error) {
+    console.error(`[getFulfillmentAnalytics] Error:`, error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch fulfillment analytics'
+    });
+  }
+};
+
+export const exportMissingIndents = async (req: Request, res: Response) => {
+  try {
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+
+    console.log(`[exportMissingIndents] ===== START =====`);
+    console.log(`[exportMissingIndents] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+
+    // STEP 1: Get all indents that match Card 2 criteria (non-blank range, date filtered)
+    const allIndents = await Trip.find({});
+    console.log(`[exportMissingIndents] Total indents in database: ${allIndents.length}`);
+    
+    let filteredIndents = [...allIndents];
+    
+    // Apply same date filtering as getAnalytics
+    if (fromDate && toDate) {
+      const fromMonth = format(fromDate, 'yyyy-MM');
+      const toMonth = format(toDate, 'yyyy-MM');
+      
+      if (fromMonth === toMonth) {
+        const targetMonthKey = fromMonth;
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        
+        filteredIndents = filteredIndents.filter(indent => {
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth === targetMonthKey) {
+              return true;
+            }
+          }
+          if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
+            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
+          }
+          return false;
+        });
+        
+        if (filteredIndents.length === 0) {
+          filteredIndents = allIndents.filter(indent => {
+            if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
+            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
+          });
+        }
+      } else {
+        const endDate = new Date(toDate);
+        endDate.setHours(23, 59, 59, 999);
+        
+        filteredIndents = filteredIndents.filter(indent => {
+          const dateMatches = indent.indentDate && 
+                             indent.indentDate instanceof Date && 
+                             !isNaN(indent.indentDate.getTime()) &&
+                             indent.indentDate >= fromDate && 
+                             indent.indentDate <= endDate;
+          
+          let freightTigerMatches = false;
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth) {
+              const monthDate = new Date(normalizedMonth + '-01');
+              freightTigerMatches = monthDate >= fromDate && monthDate <= endDate;
+            }
+          }
+          
+          return dateMatches || freightTigerMatches;
+        });
+      }
+    } else if (fromDate) {
+      filteredIndents = filteredIndents.filter(indent => {
+        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
+          return indent.indentDate >= fromDate;
+        }
+        return false;
+      });
+    } else if (toDate) {
+      const endDate = new Date(toDate);
+      endDate.setHours(23, 59, 59, 999);
+      filteredIndents = filteredIndents.filter(indent => {
+        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
+          return indent.indentDate <= endDate;
+        }
+        return false;
+      });
+    }
+
+    console.log(`[exportMissingIndents] Filtered indents after date filter: ${filteredIndents.length}`);
+    
+    // Log sample dates from filtered indents
+    if (filteredIndents.length > 0) {
+      const sampleDates = filteredIndents.slice(0, 5).map(indent => ({
+        indent: indent.indent,
+        indentDate: indent.indentDate ? format(indent.indentDate, 'yyyy-MM-dd') : 'N/A',
+        freightTigerMonth: indent.freightTigerMonth || 'N/A'
+      }));
+      console.log(`[exportMissingIndents] Sample dates from filtered indents:`, sampleDates);
+    }
+
+    // Filter for non-blank range (Card 2 criteria)
+    const card2Indents = filteredIndents.filter(indent => indent.range && indent.range.trim() !== '');
+    console.log(`[exportMissingIndents] Card 2 indents (non-blank range, date filtered): ${card2Indents.length}`);
+
+    // STEP 2: Get all unique indents that are assigned to bucket ranges in Fulfillment Trends
+    // We need to replicate the exact logic from getFulfillmentAnalytics
+    const fulfillmentIndents = new Set<string>();
+    
+    // Define bucket ranges (same as getFulfillmentAnalytics)
+    const bucketRanges = [
+      { min: 0, max: 150, label: '0 - 150' },
+      { min: 151, max: 200, label: '151 - 200' },
+      { min: 201, max: 250, label: '201 - 250' },
+      { min: 251, max: 300, label: '251 - 300' }
+    ];
+    
+    // Process each indent and assign to bucket range (same logic as getFulfillmentAnalytics)
+    let processedCount = 0;
+    let assignedCount = 0;
+    
+    for (const indent of card2Indents) {
+      if (!indent.indent) continue;
+      processedCount++;
+      
+      const material = (indent.material || '').trim();
+      const noOfBuckets = indent.noOfBuckets || 0;
+      let bucketCount = 0;
+      
+      if (material === '20L Buckets') {
+        bucketCount = noOfBuckets;
+      } else if (material === '210L Barrels') {
+        bucketCount = noOfBuckets * 10.5;
+      }
+      // If material missing/unknown, bucketCount = 0 (falls into 0-150 range)
+      
+      // Check if this indent would be assigned to a bucket range (same logic as getFulfillmentAnalytics)
+      let assigned = false;
+      for (const range of bucketRanges) {
+        if (bucketCount >= range.min && bucketCount <= range.max) {
+          assigned = true;
+          fulfillmentIndents.add(indent.indent);
+          assignedCount++;
+          break;
+        }
+      }
+      
+      // Check if it goes to "Other" (bucketCount > 300)
+      if (!assigned && bucketCount > 300) {
+        assigned = true;
+        fulfillmentIndents.add(indent.indent);
+        assignedCount++;
+      }
+      
+      // If bucketCount is 0 or negative, it still gets assigned to 0-150 as fallback
+      if (!assigned && bucketCount <= 0) {
+        assigned = true; // Gets assigned to 0-150 as fallback
+        fulfillmentIndents.add(indent.indent);
+        assignedCount++;
+      }
+      
+      // Log unassigned indents for debugging
+      if (!assigned) {
+        console.log(`[exportMissingIndents] WARNING: Indent ${indent.indent} not assigned! bucketCount=${bucketCount}, material=${material}, noOfBuckets=${noOfBuckets}`);
+      }
+    }
+    
+    console.log(`[exportMissingIndents] Processed indents: ${processedCount}, Assigned to ranges: ${assignedCount}`);
+    console.log(`[exportMissingIndents] Unique indents in Fulfillment Trends: ${fulfillmentIndents.size}`);
+
+    // STEP 3: Find missing indents (in Card 2 but not in Fulfillment Trends)
+    const card2UniqueIndents = new Set(card2Indents.filter(t => t.indent).map(t => t.indent));
+    const missingIndents = card2Indents.filter(indent => {
+      if (!indent.indent) return false;
+      // Include if it's a unique indent that's not in fulfillment trends
+      return !fulfillmentIndents.has(indent.indent);
+    });
+
+    // Remove duplicates (keep only unique indent values)
+    const uniqueMissingIndents = new Map<string, TripDocument>();
+    for (const indent of missingIndents) {
+      if (indent.indent && !uniqueMissingIndents.has(indent.indent)) {
+        uniqueMissingIndents.set(indent.indent, indent);
+      }
+    }
+
+    const missingIndentsArray = Array.from(uniqueMissingIndents.values());
+    console.log(`[exportMissingIndents] Missing indents (unique): ${missingIndentsArray.length}`);
+    console.log(`[exportMissingIndents] Card 2 total: ${card2UniqueIndents.size}, Fulfillment Trends: ${fulfillmentIndents.size}, Missing: ${missingIndentsArray.length}`);
+    
+    // Log sample missing indents for debugging
+    if (missingIndentsArray.length > 0) {
+      console.log(`[exportMissingIndents] Sample missing indents (first 3):`, missingIndentsArray.slice(0, 3).map(i => ({
+        indent: i.indent,
+        material: i.material,
+        noOfBuckets: i.noOfBuckets,
+        range: i.range
+      })));
+    } else {
+      console.log(`[exportMissingIndents] No missing indents found. All Card 2 indents are in Fulfillment Trends.`);
+    }
+
+    // STEP 4: Export to Excel
+    // If no missing indents, still create a file with headers and a message
+    let excelData: any[];
+    
+    if (missingIndentsArray.length === 0) {
+      // Create a single row with a message
+      excelData = [{
+        'S.No': 1,
+        'Indent Date': '',
+        'Indent': 'No missing indents found',
+        'Allocation Date': '',
+        'Customer Name': 'All indents from Card 2 are included in Fulfillment Trends',
+        'Location': '',
+        'Vehicle Model': '',
+        'Vehicle Number': '',
+        'Vehicle Based': '',
+        'LR No': '',
+        'Material': '',
+        'Load Per Bucket': 0,
+        'No. of Buckets': 0,
+        'Total Load (Kgs)': 0,
+        'POD Received': '',
+        'Loading Charge': 0,
+        'Unloading Charge': 0,
+        'Actual Running': 0,
+        'Billable Running': 0,
+        'Range': '',
+        'Remarks': '',
+        'Freight Tiger Month': ''
+      }];
+    } else {
+      excelData = missingIndentsArray.map((indent, index) => ({
+        'S.No': index + 1,
+        'Indent Date': indent.indentDate ? format(indent.indentDate, 'yyyy-MM-dd') : '',
+        'Indent': indent.indent || '',
+        'Allocation Date': indent.allocationDate ? format(indent.allocationDate, 'yyyy-MM-dd') : '',
+        'Customer Name': indent.customerName || '',
+        'Location': indent.location || '',
+        'Vehicle Model': indent.vehicleModel || '',
+        'Vehicle Number': indent.vehicleNumber || '',
+        'Vehicle Based': indent.vehicleBased || '',
+        'LR No': indent.lrNo || '',
+        'Material': indent.material || '',
+        'Load Per Bucket': indent.loadPerBucket || 0,
+        'No. of Buckets': indent.noOfBuckets || 0,
+        'Total Load (Kgs)': indent.totalLoad || 0,
+        'POD Received': indent.podReceived || '',
+        'Loading Charge': indent.loadingCharge || 0,
+        'Unloading Charge': indent.unloadingCharge || 0,
+        'Actual Running': indent.actualRunning || 0,
+        'Billable Running': indent.billableRunning || 0,
+        'Range': indent.range || '',
+        'Remarks': indent.remarks || '',
+        'Freight Tiger Month': indent.freightTigerMonth || ''
+      }));
+    }
+
+    console.log(`[exportMissingIndents] Excel data rows: ${excelData.length}`);
+    console.log(`[exportMissingIndents] Date filter applied: ${fromDate ? format(fromDate, 'yyyy-MM-dd') : 'None'} to ${toDate ? format(toDate, 'yyyy-MM-dd') : 'None'}`);
+
+    // Create workbook
+    const workbook = XLSX.utils.book_new();
+    
+    // Create Summary sheet with filter information
+    const summaryData = [
+      ['Export Information', ''],
+      ['Generated Date', format(new Date(), 'yyyy-MM-dd HH:mm:ss')],
+      ['Date Range Filter', ''],
+      ['From Date', fromDate ? format(fromDate, 'yyyy-MM-dd') : 'All Dates'],
+      ['To Date', toDate ? format(toDate, 'yyyy-MM-dd') : 'All Dates'],
+      ['', ''],
+      ['Calculation Summary', ''],
+      ['Total Card 2 Indents (Unique)', card2UniqueIndents.size],
+      ['Indents in Fulfillment Trends (Unique)', fulfillmentIndents.size],
+      ['Missing Indents (Unique)', missingIndentsArray.length],
+      ['Total Rows Processed', processedCount],
+      ['Rows Assigned to Ranges', assignedCount],
+      ['', ''],
+      ['Note', 'Missing indents are those counted in Card 2 (Total Trip) but not included in Fulfillment Trends bucket ranges.']
+    ];
+    
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    summarySheet['!cols'] = [{ wch: 30 }, { wch: 30 }];
+    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+    
+    // Create Missing Indents sheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    
+    // Set column widths for better readability
+    const colWidths = [
+      { wch: 8 },   // S.No
+      { wch: 12 },  // Indent Date
+      { wch: 15 },  // Indent
+      { wch: 12 },  // Allocation Date
+      { wch: 20 },  // Customer Name
+      { wch: 20 },  // Location
+      { wch: 15 },  // Vehicle Model
+      { wch: 15 },  // Vehicle Number
+      { wch: 15 },  // Vehicle Based
+      { wch: 12 },  // LR No
+      { wch: 15 },  // Material
+      { wch: 15 },  // Load Per Bucket
+      { wch: 15 },  // No. of Buckets
+      { wch: 15 },  // Total Load (Kgs)
+      { wch: 12 },  // POD Received
+      { wch: 15 },  // Loading Charge
+      { wch: 15 },  // Unloading Charge
+      { wch: 15 },  // Actual Running
+      { wch: 15 },  // Billable Running
+      { wch: 15 },  // Range
+      { wch: 20 },  // Remarks
+      { wch: 18 }   // Freight Tiger Month
+    ];
+    worksheet['!cols'] = colWidths;
+    
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Missing Indents');
+
+    // Generate Excel buffer
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    console.log(`[exportMissingIndents] Excel buffer size: ${excelBuffer.length} bytes`);
+
+    // Set response headers
+    const dateRangeStr = fromDate && toDate 
+      ? `${format(fromDate, 'yyyy-MM-dd')}_to_${format(toDate, 'yyyy-MM-dd')}`
+      : 'all_dates';
+    const filename = `Missing_Indents_${dateRangeStr}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', excelBuffer.length.toString());
+
+    // Send Excel file
+    res.send(excelBuffer);
+
+    console.log(`[exportMissingIndents] ===== END =====`);
+  } catch (error) {
+    console.error(`[exportMissingIndents] Error:`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to export missing indents'
     });
   }
 };
@@ -1265,4 +1644,5 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
     });
   }
 };
+
 

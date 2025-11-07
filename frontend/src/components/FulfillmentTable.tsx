@@ -1,11 +1,47 @@
 import { useFulfillmentData } from '../hooks/useFulfillmentData';
 import { useTheme } from '../context/ThemeContext';
+import { useDashboard } from '../context/DashboardContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import { formatIndentCount } from '../utils/fulfillmentCalculations';
+import { exportMissingIndents } from '../services/api';
+import { useState } from 'react';
 
 export default function FulfillmentTable() {
   const { data, loading, error } = useFulfillmentData();
   const { theme } = useTheme();
+  const { dateRange } = useDashboard();
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadMissingIndents = async () => {
+    try {
+      setDownloading(true);
+      const fromDate = dateRange.from ? new Date(dateRange.from) : undefined;
+      const toDate = dateRange.to ? new Date(dateRange.to) : undefined;
+      
+      const blob = await exportMissingIndents(fromDate, toDate);
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Generate filename
+      const dateRangeStr = fromDate && toDate 
+        ? `${fromDate.toISOString().split('T')[0]}_to_${toDate.toISOString().split('T')[0]}`
+        : 'all_dates';
+      link.download = `Missing_Indents_${dateRangeStr}.xlsx`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error downloading missing indents:', err);
+      alert('Failed to download missing indents. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className={`rounded-2xl ${
@@ -19,9 +55,22 @@ export default function FulfillmentTable() {
       <div className={`rounded-2xl p-6 h-full ${
         theme === 'light' ? 'bg-white border-0' : 'bg-white'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
-        <h2 className={`text-lg font-semibold mb-4 ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Fulfillment Trends</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className={`text-lg font-semibold ${
+            theme === 'light' ? 'text-black' : 'text-black'
+          }`}>Fulfillment Trends</h2>
+          <button
+            onClick={handleDownloadMissingIndents}
+            disabled={loading || downloading || !data || !data.fulfillmentData || data.fulfillmentData.length === 0}
+            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+              theme === 'light'
+                ? 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed'
+                : 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed'
+            }`}
+          >
+            {downloading ? 'Downloading...' : 'Download Missing Indents'}
+          </button>
+        </div>
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
@@ -43,48 +92,26 @@ export default function FulfillmentTable() {
                 }`}>Bucket Range</th>
                 <th className={`text-center py-3 px-4 text-sm font-medium ${
                   theme === 'light' ? 'text-gray-700' : 'text-black'
-                }`}>Indent Count</th>
-                <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-black'
-                }`}>Utilization Range</th>
+                }`}>Trip Count</th>
               </tr>
             </thead>
             <tbody>
               {data.fulfillmentData.map((item, index) => {
-                // Use bucketRange from API (primary calculation method)
-                // If not available, calculate from bucket ranges
-                let bucketRange = item.bucketRange;
+                // Use bucketRange from API (bucket count only, no percentage)
+                const bucketRange = item.bucketRange || item.range;
                 
-                // Replace "251+" with "251 - 300" for display
-                if (bucketRange === '251+') {
-                  bucketRange = '251 - 300';
-                }
-                
-                if (!bucketRange) {
-                  // Map percentage ranges to bucket ranges (calculated from bucket ranges)
-                  // Include both new and old percentage ranges for backward compatibility
-                  const rangeMap: { [key: string]: string } = {
-                    // New ranges (calculated from bucket ranges)
-                    '0 - 50%': '0 - 150',      // 0-150 → 0-50%
-                    '50 - 67%': '151 - 200',   // 151-200 → 50-67%
-                    '67 - 83%': '201 - 250',   // 201-250 → 67-83%
-                    '84 - 100%': '251 - 300',  // 251-300 → 84-100%
-                    // Old ranges (for backward compatibility until backend is updated)
-                    '51 - 70%': '151 - 200',   // 151-200 → 50-67% (old mapping)
-                    '71 - 90%': '201 - 250',  // 201-250 → 67-83% (old mapping)
-                    '91 - 100%': '251 - 300'  // 251-300 → 84-100% (old mapping)
-                  };
-                  bucketRange = rangeMap[item.range] || 'N/A';
-                }
-                
-                // Define colors for each fulfillment range
+                // Define colors for each bucket range
                 const fulfillmentColors = [
-                  '#E01E1F',   // Red - 0-150 (0-50%)
-                  '#FEA519',   // Orange/Yellow - 151-200 (50-67%)
-                  '#FF6B35',   // Orange-Red - 201-250 (67-83%)
-                  '#FF8C42'    // Light Orange - 251-300 (84-100%)
+                  '#E01E1F',   // Red - 0-150
+                  '#FEA519',   // Orange/Yellow - 151-200
+                  '#FF6B35',   // Orange-Red - 201-250
+                  '#FF8C42',   // Light Orange - 251-300
+                  '#9CA3AF'   // Gray - Other (300+)
                 ];
-                const rangeColor = fulfillmentColors[index % fulfillmentColors.length];
+                // Use gray for "Other" category, otherwise use the color array
+                const rangeColor = item.range === 'Other' || bucketRange === '300+'
+                  ? '#9CA3AF' 
+                  : fulfillmentColors[index % fulfillmentColors.length];
                 
                 return (
                   <tr
@@ -98,13 +125,21 @@ export default function FulfillmentTable() {
                     <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{bucketRange}</td>
                     <td className={`py-3 px-4 font-medium text-center ${
                       theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{formatIndentCount(item.indentCount)}</td>
-                    <td className={`py-3 px-4 font-medium ${
-                      theme === 'light' ? 'text-black' : 'text-black'
-                    }`} style={{ color: rangeColor }}>{item.range}</td>
+                    }`}>{formatIndentCount(item.tripCount)}</td>
                   </tr>
                 );
               })}
+              {/* Total Row */}
+              <tr className={`border-t-2 ${
+                theme === 'light' ? 'border-gray-300 bg-gray-50' : 'border-gray-400 bg-gray-100'
+              }`}>
+                <td className={`py-3 px-4 font-bold ${
+                  theme === 'light' ? 'text-black' : 'text-black'
+                }`}>Total</td>
+                <td className={`py-3 px-4 font-bold text-center ${
+                  theme === 'light' ? 'text-black' : 'text-black'
+                }`}>{formatIndentCount(data.totalTrips || 0)}</td>
+              </tr>
             </tbody>
           </table>
         </div>

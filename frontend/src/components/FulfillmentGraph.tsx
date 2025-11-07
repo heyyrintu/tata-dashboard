@@ -80,9 +80,9 @@ export default function FulfillmentGraph() {
 
   const chartData = calculateFulfillmentChartData(data.fulfillmentData);
 
-  // Calculate max y-axis value: find the highest indent count and add 10 extra points
-  const maxIndentCount = Math.max(...data.fulfillmentData.map(item => item.indentCount), 0);
-  const yAxisMax = maxIndentCount + 10;
+  // Calculate max y-axis value: find the highest trip count and add 10 extra points
+  const maxTripCount = Math.max(...data.fulfillmentData.map(item => item.tripCount), 0);
+  const yAxisMax = maxTripCount + 10;
 
   // Plugin to display values above bars
   const valuePlugin = {
@@ -136,7 +136,7 @@ export default function FulfillmentGraph() {
                 },
                 callbacks: {
                   label: function (context) {
-                    return `Indents: ${formatIndentCount(context.parsed.y || 0)}`;
+                    return `Trips: ${formatIndentCount(context.parsed.y || 0)}`;
                   },
                 },
               },

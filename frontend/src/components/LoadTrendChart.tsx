@@ -24,7 +24,7 @@ ChartJS.register(
 );
 
 export default function LoadTrendChart() {
-  const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
   const { data, loading } = useLoadOverTime(granularity);
   const { theme } = useTheme();
 

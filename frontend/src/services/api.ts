@@ -148,6 +148,22 @@ export const getFulfillmentAnalytics = async (fromDate?: Date, toDate?: Date): P
   return response.data;
 };
 
+export const exportMissingIndents = async (fromDate?: Date, toDate?: Date): Promise<Blob> => {
+  const params = new URLSearchParams();
+  
+  if (fromDate) {
+    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+  }
+  if (toDate) {
+    params.append('toDate', toDate.toISOString().split('T')[0]);
+  }
+
+  const response = await api.get(`/analytics/fulfillment/export-missing?${params.toString()}`, {
+    responseType: 'blob'
+  });
+  return response.data;
+};
+
 export const getLoadOverTime = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<LoadOverTimeResponse> => {
   const params = new URLSearchParams();
   params.append('granularity', granularity);
