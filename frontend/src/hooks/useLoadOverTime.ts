@@ -8,7 +8,7 @@ interface LoadOverTimeDataPoint {
   avgFulfillment: number;
   indentCount: number;
   bucketCount: number;
-  barrelCount: number;
+  barrelCount?: number;
 }
 
 interface LoadOverTimeResponse {

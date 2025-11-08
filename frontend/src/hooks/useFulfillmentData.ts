@@ -5,7 +5,8 @@ import { getFulfillmentAnalytics } from '../services/api';
 interface FulfillmentData {
   range: string;
   bucketRange?: string;
-  tripCount: number;
+  indentCount: number;
+  tripCount?: number;
 }
 
 interface FulfillmentResponse {

@@ -107,7 +107,7 @@ export default function FulfillmentTrendChart() {
                   boxWidth: 8,
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : ('normal' as const),
                   },
                   padding: 5,
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
@@ -121,10 +121,10 @@ export default function FulfillmentTrendChart() {
                 borderWidth: 1,
                 cornerRadius: 8,
                 titleFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
                 },
                 bodyFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
                 },
               },
             },
@@ -133,7 +133,7 @@ export default function FulfillmentTrendChart() {
                 ticks: {
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : ('normal' as const),
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   maxRotation: 0
@@ -146,7 +146,7 @@ export default function FulfillmentTrendChart() {
                 ticks: {
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : ('normal' as const),
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   callback: function (value) {
@@ -159,7 +159,6 @@ export default function FulfillmentTrendChart() {
                 },
                 grid: {
                   color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
-                  drawBorder: false,
                 },
                 beginAtZero: true,
                 max: 120, // Set to 120% to add space at the top inside the chart area

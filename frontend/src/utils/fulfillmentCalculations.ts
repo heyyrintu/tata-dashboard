@@ -2,7 +2,8 @@ export const TRUCK_CAPACITY = 6000;
 
 export interface FulfillmentData {
   range: string;
-  tripCount: number;
+  indentCount: number;
+  tripCount?: number;
 }
 
 export const formatIndentCount = (count: number): string => {
@@ -11,7 +12,7 @@ export const formatIndentCount = (count: number): string => {
 
 export const calculateFulfillmentChartData = (fulfillmentData: FulfillmentData[]) => {
   const labels = fulfillmentData.map(item => item.range);
-  const data = fulfillmentData.map(item => item.tripCount);
+  const data = fulfillmentData.map(item => item.indentCount || 0);
   
   const colors = [
     'rgba(224, 30, 31, 0.8)',   // Red - 0-150 buckets

@@ -144,7 +144,7 @@ export default function ProfitLossOverTimeChart() {
           boxWidth: 8,
           font: { 
             size: 10,
-            weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+            weight: theme === 'light' ? 600 : ('normal' as const),
           },
           padding: 5,
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
@@ -158,10 +158,10 @@ export default function ProfitLossOverTimeChart() {
         borderWidth: 1,
         cornerRadius: 8,
         titleFont: {
-          weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+          weight: theme === 'light' ? 600 : ('normal' as const),
         },
         bodyFont: {
-          weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+          weight: theme === 'light' ? 600 : ('normal' as const),
         },
         callbacks: {
           label: function(context: any) {
@@ -178,7 +178,7 @@ export default function ProfitLossOverTimeChart() {
         ticks: {
           font: { 
             size: 10,
-            weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+            weight: theme === 'light' ? 600 : ('normal' as const),
           },
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           maxRotation: 0
@@ -191,7 +191,7 @@ export default function ProfitLossOverTimeChart() {
         ticks: {
           font: { 
             size: 10,
-            weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+            weight: theme === 'light' ? 600 : ('normal' as const),
           },
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           callback: function(value: any) {

@@ -1,14 +1,14 @@
 import { useRangeData } from '../hooks/useRangeData';
 import { useTheme } from '../context/ThemeContext';
-import { useDashboard } from '../context/DashboardContext';
+// import { useDashboard } from '../context/DashboardContext'; // Reserved for future use
 import { LoadingSpinner } from './LoadingSpinner';
-import { formatLoad, formatPercentage, formatBucketBarrelCount } from '../utils/rangeCalculations';
+import { formatPercentage, formatBucketBarrelCount } from '../utils/rangeCalculations';
 import { RANGE_COLORS } from '../utils/constants';
 
 export default function RangeWiseTable() {
   const { data, loading } = useRangeData();
   const { theme } = useTheme();
-  const { metrics } = useDashboard();
+  // const { metrics } = useDashboard(); // Reserved for future use
 
   return (
     <div className={`rounded-2xl ${

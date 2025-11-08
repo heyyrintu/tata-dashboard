@@ -9,7 +9,7 @@ import './DateRangeSelector.css';
 export default function DateRangeSelector() {
   const { dateRange, setDateRange } = useDashboard();
   const { theme } = useTheme();
-  const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(new Date());
+  const [, setSelectedMonthDate] = useState<Date | null>(new Date());
   
   // Local state for pending changes
   const [pendingFrom, setPendingFrom] = useState<Date | null>(dateRange.from);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type DottedGlowBackgroundProps = {
   className?: string;
@@ -203,12 +203,12 @@ export const DottedGlowBackground = ({
 
     regenDots();
 
-    let last = performance.now();
+    // let last = performance.now(); // Reserved for future use
 
     const draw = (now: number) => {
       if (stopped) return;
-      const dt = (now - last) / 1000; // seconds
-      last = now;
+      // const dt = (now - last) / 1000; // seconds - reserved for future use
+      // last = now; // Reserved for future use
       const { width, height } = container.getBoundingClientRect();
 
       ctx.clearRect(0, 0, el.width, el.height);

@@ -7,7 +7,6 @@ import {
 import { Doughnut } from 'react-chartjs-2';
 import { useFulfillmentData } from '../../hooks/useFulfillmentData';
 import { useTheme } from '../../context/ThemeContext';
-import { RANGE_COLORS } from '../../utils/constants';
 import { LoadingSpinner } from '../LoadingSpinner';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
@@ -68,7 +67,7 @@ export default function FulfillmentDonutChart() {
     '#FF8C42'    // Light Orange - 91-100%
   ];
   
-  const colors = data.fulfillmentData.map((item, index) => {
+  const colors = data.fulfillmentData.map((_item, index) => {
     // Use index-based color assignment for fulfillment ranges
     return fulfillmentColors[index % fulfillmentColors.length];
   });
@@ -163,7 +162,7 @@ export default function FulfillmentDonutChart() {
                       boxWidth: 12,
                       font: {
                         size: 11,
-                        weight: '500' as const
+                        weight: 500
                       },
                       padding: 10,
                       usePointStyle: true,

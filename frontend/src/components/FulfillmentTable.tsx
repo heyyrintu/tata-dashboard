@@ -125,7 +125,7 @@ export default function FulfillmentTable() {
                     <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{bucketRange}</td>
                     <td className={`py-3 px-4 font-medium text-center ${
                       theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{formatIndentCount(item.tripCount)}</td>
+                    }`}>{formatIndentCount(item.indentCount || 0)}</td>
                   </tr>
                 );
               })}

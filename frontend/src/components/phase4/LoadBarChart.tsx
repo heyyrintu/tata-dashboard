@@ -153,7 +153,8 @@ export default function LoadBarChart() {
               scales: {
                 x: {
                   ticks: {
-                    font: { size: 11, color: theme === 'light' ? '#000000' : '#374151' },
+                    font: { size: 11 },
+                    color: theme === 'light' ? '#000000' : '#374151',
                     callback: function (value) {
                       return formatCompactNumber((value as number) || 0);
                     }
@@ -164,7 +165,8 @@ export default function LoadBarChart() {
                 },
                 y: {
                   ticks: {
-                    font: { size: 11, color: theme === 'light' ? '#000000' : '#374151' }
+                    font: { size: 11 },
+                    color: theme === 'light' ? '#000000' : '#374151'
                   },
                   grid: {
                     display: false

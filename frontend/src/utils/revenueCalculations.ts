@@ -12,15 +12,24 @@ export const formatCurrency = (amount: number): string => {
 };
 
 // Calculate revenue by range from range data
-export const calculateRevenueByRange = (rangeData: Array<{ range: string; bucketCount: number }>): RevenueByRange[] => {
+export const calculateRevenueByRange = (rangeData: Array<{ range: string; bucketCount: number; barrelCount?: number }>): RevenueByRange[] => {
   return rangeData.map(item => {
-    const rate = BUCKET_RATES[item.range] || 0;
-    const revenue = item.bucketCount * rate;
+    const bucketRate = BUCKET_RATES[item.range] || 0;
+    const barrelRate = 0; // Default barrel rate
+    const bucketCount = item.bucketCount || 0;
+    const barrelCount = item.barrelCount || 0;
+    const bucketRevenue = bucketCount * bucketRate;
+    const barrelRevenue = barrelCount * barrelRate;
+    const revenue = bucketRevenue + barrelRevenue;
     
     return {
       range: item.range,
-      rate: rate,
-      bucketCount: item.bucketCount,
+      bucketRate: bucketRate,
+      barrelRate: barrelRate,
+      bucketCount: bucketCount,
+      barrelCount: barrelCount,
+      bucketRevenue: bucketRevenue,
+      barrelRevenue: barrelRevenue,
       revenue: revenue
     };
   });

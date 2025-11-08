@@ -63,7 +63,7 @@ export function TypewriterEffect({
   return (
     <div className={cn("text-center text-2xl font-bold", className)}>
       {words.map((word, idx) => {
-        const isActive = idx === currentWordIndex;
+        // const isActive = idx === currentWordIndex; // Reserved for future use
         return (
           <span
             key={idx}

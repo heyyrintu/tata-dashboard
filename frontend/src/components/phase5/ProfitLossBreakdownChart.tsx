@@ -9,7 +9,7 @@ import { Doughnut } from 'react-chartjs-2';
 import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingSpinner } from '../LoadingSpinner';
-import { formatIndianNumber, formatPercentage, formatProfitLoss } from '../../utils/profitLossCalculations';
+import { formatPercentage, formatProfitLoss } from '../../utils/profitLossCalculations';
 import { PROFIT_LOSS_COLORS } from '../../utils/constants';
 
 ChartJS.register(

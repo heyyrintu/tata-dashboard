@@ -146,10 +146,10 @@ export default function LoadTrendChart() {
                 borderWidth: 1,
                 cornerRadius: 8,
                 titleFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? 600 : ('normal' as const),
                 },
                 bodyFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? 600 : ('normal' as const),
                 },
               },
             },
@@ -158,7 +158,7 @@ export default function LoadTrendChart() {
                 ticks: {
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : ('normal' as const),
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   maxRotation: 0
@@ -171,7 +171,7 @@ export default function LoadTrendChart() {
                 ticks: {
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : ('normal' as const),
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                 },

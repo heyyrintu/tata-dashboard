@@ -143,7 +143,7 @@ export default function KPILoadTrendChart() {
                   position: 'top' as const,
                   labels: {
                     boxWidth: 8,
-                    font: { size: 10, color: theme === 'light' ? '#000000' : '#374151' },
+                    font: { size: 10 },
                     padding: 5
                   }
                 },
@@ -159,7 +159,8 @@ export default function KPILoadTrendChart() {
               scales: {
                 x: {
                   ticks: {
-                    font: { size: 10, color: theme === 'light' ? '#000000' : '#374151' },
+                    font: { size: 10 },
+                    color: theme === 'light' ? '#000000' : '#374151',
                     maxRotation: 0
                   },
                   grid: {
@@ -168,14 +169,14 @@ export default function KPILoadTrendChart() {
                 },
                 y: {
                   ticks: {
-                    font: { size: 10, color: theme === 'light' ? '#000000' : '#374151' },
+                    font: { size: 10 },
+                    color: theme === 'light' ? '#000000' : '#374151',
                     callback: function (value) {
                       return `${(value as number) / 1000}K`;
                     }
                   },
                   grid: {
                     color: 'rgba(229, 231, 235, 0.5)',
-                    drawBorder: false,
                   },
                   beginAtZero: true,
                 },

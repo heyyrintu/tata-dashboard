@@ -8,7 +8,7 @@ import { calculateTotalLoad } from '../utils/phase4Calculations';
 export default function SummaryCards() {
   const { metrics, isLoading } = useDashboard();
   const { theme } = useTheme();
-  const { data: revenueData, loading: revenueLoading } = useRevenueData();
+  const { loading: revenueLoading } = useRevenueData(); // revenueData reserved for future use
   const { data: rangeData, loading: rangeLoading } = useRangeData();
 
   // Calculate total load: use totalLoad from API if available, otherwise sum from rangeData
@@ -46,9 +46,9 @@ export default function SummaryCards() {
   }
   
   // Keep revenue metrics for other calculations if needed
-  const revenueTotalBuckets = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0) : 0;
-  const revenueTotalBarrels = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0) : 0;
-  const totalUnits = totalBuckets + totalBarrels;
+  // const revenueTotalBuckets = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0) : 0;
+  // const revenueTotalBarrels = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0) : 0;
+  // const totalUnits = totalBuckets + totalBarrels;
   
   // Calculate Avg Buckets/Trip: Convert barrels to buckets (1 barrel = 10.5 buckets) and divide by Card 2 (Total Trip)
   const totalBucketsIncludingBarrels = totalBuckets + (totalBarrels * 10.5);

@@ -80,8 +80,8 @@ export default function FulfillmentGraph() {
 
   const chartData = calculateFulfillmentChartData(data.fulfillmentData);
 
-  // Calculate max y-axis value: find the highest trip count and add 10 extra points
-  const maxTripCount = Math.max(...data.fulfillmentData.map(item => item.tripCount), 0);
+  // Calculate max y-axis value: find the highest indent count and add 10 extra points
+  const maxTripCount = Math.max(...data.fulfillmentData.map(item => item.indentCount || 0), 0);
   const yAxisMax = maxTripCount + 10;
 
   // Plugin to display values above bars
@@ -129,10 +129,10 @@ export default function FulfillmentGraph() {
                 borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : 'rgba(30, 58, 138, 0.5)',
                 borderWidth: 1,
                 titleFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? 600 : ('normal' as const),
                 },
                 bodyFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? 600 : ('normal' as const),
                 },
                 callbacks: {
                   label: function (context) {
@@ -146,7 +146,7 @@ export default function FulfillmentGraph() {
                 ticks: {
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   font: {
-                    weight: theme === 'light' ? '600' : '600',
+                    weight: 600,
                   },
                   callback: function (value) {
                     return formatIndentCount(value as number);
@@ -162,7 +162,7 @@ export default function FulfillmentGraph() {
                 ticks: {
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   font: {
-                    weight: theme === 'light' ? '600' : '600',
+                    weight: 600,
                   },
                 },
                 grid: {
