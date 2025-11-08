@@ -54,14 +54,7 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
     multiple: false,
     noClick: true,
     onDrop: handleFileChange,
-    onDropRejected: (error) => {
-      console.log(error);
-      setUploadStatus({ type: 'error', message: 'Invalid file type. Only Excel files (.xlsx, .xls) are allowed.' });
-    },
-    accept: {
-      'application/vnd.ms-excel': ['.xls'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
-    }
+    // No file type restrictions - accept all files
   });
 
   const handleProcess = async () => {
@@ -133,7 +126,7 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
           <div className="flex justify-between items-center mb-6">
             <h2 className={`text-2xl font-bold ${
               theme === 'light' ? 'text-black' : 'text-white'
-            }`}>Upload Excel File</h2>
+            }`}>Upload File</h2>
           </div>
 
           <div className="w-full" {...getRootProps()}>
@@ -146,7 +139,6 @@ export const FileUploadNew = ({ onClose }: FileUploadNewProps) => {
                 ref={fileInputRef}
                 id="file-upload-handle"
                 type="file"
-                accept=".xlsx,.xls"
                 onChange={(e) => {
                   const selectedFiles = Array.from(e.target.files || []);
                   if (selectedFiles.length > 0) {

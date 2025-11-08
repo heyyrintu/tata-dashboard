@@ -2,7 +2,6 @@ import express from 'express';
 import multer from 'multer';
 import path from 'path';
 import { uploadExcel } from '../controllers/uploadController';
-import { authenticate } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
@@ -16,13 +15,8 @@ const sanitizeFilename = (filename: string): string => {
     .replace(/[<>:"|?*]/g, '') // Remove Windows reserved characters
     .trim();
   
-  // Ensure it has a valid extension
-  const ext = path.extname(sanitized).toLowerCase();
-  if (!ext || !['.xlsx', '.xls'].includes(ext)) {
-    return `${Date.now()}-upload${ext || '.xlsx'}`;
-  }
-  
-  return sanitized;
+  // Preserve original extension
+  return sanitized || `${Date.now()}-upload`;
 };
 
 // Configure multer for file uploads
@@ -38,42 +32,51 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
   storage,
-  fileFilter: async (req, file, cb) => {
-    try {
-      const allowedExtensions = ['.xlsx', '.xls'];
-      const ext = path.extname(file.originalname).toLowerCase();
-      
-      // Check extension first (quick check)
-      if (!allowedExtensions.includes(ext)) {
-        logger.warn('File upload rejected: Invalid extension', {
-          filename: file.originalname,
-          extension: ext,
-          requestId: req.id
-        });
-        return cb(new Error('Invalid file type. Only Excel files (.xlsx, .xls) are allowed.'));
-      }
-
-      // Note: Actual MIME type validation happens after file is uploaded
-      // in the controller using file-type library for better security
-      cb(null, true);
-    } catch (error) {
-      logger.error('File filter error', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-        requestId: req.id
-      });
-      cb(new Error('Error validating file.'));
-    }
-  },
+  // No fileFilter - accept all file types
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB limit (increased from 10MB for large Excel files)
+    fileSize: 500 * 1024 * 1024 // 500MB limit (increased significantly)
   }
 });
 
-// Apply authentication middleware
-router.use(authenticate);
+// Error handler for multer errors (must be 4-parameter function)
+const handleMulterError = (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const requestId = req.id || 'unknown';
+  
+  if (err) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      logger.warn('File upload rejected: File too large', { requestId, maxSize: '500MB' });
+      return res.status(400).json({
+        success: false,
+        error: 'File too large. Maximum size is 500MB.'
+      });
+    }
+    
+    if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      logger.warn('File upload rejected: Unexpected file field', { requestId });
+      return res.status(400).json({
+        success: false,
+        error: 'File upload error. Please try again.'
+      });
+    }
+    
+    logger.error('Multer error', { requestId, error: err.message || 'Unknown multer error', code: err.code });
+    return res.status(400).json({
+      success: false,
+      error: err.message || 'File upload failed. Please check the file and try again.'
+    });
+  }
+  next();
+};
 
-// File upload endpoint
-router.post('/', upload.single('file'), uploadExcel);
+// File upload endpoint with multer error handling
+router.post('/', (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      return handleMulterError(err, req, res, next);
+    }
+    next();
+  });
+}, uploadExcel);
 
 export default router;
 

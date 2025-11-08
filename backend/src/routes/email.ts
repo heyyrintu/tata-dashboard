@@ -5,13 +5,9 @@ import {
   startEmailService,
   stopEmailService
 } from '../controllers/emailController';
-import { authenticate } from '../middleware/auth';
 import { validate, validateEmailProcess } from '../middleware/validation';
 
 const router = express.Router();
-
-// Apply authentication middleware to all email routes
-router.use(authenticate);
 
 // Manual email processing endpoint
 router.post('/process', validate(validateEmailProcess), processEmails);

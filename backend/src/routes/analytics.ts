@@ -1,12 +1,8 @@
 import express from 'express';
 import { getAnalytics, getRangeWiseAnalytics, getFulfillmentAnalytics, getLoadOverTime, getRevenueAnalytics, getCostAnalytics, getProfitLossAnalytics, getMonthOnMonthAnalytics, exportMissingIndents } from '../controllers/analyticsController';
-import { authenticate } from '../middleware/auth';
 import { validate, validateAnalyticsQuery } from '../middleware/validation';
 
 const router = express.Router();
-
-// Apply authentication middleware to all analytics routes
-router.use(authenticate);
 
 router.get('/', validate(validateAnalyticsQuery), getAnalytics);
 router.get('/range-wise', validate(validateAnalyticsQuery), getRangeWiseAnalytics);

@@ -6,40 +6,27 @@ This document outlines the security features implemented in the TATA DEF Dashboa
 
 ### 1. Authentication
 
-The application uses a **two-tier authentication model** for security:
+**Note: API key authentication has been removed from the application.**
+
+The application now relies on **CORS protection** as the primary security mechanism:
 
 **Security Model:**
-- **Frontend Requests**: Requests from trusted frontend origins (configured via `FRONTEND_URL`) are automatically allowed without API key. This is secure because:
-  - CORS restricts which origins can make requests
-  - The frontend and backend are on the same domain/trusted network
-  - No API key is exposed in the browser
-- **External/Direct API Access**: Direct API calls (e.g., from scripts, Postman, curl) require an API key
+- API endpoints are accessible to all requests from trusted frontend origins (configured via `FRONTEND_URL`)
+- CORS restricts which origins can make requests to the API
+- The frontend and backend are on the same domain/trusted network
 
 **Setup:**
-1. Generate a strong API key:
-   ```bash
-   openssl rand -base64 32
-   ```
-2. Set it in your backend `.env` file:
-   ```env
-   API_KEY=your-generated-api-key-here
-   FRONTEND_URL=https://apps.dronalogitech.cloud
-   ```
-
-**Usage:**
-- **Frontend**: No API key needed! Requests from `FRONTEND_URL` are automatically trusted
-- **External API Access**: Include the API key in the `Authorization` header:
-  ```
-  Authorization: Bearer your-api-key-here
-  ```
-- Or via query parameter (less secure, not recommended):
-  ```
-  ?apiKey=your-api-key-here
-  ```
+Set `FRONTEND_URL` in your backend `.env` file:
+```env
+FRONTEND_URL=https://apps.dronalogitech.cloud
+# Multiple origins (comma-separated):
+FRONTEND_URL=https://apps.dronalogitech.cloud,https://www.apps.dronalogitech.cloud
+```
 
 **Note:** 
-- If `API_KEY` is not set, the application will allow all requests (development mode). This is **NOT recommended** for production.
-- The frontend does **NOT** need `VITE_API_KEY` set - it's only needed for external API access
+- In production, ensure `FRONTEND_URL` is set to your actual frontend domain
+- In development, CORS allows all origins (`NODE_ENV=development`)
+- For additional security, consider using IP whitelisting (see below) or implementing proper user authentication
 
 ### 2. IP Whitelisting (Optional)
 

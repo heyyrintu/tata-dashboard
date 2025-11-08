@@ -17,16 +17,9 @@ export default function FileUpload({ onClose }: FileUploadProps) {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      const validExtensions = ['.xlsx', '.xls'];
-      const ext = selectedFile.name.substring(selectedFile.name.lastIndexOf('.'));
-      
-      if (validExtensions.includes(ext.toLowerCase())) {
-        setFile(selectedFile);
-        setUploadStatus(null);
-      } else {
-        setUploadStatus({ type: 'error', message: 'Invalid file type. Only Excel files (.xlsx, .xls) are allowed.' });
-        setFile(null);
-      }
+      // Accept all file types - no restrictions
+      setFile(selectedFile);
+      setUploadStatus(null);
     }
   };
 
@@ -87,13 +80,12 @@ export default function FileUpload({ onClose }: FileUploadProps) {
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="glass-card rounded-2xl shadow-2xl max-w-md w-full mx-4 border border-slate-700">
         <div className="p-6">
-          <h2 className="text-xl font-bold text-white mb-4">Upload Excel File</h2>
+          <h2 className="text-xl font-bold text-white mb-4">Upload File</h2>
 
           <div className="mb-4">
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls"
               onChange={handleFileChange}
               className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary-500 file:text-white hover:file:bg-primary-600"
             />

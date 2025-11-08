@@ -58,8 +58,8 @@ if (isProduction && !process.env.FRONTEND_URL) {
 app.use(cors(corsOptions));
 
 // Body parsing middleware
-app.use(express.json({ limit: '50mb' })); // Increase limit for large Excel files
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '500mb' })); // Increased limit for large file uploads
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = path.join(__dirname, '../uploads');

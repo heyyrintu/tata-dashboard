@@ -43,30 +43,23 @@ export const processExcelFile = async (
       throw new Error('No file path or buffer provided');
     }
 
-    // Validate file content (MIME type) for security
+    // MIME type validation removed - accept all file types
+    // Log file type for debugging purposes only
     try {
       const fileType = await fileTypeFromFile(finalPath);
-      const allowedMimeTypes = [
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
-        'application/vnd.ms-excel', // .xls
-        'application/zip' // Excel files are actually ZIP files
-      ];
-
-      if (!fileType || !allowedMimeTypes.includes(fileType.mime)) {
-        logger.warn('File upload rejected: Invalid MIME type', {
+      if (fileType) {
+        logger.debug('File type detected', {
           fileName,
-          detectedMime: fileType?.mime,
-          allowedMimeTypes
+          mimeType: fileType.mime,
+          ext: fileType.ext
         });
-        throw createError('Invalid file type. File content does not match Excel format.', 400);
       }
     } catch (mimeError) {
-      // If file-type fails, log but allow (some Excel files may not be detected correctly)
-      logger.warn('MIME type validation warning', {
+      // Ignore MIME type detection errors - not blocking
+      logger.debug('MIME type detection skipped', {
         fileName,
         error: mimeError instanceof Error ? mimeError.message : 'Unknown error'
       });
-      // Continue with extension-based validation as fallback
     }
 
     // Parse the Excel file
@@ -202,7 +195,7 @@ export const uploadExcel = async (req: Request, res: Response) => {
       logger.warn('File upload attempt with no file', { requestId });
       return res.status(400).json({ 
         success: false, 
-        error: 'No file uploaded' 
+        error: 'No file uploaded.' 
       });
     }
 

@@ -97,9 +97,9 @@ MONGODB_URI=mongodb://localhost:27017/tata-dashboard
 # For secured MongoDB with authentication:
 # MONGODB_URI=mongodb://admin:your-secure-password@localhost:27017/tata-dashboard?authSource=admin
 
-# Security Configuration (REQUIRED in production)
-# Generate a strong API key: openssl rand -base64 32
-API_KEY=your-secure-api-key-here
+# Security Configuration
+# Note: API key authentication has been removed - API is accessible to all requests from FRONTEND_URL
+# CORS protection via FRONTEND_URL is the primary security mechanism
 
 # Optional: IP Whitelist (comma-separated IP addresses)
 # If set, only these IPs can access the API
@@ -126,7 +126,6 @@ VITE_API_URL=http://your-domain.com/api
 
 Before starting the application, ensure:
 
-- [ ] `API_KEY` is set in `.env` (generate with: `openssl rand -base64 32`)
 - [ ] `FRONTEND_URL` is set to your actual domain/IP
 - [ ] MongoDB is secured with authentication (recommended)
 - [ ] Firewall is configured (ports 22, 80, 443 only)
@@ -412,36 +411,9 @@ mongosh  # MongoDB shell
 
 ## Security Configuration
 
-### API Key Authentication
+**Note: API key authentication has been removed from the application.**
 
-All API endpoints (except `/health`) require authentication via API key.
-
-**Generate API Key:**
-```bash
-openssl rand -base64 32
-```
-
-**Set in `.env`:**
-```env
-API_KEY=your-generated-api-key-here
-```
-
-**Use in Requests:**
-```bash
-# Via Authorization header (recommended)
-curl -H "Authorization: Bearer your-api-key" http://your-domain.com/api/analytics
-
-# Via query parameter (less secure)
-curl http://your-domain.com/api/analytics?apiKey=your-api-key
-```
-
-**Frontend Configuration:**
-Update your API service to include the API key in all requests:
-```typescript
-headers: {
-  'Authorization': `Bearer ${import.meta.env.VITE_API_KEY}`
-}
-```
+The application now relies on **CORS protection** as the primary security mechanism. API endpoints are accessible to all requests from trusted frontend origins.
 
 ### CORS Configuration
 
@@ -469,8 +441,7 @@ For more security details, see `SECURITY.md`.
 - **MongoDB connection issues**: Verify MongoDB is running `sudo systemctl status mongod`
 - **Nginx 502 error**: Check backend is running on port 5000
 - **File upload fails**: Verify uploads directory permissions and Nginx `client_max_body_size`
-- **Authentication errors**: Verify `API_KEY` is set in `.env` and included in requests
-- **CORS errors**: Check `FRONTEND_URL` is set correctly in `.env`
+- **CORS errors**: Verify `FRONTEND_URL` is set correctly in `.env` to match your frontend domain
 - **Rate limit errors**: Normal behavior - wait 15 minutes or increase limit in code (not recommended)
 
 ### Email Service Issues

@@ -97,35 +97,30 @@ interface LoadOverTimeResponse {
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-// Note: API key is no longer needed in frontend - backend allows requests from trusted origins
-// Only set this if you need to access the API from outside the frontend (e.g., direct API calls)
-const API_KEY = import.meta.env.VITE_API_KEY;
 
 const api = axios.create({
   baseURL: API_URL,
   headers: {
-    'Content-Type': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     'Pragma': 'no-cache',
     'Expires': '0',
   },
 });
 
-// Add API key to requests only if explicitly configured (for external API access)
-// Frontend requests from the same origin don't need the key - backend trusts them via CORS
-if (API_KEY) {
-  api.interceptors.request.use((config) => {
-    config.headers.Authorization = `Bearer ${API_KEY}`;
-    return config;
-  });
-}
+// Set Content-Type for JSON requests only (not for FormData)
+api.interceptors.request.use((config) => {
+  // Only set Content-Type if it's not FormData
+  if (!(config.data instanceof FormData) && !config.headers['Content-Type']) {
+    config.headers['Content-Type'] = 'application/json';
+  }
+  return config;
+});
 
 export const uploadExcel = async (file: File): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  // Don't set Content-Type manually - axios will set it automatically for FormData
-  // This ensures the Authorization header from the interceptor is preserved
+  // Don't set Content-Type - axios will automatically set it with boundary for FormData
   const response = await api.post<UploadResponse>('/upload', formData);
 
   return response.data;
