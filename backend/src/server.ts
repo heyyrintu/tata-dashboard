@@ -30,13 +30,22 @@ app.use(helmet({
 // Request ID middleware - Add unique ID to each request for tracking
 app.use(requestId());
 
-// Rate Limiting
+// Rate Limiting - Configurable via environment variables
+// Default: 10,000 requests per 15 minutes in production, 50,000 in development
+const rateLimitMax = process.env.RATE_LIMIT_MAX 
+  ? parseInt(process.env.RATE_LIMIT_MAX, 10)
+  : (isProduction ? 10000 : 50000);
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isProduction ? 100 : 1000, // Limit each IP to 100 requests per windowMs in production
+  max: rateLimitMax,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => {
+    // Skip rate limiting for health checks
+    return req.path === '/health';
+  },
 });
 
 // Apply rate limiting to API routes
