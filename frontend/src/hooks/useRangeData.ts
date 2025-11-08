@@ -10,6 +10,8 @@ interface RangeWiseData {
   percentage: number;
   bucketCount: number;
   barrelCount: number;
+  totalCost?: number; // Total cost for this range
+  profitLoss?: number; // Profit & Loss for this range
 }
 
 interface LocationData {
@@ -27,6 +29,8 @@ interface RangeWiseResponse {
   locations: LocationData[];
   totalUniqueIndents?: number;
   totalLoad?: number; // Total load from all indents in date range (in kg)
+  totalCost?: number; // Total cost from all indents in date range
+  totalProfitLoss?: number; // Total profit & loss from all indents in date range
   totalBuckets?: number;
   totalBarrels?: number;
   totalRows?: number;
@@ -62,6 +66,8 @@ export const useRangeData = () => {
         hasOther: response.rangeData?.some(r => r.range === 'Other') || false,
         totalUniqueIndents: response.totalUniqueIndents,
         totalLoad: response.totalLoad,
+        totalCost: response.totalCost,
+        totalProfitLoss: response.totalProfitLoss,
         totalRows: response.totalRows
       });
       

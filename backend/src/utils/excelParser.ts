@@ -98,26 +98,33 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         freightTigerMonth: convertFreightTigerMonth(row['Freight Tiger Month']),
         // Use column AE (index 30) for Total Cost - this is the 2nd "Total Cost" column
         // Column AE has formula: W+Y+AB+AD (sum of multiple cost components)
-        // When reading with sheet_to_json, column AE is at index 30
+        // Column header is "Any Other Cost" (confirmed from Excel file)
         totalCost: (() => {
-          const rowKeys = Object.keys(row);
-          // Column AE is the 31st column (0-indexed: 30)
-          // Get value from column index 30 directly
-          if (rowKeys.length > 30 && rowKeys[30]) {
-            const aeValue = row[rowKeys[30]];
-            if (aeValue !== undefined && aeValue !== null && aeValue !== '') {
-              const numValue = parseFloat(aeValue);
-              if (!isNaN(numValue)) {
-                return numValue;
-              }
+          // Primary: Use "Total Cost_1" column (this is the correct total cost column)
+          const cost1Value = row['Total Cost_1'];
+          if (cost1Value !== undefined && cost1Value !== null && cost1Value !== '') {
+            const numValue = parseFloat(cost1Value);
+            if (!isNaN(numValue)) {
+              return numValue;
             }
           }
-          // Fallback: try common header names for column AE
-          const aeValue = row['Any Other Cost'] || row['Total Cost_1'];
+          // Fallback 1: Try "Any Other Cost" (column AE)
+          const aeValue = row['Any Other Cost'];
           if (aeValue !== undefined && aeValue !== null && aeValue !== '') {
             const numValue = parseFloat(aeValue);
             if (!isNaN(numValue)) {
               return numValue;
+            }
+          }
+          // Fallback 2: Try by index (if column names don't match)
+          const rowKeys = Object.keys(row);
+          if (rowKeys.length > 30 && rowKeys[30]) {
+            const aeValueByIndex = row[rowKeys[30]];
+            if (aeValueByIndex !== undefined && aeValueByIndex !== null && aeValueByIndex !== '') {
+              const numValue = parseFloat(aeValueByIndex);
+              if (!isNaN(numValue)) {
+                return numValue;
+              }
             }
           }
           // Last fallback: original "Total Cost" column (column T, index 19)

@@ -21,11 +21,13 @@ interface UploadResponse {
 interface RangeWiseData {
   range: string;
   indentCount: number;
-  uniqueIndentCount: number;
+  uniqueIndentCount?: number;
   totalLoad: number;
   percentage: number;
   bucketCount: number;
   barrelCount: number;
+  totalCost?: number;
+  profitLoss?: number;
 }
 
 interface LocationData {
@@ -41,7 +43,20 @@ interface RangeWiseResponse {
   success: boolean;
   rangeData: RangeWiseData[];
   locations: LocationData[];
-  totalUniqueIndents: number;
+  totalUniqueIndents?: number;
+  totalLoad?: number;
+  totalCost?: number;
+  totalProfitLoss?: number;
+  totalBuckets?: number;
+  totalBarrels?: number;
+  totalRows?: number;
+  totalLoadDetails?: {
+    totalRows: number;
+    rowsWithLoad: number;
+    rowsWithoutRange: number;
+    uniqueIndents: number;
+    duplicates: number;
+  };
   dateRange: {
     from: string | null;
     to: string | null;
@@ -215,6 +230,80 @@ export const getRevenueAnalytics = async (granularity: 'daily' | 'weekly' | 'mon
   }
 
   const response = await api.get<RevenueAnalyticsResponse>(`/analytics/revenue?${params.toString()}`);
+  return response.data;
+};
+
+export interface CostByRange {
+  range: string;
+  cost: number;
+}
+
+export interface CostOverTime {
+  date: string;
+  cost: number;
+}
+
+export interface CostAnalyticsResponse {
+  success: boolean;
+  costByRange: CostByRange[];
+  totalCost: number;
+  costOverTime: CostOverTime[];
+  granularity: string;
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+}
+
+export const getCostAnalytics = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<CostAnalyticsResponse> => {
+  const params = new URLSearchParams();
+  params.append('granularity', granularity);
+  
+  if (fromDate) {
+    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+  }
+  if (toDate) {
+    params.append('toDate', toDate.toISOString().split('T')[0]);
+  }
+
+  const response = await api.get<CostAnalyticsResponse>(`/analytics/cost?${params.toString()}`);
+  return response.data;
+};
+
+export interface ProfitLossByRange {
+  range: string;
+  profitLoss: number;
+}
+
+export interface ProfitLossOverTime {
+  date: string;
+  profitLoss: number;
+}
+
+export interface ProfitLossAnalyticsResponse {
+  success: boolean;
+  profitLossByRange: ProfitLossByRange[];
+  totalProfitLoss: number;
+  profitLossOverTime: ProfitLossOverTime[];
+  granularity: string;
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+}
+
+export const getProfitLossAnalytics = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<ProfitLossAnalyticsResponse> => {
+  const params = new URLSearchParams();
+  params.append('granularity', granularity);
+  
+  if (fromDate) {
+    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+  }
+  if (toDate) {
+    params.append('toDate', toDate.toISOString().split('T')[0]);
+  }
+
+  const response = await api.get<ProfitLossAnalyticsResponse>(`/analytics/profit-loss?${params.toString()}`);
   return response.data;
 };
 

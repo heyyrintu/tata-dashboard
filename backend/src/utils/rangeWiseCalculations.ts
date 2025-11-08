@@ -2,19 +2,20 @@ import Trip from '../models/Trip';
 import { format } from 'date-fns';
 
 // Helper function to normalize Freight Tiger Month to 'yyyy-MM' format
+// Handles formats: "May-25", "May'25", "May-2025", "2025-05", etc.
 const normalizeFreightTigerMonth = (monthValue: string): string | null => {
   if (!monthValue || typeof monthValue !== 'string') return null;
   
   const trimmed = monthValue.trim();
   
-  // Handle typos like "0ct-25" -> "Oct-25"
+  // Handle typos like "0ct-25" -> "Oct-25" or "0ct'25" -> "Oct'25"
   const fixedTypo = trimmed.replace(/^0ct/i, 'Oct');
   
   // Try to parse formats like "Oct-25", "Oct'25", "October 2025", etc.
-  // First, try common formats
+  // First, try common formats with both dash and single quote
   const monthPatterns = [
-    /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-'](\d{2,4})$/i,
-    /^(\d{1,2})[-/](\d{2,4})$/,
+    /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-'](\d{2,4})$/i,  // May-25 or May'25
+    /^(\d{1,2})[-/](\d{2,4})$/,  // 05-25 or 5-25
   ];
   
   for (const pattern of monthPatterns) {
@@ -383,7 +384,13 @@ export async function calculateRangeWiseSummary(
   console.log(`[calculateRangeWiseSummary] Sample range data:`, rangeData.slice(0, 2).map(r => ({
     range: r.range,
     indentCount: r.indentCount,
-    uniqueIndentCount: r.uniqueIndentCount
+    uniqueIndentCount: r.uniqueIndentCount,
+    totalCost: r.totalCost
+  })));
+  console.log(`[calculateRangeWiseSummary] Full range data with costs:`, rangeData.map(r => ({
+    range: r.range,
+    indentCount: r.indentCount,
+    totalCost: r.totalCost
   })));
 
   // Step 10: Calculate "Other" category for non-matching ranges
