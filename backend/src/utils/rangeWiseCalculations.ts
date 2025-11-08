@@ -1,6 +1,7 @@
 import Trip from '../models/Trip';
 import { format } from 'date-fns';
 import { logger } from './logger';
+import { endOfDayUTC } from './dateFilter';
 
 // Helper function to normalize Freight Tiger Month to 'yyyy-MM' format
 // Handles formats: "May-25", "May'25", "May-2025", "2025-05", etc.
@@ -126,8 +127,7 @@ export async function calculateRangeWiseSummary(
       // Single month filter - use Freight Tiger Month to match Card 1 & Card 2 logic
       logger.debug('Single month filter detected', { month: fromMonth });
       const targetMonthKey = fromMonth;
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       
       validIndents = validIndents.filter((indent: any) => {
         // Primary: Use Freight Tiger Month if available
@@ -156,8 +156,7 @@ export async function calculateRangeWiseSummary(
     } else {
       // Multiple months or date range - filter by indentDate (primary) and also check Freight Tiger Month
       logger.debug('Date range filter', { fromMonth, toMonth });
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       
       validIndents = validIndents.filter((indent: any) => {
         // Check if indentDate matches the range

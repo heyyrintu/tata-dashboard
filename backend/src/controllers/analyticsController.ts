@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import Trip from '../models/Trip';
-import { parseDateParam } from '../utils/dateFilter';
+import { parseDateParam, endOfDayUTC } from '../utils/dateFilter';
 import { format, startOfWeek, getISOWeek, parse } from 'date-fns';
 import { calculateTripsByVehicleDay, type TripDocument } from '../utils/tripCount';
 import * as XLSX from 'xlsx';
@@ -123,8 +123,7 @@ export const getAnalytics = async (req: Request, res: Response) => {
         // If no results using Freight Tiger Month, fallback to indentDate only
         if (allIndentsFiltered.length === 0) {
           console.log(`[getAnalytics] No matches found with Freight Tiger Month, falling back to indentDate only`);
-          const endDate = new Date(toDate);
-          endDate.setHours(23, 59, 59, 999);
+          const endDate = endOfDayUTC(toDate);
           allIndentsFiltered = allIndents.filter(indent => {
             if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
             return indent.indentDate >= fromDate && indent.indentDate <= endDate;
@@ -166,8 +165,7 @@ export const getAnalytics = async (req: Request, res: Response) => {
       });
     } else if (toDate) {
       // Only toDate - filter by indentDate (primary)
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       console.log(`[getAnalytics] To date filter only: ${toDate?.toISOString().split('T')[0]}`);
       allIndentsFiltered = allIndentsFiltered.filter(indent => {
         if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
@@ -295,8 +293,7 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     
     // Apply same date filtering
     if (fromDate && toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       validIndents = validIndents.filter(indent => {
         if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
           return false;
@@ -311,8 +308,7 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
         return indent.indentDate >= fromDate;
       });
     } else if (toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       validIndents = validIndents.filter(indent => {
         if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
           return false;
@@ -342,8 +338,7 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     // Get all indents in date range for total load details
     let allIndentsInDateRange: any[] = [];
     if (fromDate && toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       allIndentsInDateRange = await Trip.find({
         indentDate: {
           $gte: fromDate,
@@ -357,8 +352,7 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
         }
       });
     } else if (toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       allIndentsInDateRange = await Trip.find({
         indentDate: {
           $lte: endDate
@@ -441,8 +435,7 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
         // Single month filter - use Freight Tiger Month
         console.log(`[getFulfillmentAnalytics] Step 2: Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
         const targetMonthKey = fromMonth;
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
+        const endDate = endOfDayUTC(toDate);
         
         filteredIndents = filteredIndents.filter(indent => {
           if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
@@ -468,8 +461,7 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
       } else {
         // Multiple months or date range - filter by indentDate with Freight Tiger Month fallback
         console.log(`[getFulfillmentAnalytics] Step 2: Date range filter: ${fromMonth} to ${toMonth}`);
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
+        const endDate = endOfDayUTC(toDate);
         
         filteredIndents = filteredIndents.filter(indent => {
           const dateMatches = indent.indentDate && 
@@ -498,8 +490,7 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
         return false;
       });
     } else if (toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       filteredIndents = filteredIndents.filter(indent => {
         if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
           return indent.indentDate <= endDate;
@@ -690,8 +681,7 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
       
       if (fromMonth === toMonth) {
         const targetMonthKey = fromMonth;
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
+        const endDate = endOfDayUTC(toDate);
         
         filteredIndents = filteredIndents.filter(indent => {
           if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
@@ -713,8 +703,7 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
           });
         }
       } else {
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
+        const endDate = endOfDayUTC(toDate);
         
         filteredIndents = filteredIndents.filter(indent => {
           const dateMatches = indent.indentDate && 
@@ -743,8 +732,7 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
         return false;
       });
     } else if (toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       filteredIndents = filteredIndents.filter(indent => {
         if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
           return indent.indentDate <= endDate;
@@ -1047,8 +1035,7 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
         // Single month filter - use Freight Tiger Month to match 4th card logic
         console.log(`[getLoadOverTime] Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
         const targetMonthKey = fromMonth;
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
+        const endDate = endOfDayUTC(toDate);
         
         filteredIndents = filteredIndents.filter(indent => {
           // Primary: Use Freight Tiger Month if available
@@ -1076,8 +1063,7 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
       } else {
         // Multiple months or date range - filter by indentDate (primary) and also check Freight Tiger Month
         console.log(`[getLoadOverTime] Date range filter: ${fromMonth} to ${toMonth}, using indentDate with Freight Tiger Month fallback`);
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
+        const endDate = endOfDayUTC(toDate);
         
         filteredIndents = filteredIndents.filter(indent => {
           // Check if indentDate matches the range
@@ -1112,8 +1098,7 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
       });
     } else if (toDate) {
       // Only toDate - filter by indentDate
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(toDate);
       console.log(`[getLoadOverTime] To date filter only: ${toDate?.toISOString().split('T')[0]}`);
       filteredIndents = filteredIndents.filter(indent => {
         if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
@@ -1314,8 +1299,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
           dateFilter.indentDate.$gte = fromDate;
         }
         if (toDate) {
-          const endDate = new Date(toDate);
-          endDate.setHours(23, 59, 59, 999);
+          const endDate = endOfDayUTC(toDate);
           dateFilter.indentDate.$lte = endDate;
         }
       }
@@ -1523,8 +1507,7 @@ export const getCostAnalytics = async (req: Request, res: Response) => {
           dateFilter.indentDate.$gte = fromDate;
         }
         if (toDate) {
-          const endDate = new Date(toDate);
-          endDate.setHours(23, 59, 59, 999);
+          const endDate = endOfDayUTC(toDate);
           dateFilter.indentDate.$lte = endDate;
         }
       }
@@ -1684,8 +1667,7 @@ export const getProfitLossAnalytics = async (req: Request, res: Response) => {
           dateFilter.indentDate.$gte = fromDate;
         }
         if (toDate) {
-          const endDate = new Date(toDate);
-          endDate.setHours(23, 59, 59, 999);
+          const endDate = endOfDayUTC(toDate);
           dateFilter.indentDate.$lte = endDate;
         }
       }
@@ -1888,8 +1870,7 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
     const monthOnMonthData = sortedMonthKeys.map(monthKey => {
       // Calculate month start and end dates (same as date filter in getAnalytics)
       const monthStart = new Date(monthKey + '-01');
-      const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-      monthEnd.setHours(23, 59, 59, 999);
+      const monthEnd = endOfDayUTC(new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0));
 
       console.log(`[getMonthOnMonthAnalytics] Processing month: ${monthKey}`);
       console.log(`[getMonthOnMonthAnalytics] Month range: ${monthStart.toISOString()} to ${monthEnd.toISOString()}`);

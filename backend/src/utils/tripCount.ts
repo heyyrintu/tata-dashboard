@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { endOfDayUTC } from './dateFilter';
 
 function normalizeDateToKey(value: string | Date): string {
   const d = value instanceof Date ? value : new Date(value);
@@ -69,8 +70,7 @@ export function calculateTripsByVehicleDay(
     // Optional date filter (only used if provided)
     if (dateFrom && dateObj < dateFrom) continue;
     if (dateTo) {
-      const endDate = new Date(dateTo);
-      endDate.setHours(23, 59, 59, 999);
+      const endDate = endOfDayUTC(dateTo);
       if (dateObj > endDate) continue;
     }
 
