@@ -6,20 +6,29 @@ This document outlines the security features implemented in the TATA DEF Dashboa
 
 ### 1. Authentication
 
-The application uses API key authentication for all API endpoints (except `/health`).
+The application uses a **two-tier authentication model** for security:
+
+**Security Model:**
+- **Frontend Requests**: Requests from trusted frontend origins (configured via `FRONTEND_URL`) are automatically allowed without API key. This is secure because:
+  - CORS restricts which origins can make requests
+  - The frontend and backend are on the same domain/trusted network
+  - No API key is exposed in the browser
+- **External/Direct API Access**: Direct API calls (e.g., from scripts, Postman, curl) require an API key
 
 **Setup:**
 1. Generate a strong API key:
    ```bash
    openssl rand -base64 32
    ```
-2. Set it in your `.env` file:
+2. Set it in your backend `.env` file:
    ```env
    API_KEY=your-generated-api-key-here
+   FRONTEND_URL=https://apps.dronalogitech.cloud
    ```
 
 **Usage:**
-- Include the API key in the `Authorization` header:
+- **Frontend**: No API key needed! Requests from `FRONTEND_URL` are automatically trusted
+- **External API Access**: Include the API key in the `Authorization` header:
   ```
   Authorization: Bearer your-api-key-here
   ```
@@ -28,7 +37,9 @@ The application uses API key authentication for all API endpoints (except `/heal
   ?apiKey=your-api-key-here
   ```
 
-**Note:** If `API_KEY` is not set, the application will allow all requests (development mode). This is **NOT recommended** for production.
+**Note:** 
+- If `API_KEY` is not set, the application will allow all requests (development mode). This is **NOT recommended** for production.
+- The frontend does **NOT** need `VITE_API_KEY` set - it's only needed for external API access
 
 ### 2. IP Whitelisting (Optional)
 

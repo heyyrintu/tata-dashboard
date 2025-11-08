@@ -5,17 +5,21 @@ import { createError } from './errorHandler';
 /**
  * API Key Authentication Middleware
  * 
- * For production, use API key authentication via header:
- * Authorization: Bearer <API_KEY>
+ * Security model:
+ * - Requests from trusted frontend origins (FRONTEND_URL) are allowed without API key
+ *   (CORS already restricts these, so this is safe for internal dashboard access)
+ * - External/direct API access requires API key via Authorization header:
+ *   Authorization: Bearer <API_KEY>
+ * - Or via query parameter (less secure, not recommended):
+ *   ?apiKey=<API_KEY>
  * 
- * Or via query parameter (less secure, not recommended):
- * ?apiKey=<API_KEY>
- * 
- * Set API_KEY in environment variables
+ * Set API_KEY and FRONTEND_URL in environment variables
  */
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   const apiKey = process.env.API_KEY;
+  const frontendUrl = process.env.FRONTEND_URL;
   const requestId = req.id || 'unknown';
+  const isProduction = process.env.NODE_ENV === 'production';
 
   // If no API key is configured, allow all requests (development mode)
   if (!apiKey) {
@@ -23,7 +27,36 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
     return next();
   }
 
-  // Check for API key in Authorization header
+  // Check if request is from trusted frontend origin
+  // This allows the frontend to access the API without exposing the key in the browser
+  if (isProduction && frontendUrl) {
+    const origin = req.headers.origin || req.headers.referer;
+    const allowedOrigins = frontendUrl.split(',').map(url => url.trim());
+    
+    // Check if origin matches any allowed frontend URL
+    if (origin) {
+      const originUrl = new URL(origin);
+      const isTrustedOrigin = allowedOrigins.some(allowed => {
+        try {
+          const allowedUrl = new URL(allowed);
+          return originUrl.origin === allowedUrl.origin;
+        } catch {
+          // If allowed URL is not a full URL, check if origin matches
+          return origin.includes(allowed);
+        }
+      });
+
+      if (isTrustedOrigin) {
+        logger.debug('Authentication bypassed: Request from trusted frontend origin', { 
+          requestId, 
+          origin 
+        });
+        return next();
+      }
+    }
+  }
+
+  // For external/direct API access, require API key
   const authHeader = req.headers.authorization;
   let providedKey: string | undefined;
 

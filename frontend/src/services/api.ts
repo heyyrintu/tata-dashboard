@@ -97,6 +97,8 @@ interface LoadOverTimeResponse {
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Note: API key is no longer needed in frontend - backend allows requests from trusted origins
+// Only set this if you need to access the API from outside the frontend (e.g., direct API calls)
 const API_KEY = import.meta.env.VITE_API_KEY;
 
 const api = axios.create({
@@ -109,7 +111,8 @@ const api = axios.create({
   },
 });
 
-// Add API key to all requests if configured
+// Add API key to requests only if explicitly configured (for external API access)
+// Frontend requests from the same origin don't need the key - backend trusts them via CORS
 if (API_KEY) {
   api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${API_KEY}`;
