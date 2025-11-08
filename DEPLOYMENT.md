@@ -87,9 +87,23 @@ npm run build
 ```env
 NODE_ENV=production
 PORT=5000
+
+# Frontend URL for CORS (comma-separated for multiple origins)
+FRONTEND_URL=http://your-domain.com
+# OR for IP: FRONTEND_URL=http://72.60.200.116
+
+# MongoDB Configuration
 MONGODB_URI=mongodb://localhost:27017/tata-dashboard
-# For secured MongoDB:
+# For secured MongoDB with authentication:
 # MONGODB_URI=mongodb://admin:your-secure-password@localhost:27017/tata-dashboard?authSource=admin
+
+# Security Configuration (REQUIRED in production)
+# Generate a strong API key: openssl rand -base64 32
+API_KEY=your-secure-api-key-here
+
+# Optional: IP Whitelist (comma-separated IP addresses)
+# If set, only these IPs can access the API
+# ALLOWED_IPS=192.168.1.100,10.0.0.50
 
 # Outlook/Office 365 Email Configuration (Optional - for automatic email upload)
 # See backend/AZURE_SETUP.md for Azure app registration instructions
@@ -107,6 +121,16 @@ OUTLOOK_POLL_INTERVAL=600000
 VITE_API_URL=http://your-domain.com/api
 # OR if using IP: VITE_API_URL=http://your-server-ip/api
 ```
+
+## Phase 2.6: Security Checklist
+
+Before starting the application, ensure:
+
+- [ ] `API_KEY` is set in `.env` (generate with: `openssl rand -base64 32`)
+- [ ] `FRONTEND_URL` is set to your actual domain/IP
+- [ ] MongoDB is secured with authentication (recommended)
+- [ ] Firewall is configured (ports 22, 80, 443 only)
+- [ ] All sensitive environment variables are set
 
 ## Phase 3: Process Management
 
@@ -386,6 +410,57 @@ sudo systemctl restart mongod
 mongosh  # MongoDB shell
 ```
 
+## Security Configuration
+
+### API Key Authentication
+
+All API endpoints (except `/health`) require authentication via API key.
+
+**Generate API Key:**
+```bash
+openssl rand -base64 32
+```
+
+**Set in `.env`:**
+```env
+API_KEY=your-generated-api-key-here
+```
+
+**Use in Requests:**
+```bash
+# Via Authorization header (recommended)
+curl -H "Authorization: Bearer your-api-key" http://your-domain.com/api/analytics
+
+# Via query parameter (less secure)
+curl http://your-domain.com/api/analytics?apiKey=your-api-key
+```
+
+**Frontend Configuration:**
+Update your API service to include the API key in all requests:
+```typescript
+headers: {
+  'Authorization': `Bearer ${import.meta.env.VITE_API_KEY}`
+}
+```
+
+### CORS Configuration
+
+Set `FRONTEND_URL` in `.env`:
+```env
+FRONTEND_URL=http://your-domain.com
+# Multiple origins (comma-separated):
+FRONTEND_URL=http://domain1.com,http://domain2.com
+```
+
+### IP Whitelisting (Optional)
+
+Restrict access to specific IPs:
+```env
+ALLOWED_IPS=192.168.1.100,10.0.0.50
+```
+
+For more security details, see `SECURITY.md`.
+
 ## Troubleshooting
 
 ### General Issues
@@ -394,6 +469,9 @@ mongosh  # MongoDB shell
 - **MongoDB connection issues**: Verify MongoDB is running `sudo systemctl status mongod`
 - **Nginx 502 error**: Check backend is running on port 5000
 - **File upload fails**: Verify uploads directory permissions and Nginx `client_max_body_size`
+- **Authentication errors**: Verify `API_KEY` is set in `.env` and included in requests
+- **CORS errors**: Check `FRONTEND_URL` is set correctly in `.env`
+- **Rate limit errors**: Normal behavior - wait 15 minutes or increase limit in code (not recommended)
 
 ### Email Service Issues
 

@@ -97,6 +97,7 @@ interface LoadOverTimeResponse {
 }
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_KEY = import.meta.env.VITE_API_KEY;
 
 const api = axios.create({
   baseURL: API_URL,
@@ -107,6 +108,14 @@ const api = axios.create({
     'Expires': '0',
   },
 });
+
+// Add API key to all requests if configured
+if (API_KEY) {
+  api.interceptors.request.use((config) => {
+    config.headers.Authorization = `Bearer ${API_KEY}`;
+    return config;
+  });
+}
 
 export const uploadExcel = async (file: File): Promise<UploadResponse> => {
   const formData = new FormData();

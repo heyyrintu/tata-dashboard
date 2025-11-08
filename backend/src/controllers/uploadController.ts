@@ -3,6 +3,9 @@ import path from 'path';
 import { parseExcelFile } from '../utils/excelParser';
 import Trip from '../models/Trip';
 import fs from 'fs';
+import { fileTypeFromFile } from 'file-type';
+import { logger } from '../utils/logger';
+import { createError } from '../middleware/errorHandler';
 
 interface UploadResult {
   success: boolean;
@@ -40,6 +43,32 @@ export const processExcelFile = async (
       throw new Error('No file path or buffer provided');
     }
 
+    // Validate file content (MIME type) for security
+    try {
+      const fileType = await fileTypeFromFile(finalPath);
+      const allowedMimeTypes = [
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', // .xlsx
+        'application/vnd.ms-excel', // .xls
+        'application/zip' // Excel files are actually ZIP files
+      ];
+
+      if (!fileType || !allowedMimeTypes.includes(fileType.mime)) {
+        logger.warn('File upload rejected: Invalid MIME type', {
+          fileName,
+          detectedMime: fileType?.mime,
+          allowedMimeTypes
+        });
+        throw createError('Invalid file type. File content does not match Excel format.', 400);
+      }
+    } catch (mimeError) {
+      // If file-type fails, log but allow (some Excel files may not be detected correctly)
+      logger.warn('MIME type validation warning', {
+        fileName,
+        error: mimeError instanceof Error ? mimeError.message : 'Unknown error'
+      });
+      // Continue with extension-based validation as fallback
+    }
+
     // Parse the Excel file
     const indents = parseExcelFile(finalPath);
 
@@ -55,10 +84,15 @@ export const processExcelFile = async (
 
     // Debug: Check if totalCost is being parsed
     const indentsWithCost = indents.filter(indent => indent.totalCost && indent.totalCost > 0);
-    console.log(`[uploadController] Parsed ${indents.length} indents, ${indentsWithCost.length} with totalCost > 0`);
+    logger.debug('Parsed indents with cost', {
+      totalIndents: indents.length,
+      indentsWithCost: indentsWithCost.length
+    });
     if (indentsWithCost.length > 0) {
       const sampleTotalCost = indentsWithCost.slice(0, 5).reduce((sum, indent) => sum + (indent.totalCost || 0), 0);
-      console.log(`[uploadController] Sample totalCost from first 5 indents with cost: ₹${sampleTotalCost.toLocaleString('en-IN')}`);
+      logger.debug('Sample total cost', {
+        sampleTotalCost: `₹${sampleTotalCost.toLocaleString('en-IN')}`
+      });
     }
 
     // Delete all existing data before inserting new data
@@ -72,7 +106,12 @@ export const processExcelFile = async (
       const batch = indents.slice(i, i + batchSize);
       await Trip.insertMany(batch, { ordered: false });
       insertedCount += batch.length;
-      console.log(`[uploadController] Inserted batch ${Math.floor(i / batchSize) + 1}: ${batch.length} indents (${insertedCount}/${indents.length})`);
+      logger.debug('Inserted batch', {
+        batchNumber: Math.floor(i / batchSize) + 1,
+        batchSize: batch.length,
+        totalInserted: insertedCount,
+        totalExpected: indents.length
+      });
     }
     
     // Verify data was inserted correctly
@@ -83,21 +122,29 @@ export const processExcelFile = async (
     ]);
     const totalCostValue = totalCostInserted.length > 0 ? totalCostInserted[0].total : 0;
     
-    console.log(`[uploadController] Upload complete:`);
-    console.log(`  Total indents inserted: ${totalInserted} (expected: ${indents.length})`);
-    console.log(`  Indents with totalCost > 0: ${insertedWithCost}`);
-    console.log(`  Total cost in database: ₹${totalCostValue.toLocaleString('en-IN')}`);
-    
     // Calculate expected total cost from parsed indents
     const expectedTotalCost = indents.reduce((sum, indent) => sum + (indent.totalCost || 0), 0);
-    console.log(`  Expected total cost: ₹${expectedTotalCost.toLocaleString('en-IN')}`);
+    
+    logger.info('Upload complete', {
+      totalInserted,
+      expectedCount: indents.length,
+      insertedWithCost,
+      totalCostInDB: `₹${totalCostValue.toLocaleString('en-IN')}`,
+      expectedTotalCost: `₹${expectedTotalCost.toLocaleString('en-IN')}`
+    });
     
     if (totalInserted !== indents.length) {
-      console.warn(`[uploadController] WARNING: Inserted count (${totalInserted}) doesn't match parsed count (${indents.length})`);
+      logger.warn('Inserted count mismatch', {
+        inserted: totalInserted,
+        expected: indents.length
+      });
     }
     
     if (Math.abs(totalCostValue - expectedTotalCost) > 0.01) {
-      console.warn(`[uploadController] WARNING: Database total cost (₹${totalCostValue.toLocaleString('en-IN')}) doesn't match expected (₹${expectedTotalCost.toLocaleString('en-IN')})`);
+      logger.warn('Total cost mismatch', {
+        dbTotal: `₹${totalCostValue.toLocaleString('en-IN')}`,
+        expected: `₹${expectedTotalCost.toLocaleString('en-IN')}`
+      });
     }
 
     return {
@@ -107,6 +154,12 @@ export const processExcelFile = async (
       message: `Successfully uploaded ${indents.length} records`
     };
   } catch (error) {
+    logger.error('Error processing Excel file', {
+      fileName,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    
     return {
       success: false,
       recordCount: 0,
@@ -120,7 +173,9 @@ export const processExcelFile = async (
       try {
         fs.unlinkSync(tempFilePath);
       } catch (cleanupError) {
-        console.error('[uploadController] Failed to cleanup temp file:', cleanupError);
+        logger.error('Failed to cleanup temp file', {
+          error: cleanupError instanceof Error ? cleanupError.message : 'Unknown error'
+        });
       }
     }
     // Clean up uploaded file from multer if provided
@@ -128,7 +183,9 @@ export const processExcelFile = async (
       try {
         fs.unlinkSync(filePath);
       } catch (cleanupError) {
-        console.error('[uploadController] Failed to cleanup uploaded file:', cleanupError);
+        logger.error('Failed to cleanup uploaded file', {
+          error: cleanupError instanceof Error ? cleanupError.message : 'Unknown error'
+        });
       }
     }
   }
@@ -138,18 +195,33 @@ export const processExcelFile = async (
  * HTTP endpoint for file upload via multer
  */
 export const uploadExcel = async (req: Request, res: Response) => {
+  const requestId = req.id || 'unknown';
+  
   try {
     if (!req.file) {
+      logger.warn('File upload attempt with no file', { requestId });
       return res.status(400).json({ 
         success: false, 
         error: 'No file uploaded' 
       });
     }
 
+    logger.info('Processing file upload', {
+      requestId,
+      fileName: req.file.originalname,
+      fileSize: req.file.size
+    });
+
     const filePath = req.file.path;
     const result = await processExcelFile(null, filePath, req.file.originalname);
 
     if (result.success) {
+      logger.info('File upload successful', {
+        requestId,
+        fileName: result.fileName,
+        recordCount: result.recordCount
+      });
+      
       res.json({
         success: true,
         recordCount: result.recordCount,
@@ -157,16 +229,26 @@ export const uploadExcel = async (req: Request, res: Response) => {
         message: result.message
       });
     } else {
+      logger.warn('File upload failed', {
+        requestId,
+        fileName: result.fileName,
+        error: result.error
+      });
+      
       res.status(400).json({
         success: false,
         error: result.error || 'Failed to process Excel file'
       });
     }
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to process Excel file'
+    logger.error('Unexpected error during file upload', {
+      requestId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
     });
+    
+    // Use error handler middleware instead of direct response
+    throw error;
   }
 };
 

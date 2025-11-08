@@ -4,6 +4,7 @@ import { parseDateParam } from '../utils/dateFilter';
 import { format, startOfWeek, getISOWeek, parse } from 'date-fns';
 import { calculateTripsByVehicleDay, type TripDocument } from '../utils/tripCount';
 import * as XLSX from 'xlsx';
+import { logger } from '../utils/logger';
 
 // Helper function to normalize Freight Tiger Month to 'yyyy-MM' format
 const normalizeFreightTigerMonth = (monthValue: string): string | null => {
@@ -261,15 +262,18 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    console.log(`[getRangeWiseAnalytics] ===== START =====`);
-    console.log(`[getRangeWiseAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+    logger.debug('getRangeWiseAnalytics started', {
+      fromDate: fromDate?.toISOString().split('T')[0] || 'null',
+      toDate: toDate?.toISOString().split('T')[0] || 'null',
+      requestId: req.id
+    });
 
     // Use the new utility function for all calculations
     const { calculateRangeWiseSummary } = await import('../utils/rangeWiseCalculations');
     let result;
     try {
       result = await calculateRangeWiseSummary(fromDate || undefined, toDate || undefined);
-      console.log(`[getRangeWiseAnalytics] Calculation result:`, {
+      logger.debug('Range-wise calculation result', {
         rangeDataLength: result.rangeData.length,
         totalUniqueIndents: result.totalUniqueIndents,
         totalLoad: result.totalLoad,
@@ -278,7 +282,10 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
         totalRows: result.totalRows
       });
     } catch (calcError) {
-      console.error(`[getRangeWiseAnalytics] Error in calculateRangeWiseSummary:`, calcError);
+      logger.error('Error in calculateRangeWiseSummary', {
+        error: calcError instanceof Error ? calcError.message : 'Unknown error',
+        requestId: req.id
+      });
       throw calcError;
     }
 
@@ -400,7 +407,11 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error(`[getRangeWiseAnalytics] Error:`, error);
+    logger.error('getRangeWiseAnalytics error', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      requestId: req.id
+    });
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch range-wise analytics'
@@ -846,10 +857,10 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
     // Log sample missing indents for debugging
     if (missingIndentsArray.length > 0) {
       console.log(`[exportMissingIndents] Sample missing indents (first 3):`, missingIndentsArray.slice(0, 3).map(i => ({
-        indent: i.indent,
-        material: i.material,
-        noOfBuckets: i.noOfBuckets,
-        range: i.range
+        indent: (i as any).indent,
+        material: (i as any).material,
+        noOfBuckets: (i as any).noOfBuckets,
+        range: (i as any).range
       })));
     } else {
       console.log(`[exportMissingIndents] No missing indents found. All Card 2 indents are in Fulfillment Trends.`);
@@ -889,26 +900,26 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
       excelData = missingIndentsArray.map((indent, index) => ({
         'S.No': index + 1,
         'Indent Date': indent.indentDate ? format(indent.indentDate, 'yyyy-MM-dd') : '',
-        'Indent': indent.indent || '',
-        'Allocation Date': indent.allocationDate ? format(indent.allocationDate, 'yyyy-MM-dd') : '',
-        'Customer Name': indent.customerName || '',
-        'Location': indent.location || '',
-        'Vehicle Model': indent.vehicleModel || '',
-        'Vehicle Number': indent.vehicleNumber || '',
-        'Vehicle Based': indent.vehicleBased || '',
-        'LR No': indent.lrNo || '',
-        'Material': indent.material || '',
-        'Load Per Bucket': indent.loadPerBucket || 0,
-        'No. of Buckets': indent.noOfBuckets || 0,
-        'Total Load (Kgs)': indent.totalLoad || 0,
-        'POD Received': indent.podReceived || '',
-        'Loading Charge': indent.loadingCharge || 0,
-        'Unloading Charge': indent.unloadingCharge || 0,
-        'Actual Running': indent.actualRunning || 0,
-        'Billable Running': indent.billableRunning || 0,
-        'Range': indent.range || '',
-        'Remarks': indent.remarks || '',
-        'Freight Tiger Month': indent.freightTigerMonth || ''
+        'Indent': (indent as any).indent || '',
+        'Allocation Date': (indent as any).allocationDate ? format((indent as any).allocationDate, 'yyyy-MM-dd') : '',
+        'Customer Name': (indent as any).customerName || '',
+        'Location': (indent as any).location || '',
+        'Vehicle Model': (indent as any).vehicleModel || '',
+        'Vehicle Number': (indent as any).vehicleNumber || '',
+        'Vehicle Based': (indent as any).vehicleBased || '',
+        'LR No': (indent as any).lrNo || '',
+        'Material': (indent as any).material || '',
+        'Load Per Bucket': (indent as any).loadPerBucket || 0,
+        'No. of Buckets': (indent as any).noOfBuckets || 0,
+        'Total Load (Kgs)': (indent as any).totalLoad || 0,
+        'POD Received': (indent as any).podReceived || '',
+        'Loading Charge': (indent as any).loadingCharge || 0,
+        'Unloading Charge': (indent as any).unloadingCharge || 0,
+        'Actual Running': (indent as any).actualRunning || 0,
+        'Billable Running': (indent as any).billableRunning || 0,
+        'Range': (indent as any).range || '',
+        'Remarks': (indent as any).remarks || '',
+        'Freight Tiger Month': (indent as any).freightTigerMonth || ''
       }));
     }
 

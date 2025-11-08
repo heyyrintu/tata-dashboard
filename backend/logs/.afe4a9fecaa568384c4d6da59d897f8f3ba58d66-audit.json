@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "C:\\Users\\RintuMondal\\OneDrive - DRONA LOGITECH PRIVATE LIMITED\\Pictures\\tata\\backend\\logs\\.afe4a9fecaa568384c4d6da59d897f8f3ba58d66-audit.json",
+    "files": [
+        {
+            "date": 1762614628098,
+            "name": "C:\\Users\\RintuMondal\\OneDrive - DRONA LOGITECH PRIVATE LIMITED\\Pictures\\tata\\backend\\logs\\combined-2025-11-08.log",
+            "hash": "149e157a7482b0b050156820f5c2f33ac9dee1bbd528a454ebbb54dc2f068baf"
+        }
+    ],
+    "hashType": "sha256"
+}

@@ -85,8 +85,8 @@ const findAllMayRows = () => {
       }, 0);
       console.log(`  Total Cost: ₹${emptyRangeCost.toLocaleString('en-IN')}`);
       emptyRangeRows.slice(0, 5).forEach((row, idx) => {
-        const cost = parseFloat(row['Any Other Cost'] || row['Total Cost_1'] || row['Total Cost'] || 0);
-        console.log(`    ${idx + 1}. Indent: ${row['Indent']}, Range: "${row['Range']}", Cost: ₹${cost}`);
+        const cost = parseFloat((row as any)['Any Other Cost'] || (row as any)['Total Cost_1'] || (row as any)['Total Cost'] || 0);
+        console.log(`    ${idx + 1}. Indent: ${(row as any)['Indent']}, Range: "${(row as any)['Range']}", Cost: ₹${cost}`);
       });
     }
     

@@ -1,5 +1,6 @@
 import Trip from '../models/Trip';
 import { format } from 'date-fns';
+import { logger } from './logger';
 
 // Helper function to normalize Freight Tiger Month to 'yyyy-MM' format
 // Handles formats: "May-25", "May'25", "May-2025", "2025-05", etc.
@@ -93,17 +94,19 @@ export async function calculateRangeWiseSummary(
   fromDate: Date | null | undefined,
   toDate: Date | null | undefined
 ): Promise<RangeWiseCalculationResult> {
-  console.log(`[calculateRangeWiseSummary] ===== START =====`);
-  console.log(`[calculateRangeWiseSummary] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+  logger.debug('calculateRangeWiseSummary started', {
+    fromDate: fromDate?.toISOString().split('T')[0] || 'null',
+    toDate: toDate?.toISOString().split('T')[0] || 'null'
+  });
 
   // Step 1: Query ALL trips from database (includes ALL rows, including duplicates)
   // This gets every single row/document, so duplicate indents are included
   const allIndents = await Trip.find({});
-  console.log(`[calculateRangeWiseSummary] Total indents from DB (INCLUDING DUPLICATES): ${allIndents.length}`);
+  logger.debug('Total indents from DB', { count: allIndents.length });
 
   // Step 2: Filter to only include indents with Range value (canceled indents don't have range)
   let validIndents = allIndents.filter((indent: any) => indent.range && indent.range.trim() !== '');
-  console.log(`[calculateRangeWiseSummary] Valid indents (with range): ${validIndents.length}`);
+  logger.debug('Valid indents with range', { count: validIndents.length });
 
   // Step 3: Apply date filtering - use same logic as getAnalytics (Card 1 & Card 2)
   // This includes Freight Tiger Month filtering for single-month selections
@@ -112,12 +115,16 @@ export async function calculateRangeWiseSummary(
     const fromMonth = format(fromDate, 'yyyy-MM');
     const toMonth = format(toDate, 'yyyy-MM');
     
-    console.log(`[calculateRangeWiseSummary] Date filter: ${fromDate?.toISOString().split('T')[0]} to ${toDate?.toISOString().split('T')[0]}`);
-    console.log(`[calculateRangeWiseSummary] Month keys: ${fromMonth} to ${toMonth}`);
+    logger.debug('Date filter applied', {
+      fromDate: fromDate?.toISOString().split('T')[0],
+      toDate: toDate?.toISOString().split('T')[0],
+      fromMonth,
+      toMonth
+    });
     
     if (fromMonth === toMonth) {
       // Single month filter - use Freight Tiger Month to match Card 1 & Card 2 logic
-      console.log(`[calculateRangeWiseSummary] Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
+      logger.debug('Single month filter detected', { month: fromMonth });
       const targetMonthKey = fromMonth;
       const endDate = new Date(toDate);
       endDate.setHours(23, 59, 59, 999);
@@ -139,7 +146,7 @@ export async function calculateRangeWiseSummary(
       
       // If no results using Freight Tiger Month, fallback to indentDate only
       if (validIndents.length === 0) {
-        console.log(`[calculateRangeWiseSummary] No matches found with Freight Tiger Month, falling back to indentDate only`);
+        logger.debug('No matches with Freight Tiger Month, falling back to indentDate');
         validIndents = allIndents.filter((indent: any) => {
           if (!indent.range || indent.range.trim() === '') return false;
           if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
@@ -148,7 +155,7 @@ export async function calculateRangeWiseSummary(
       }
     } else {
       // Multiple months or date range - filter by indentDate (primary) and also check Freight Tiger Month
-      console.log(`[calculateRangeWiseSummary] Date range filter: ${fromMonth} to ${toMonth}, using indentDate with Freight Tiger Month fallback`);
+      logger.debug('Date range filter', { fromMonth, toMonth });
       const endDate = new Date(toDate);
       endDate.setHours(23, 59, 59, 999);
       
@@ -175,9 +182,9 @@ export async function calculateRangeWiseSummary(
       });
     }
     
-    console.log(`[calculateRangeWiseSummary] After date filter: ${validIndents.length} indents matched`);
+    logger.debug('After date filter', { matchedCount: validIndents.length });
   } else if (fromDate) {
-    console.log(`[calculateRangeWiseSummary] From date filter only: ${fromDate?.toISOString().split('T')[0]}`);
+    logger.debug('From date filter only', { fromDate: fromDate?.toISOString().split('T')[0] });
     validIndents = validIndents.filter((indent: any) => {
       if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
         return false;
@@ -187,7 +194,7 @@ export async function calculateRangeWiseSummary(
   } else if (toDate) {
     const endDate = new Date(toDate);
     endDate.setHours(23, 59, 59, 999);
-    console.log(`[calculateRangeWiseSummary] To date filter only: ${toDate?.toISOString().split('T')[0]}`);
+    logger.debug('To date filter only', { toDate: toDate?.toISOString().split('T')[0] });
     validIndents = validIndents.filter((indent: any) => {
       if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
         return false;
@@ -195,10 +202,10 @@ export async function calculateRangeWiseSummary(
       return indent.indentDate <= endDate;
     });
   } else {
-    console.log(`[calculateRangeWiseSummary] No date filter - using all valid indents`);
+    logger.debug('No date filter - using all valid indents');
   }
   
-  console.log(`[calculateRangeWiseSummary] Final filtered valid indents: ${validIndents.length}`);
+  logger.debug('Final filtered valid indents', { count: validIndents.length });
 
   // Step 4: Get ALL indents in date range for total load/cost calculation (includes cancelled AND duplicates)
   // IMPORTANT: This must include ALL rows, including duplicate indents, to match Excel sheet totals
@@ -231,7 +238,7 @@ export async function calculateRangeWiseSummary(
       
       // Fallback to indentDate if no results
       if (allIndentsInDateRange.length === 0) {
-        console.log(`[calculateRangeWiseSummary] Total Load: No matches with Freight Tiger Month, using indentDate fallback`);
+        logger.debug('Total Load: No matches with Freight Tiger Month, using indentDate fallback');
         allIndentsInDateRange = await Trip.find({
           indentDate: {
             $gte: fromDate,
@@ -261,7 +268,10 @@ export async function calculateRangeWiseSummary(
       });
     }
     
-    console.log(`[calculateRangeWiseSummary] Total Load Query: fromDate=${fromDate.toISOString()}, toDate=${endDate.toISOString()}`);
+    logger.debug('Total Load Query', {
+      fromDate: fromDate.toISOString(),
+      toDate: endDate.toISOString()
+    });
   } else if (fromDate) {
     allIndentsInDateRange = await Trip.find({
       indentDate: {
@@ -280,8 +290,10 @@ export async function calculateRangeWiseSummary(
     allIndentsInDateRange = allIndents;
   }
   
-  console.log(`[calculateRangeWiseSummary] ALL indents in date range (for Total Load): ${allIndentsInDateRange.length}`);
-  console.log(`[calculateRangeWiseSummary] Valid indents with range in date range: ${validIndents.length}`);
+  logger.debug('Indents in date range', {
+    allIndentsCount: allIndentsInDateRange.length,
+    validIndentsCount: validIndents.length
+  });
 
   // Step 5: Calculate total rows (all indent rows including duplicates)
   const totalRows = validIndents.length;
@@ -312,13 +324,15 @@ export async function calculateRangeWiseSummary(
   });
   const duplicateIndentValues = Array.from(indentCounts.entries()).filter(([_, count]) => count > 1);
   
-  console.log(`[calculateRangeWiseSummary] Total load from all indents in date range (INCLUDING DUPLICATES): ${totalLoad} kg (${(totalLoad / 1000).toFixed(2)} tons)`);
-  console.log(`[calculateRangeWiseSummary] Total cost from all indents in date range (INCLUDING DUPLICATES): ₹${totalCost.toLocaleString('en-IN')}`);
-  console.log(`[calculateRangeWiseSummary] Total profit & loss from all indents in date range (INCLUDING DUPLICATES): ₹${totalProfitLoss.toLocaleString('en-IN')}`);
-  console.log(`[calculateRangeWiseSummary] Total rows counted: ${allIndentsInDateRange.length} (includes ${duplicateIndentValues.length} duplicate indent values)`);
-  console.log(`[calculateRangeWiseSummary] DEBUG: allIndentsInDateRange.length=${allIndentsInDateRange.length}, sample totalCost values:`, 
-    allIndentsInDateRange.slice(0, 5).map((indent => ({ indent: indent.indent, totalCost: indent.totalCost, sNo: indent.sNo })))
-  );
+  logger.debug('Total load and cost', {
+    totalLoad: `${totalLoad} kg (${(totalLoad / 1000).toFixed(2)} tons)`,
+    totalCost: `₹${totalCost.toLocaleString('en-IN')}`
+  });
+  logger.debug('Total profit & loss and rows', {
+    totalProfitLoss: `₹${totalProfitLoss.toLocaleString('en-IN')}`,
+    totalRowsCounted: allIndentsInDateRange.length,
+    duplicateIndentValues: duplicateIndentValues.length
+  });
 
   // Step 8: Define range mappings
   const rangeMappings = [
@@ -380,18 +394,15 @@ export async function calculateRangeWiseSummary(
     };
   });
   
-  console.log(`[calculateRangeWiseSummary] Range data created: ${rangeData.length} ranges`);
-  console.log(`[calculateRangeWiseSummary] Sample range data:`, rangeData.slice(0, 2).map(r => ({
-    range: r.range,
-    indentCount: r.indentCount,
-    uniqueIndentCount: r.uniqueIndentCount,
-    totalCost: r.totalCost
-  })));
-  console.log(`[calculateRangeWiseSummary] Full range data with costs:`, rangeData.map(r => ({
-    range: r.range,
-    indentCount: r.indentCount,
-    totalCost: r.totalCost
-  })));
+  logger.debug('Range data created', {
+    rangeCount: rangeData.length,
+    sampleRanges: rangeData.slice(0, 2).map(r => ({
+      range: r.range,
+      indentCount: r.indentCount,
+      uniqueIndentCount: r.uniqueIndentCount,
+      totalCost: r.totalCost
+    }))
+  });
 
   // Step 10: Calculate "Other" category for non-matching ranges
   const matchedRanges = new Set(rangeMappings.map(({ label }) => label));
@@ -399,7 +410,7 @@ export async function calculateRangeWiseSummary(
     return indent.range && indent.range.trim() !== '' && !matchedRanges.has(indent.range);
   });
   
-  console.log(`[calculateRangeWiseSummary] Other indents found: ${otherIndents.length}`);
+  logger.debug('Other indents found', { count: otherIndents.length });
   
   if (otherIndents.length > 0) {
     const otherIndentCount = otherIndents.length;
@@ -440,7 +451,7 @@ export async function calculateRangeWiseSummary(
     };
     
     rangeData.push(otherRow);
-    console.log(`[calculateRangeWiseSummary] Added "Other" row:`, JSON.stringify(otherRow, null, 2));
+    logger.debug('Added Other row', { otherRow });
   }
 
   // Step 11: Find and calculate duplicate indents (indents appearing in multiple ranges)
@@ -462,7 +473,7 @@ export async function calculateRangeWiseSummary(
     }
   });
   
-  console.log(`[calculateRangeWiseSummary] Found ${duplicateIndents.size} indents appearing in multiple ranges`);
+  logger.debug('Found duplicate indents', { count: duplicateIndents.size });
   
   // Get all rows for these duplicate indents
   const duplicateIndentRows = validIndents.filter((indent: any) => 
@@ -470,7 +481,7 @@ export async function calculateRangeWiseSummary(
   );
   
   if (duplicateIndentRows.length > 0) {
-    console.log(`[calculateRangeWiseSummary] Duplicate indent rows: ${duplicateIndentRows.length}`);
+    logger.debug('Duplicate indent rows', { count: duplicateIndentRows.length });
     
     const duplicateIndentCount = duplicateIndentRows.length;
     const uniqueDuplicateIndents = new Set(duplicateIndentRows.map((t: any) => t.indent).filter(Boolean));
@@ -508,7 +519,7 @@ export async function calculateRangeWiseSummary(
     };
     
     rangeData.push(duplicateRow);
-    console.log(`[calculateRangeWiseSummary] Added "Duplicate Indents" row:`, JSON.stringify(duplicateRow, null, 2));
+    logger.debug('Added Duplicate Indents row', { duplicateRow });
   }
 
   // Step 12: Calculate totals from rangeData (matching Range-Wise Summary table logic)
@@ -521,19 +532,14 @@ export async function calculateRangeWiseSummary(
   const totalBuckets = standardRanges.reduce((sum, item) => sum + item.bucketCount, 0);
   const totalBarrels = standardRanges.reduce((sum, item) => sum + item.barrelCount, 0);
   
-  console.log(`[calculateRangeWiseSummary] ===== FINAL RESULTS =====`);
-  console.log(`[calculateRangeWiseSummary] Total unique indents: ${totalUniqueIndents}`);
-  console.log(`[calculateRangeWiseSummary] Total rows: ${totalRows}`);
-  console.log(`[calculateRangeWiseSummary] Total load: ${totalLoad} kg (${(totalLoad / 1000).toFixed(2)} tons)`);
-  console.log(`[calculateRangeWiseSummary] Total buckets (from valid indents only, matching Range-Wise Summary): ${totalBuckets}`);
-  console.log(`[calculateRangeWiseSummary] Total barrels (from valid indents only, matching Range-Wise Summary): ${totalBarrels}`);
-  console.log(`[calculateRangeWiseSummary] Range data count: ${rangeData.length}`);
-  
-  // Debug: Compare with rangeData sum (should be different due to duplicate indents)
-  const rangeDataBuckets = rangeData.reduce((sum, item) => sum + item.bucketCount, 0);
-  const rangeDataBarrels = rangeData.reduce((sum, item) => sum + item.barrelCount, 0);
-  console.log(`[calculateRangeWiseSummary] Range data sum (for comparison): buckets=${rangeDataBuckets}, barrels=${rangeDataBarrels}`);
-  console.log(`[calculateRangeWiseSummary] =========================`);
+  logger.info('calculateRangeWiseSummary completed', {
+    totalUniqueIndents,
+    totalRows,
+    totalLoad: `${totalLoad} kg (${(totalLoad / 1000).toFixed(2)} tons)`,
+    totalBuckets,
+    totalBarrels,
+    rangeDataCount: rangeData.length
+  });
 
   return {
     rangeData,

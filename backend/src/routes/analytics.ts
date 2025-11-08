@@ -1,51 +1,26 @@
 import express from 'express';
 import { getAnalytics, getRangeWiseAnalytics, getFulfillmentAnalytics, getLoadOverTime, getRevenueAnalytics, getCostAnalytics, getProfitLossAnalytics, getMonthOnMonthAnalytics, exportMissingIndents } from '../controllers/analyticsController';
+import { authenticate } from '../middleware/auth';
+import { validate, validateAnalyticsQuery } from '../middleware/validation';
 
 const router = express.Router();
 
-router.get('/', getAnalytics);
-router.get('/range-wise', getRangeWiseAnalytics);
-router.get('/fulfillment', getFulfillmentAnalytics);
-router.get('/fulfillment/export-missing', exportMissingIndents);
-router.get('/load-over-time', getLoadOverTime);
-router.get('/revenue', getRevenueAnalytics);
-router.get('/cost', getCostAnalytics);
-router.get('/profit-loss', getProfitLossAnalytics);
+// Apply authentication middleware to all analytics routes
+router.use(authenticate);
 
-// Test route first to verify routing works
-router.get('/test-month-route', (req, res) => {
-  res.json({ message: 'Test route works!', functionExists: typeof getMonthOnMonthAnalytics !== 'undefined' });
-});
+router.get('/', validate(validateAnalyticsQuery), getAnalytics);
+router.get('/range-wise', validate(validateAnalyticsQuery), getRangeWiseAnalytics);
+router.get('/fulfillment', validate(validateAnalyticsQuery), getFulfillmentAnalytics);
+router.get('/fulfillment/export-missing', validate(validateAnalyticsQuery), exportMissingIndents);
+router.get('/load-over-time', validate(validateAnalyticsQuery), getLoadOverTime);
+router.get('/revenue', validate(validateAnalyticsQuery), getRevenueAnalytics);
+router.get('/cost', validate(validateAnalyticsQuery), getCostAnalytics);
+router.get('/profit-loss', validate(validateAnalyticsQuery), getProfitLossAnalytics);
 
-// Verify the function exists before registering
-console.log('Checking getMonthOnMonthAnalytics:', {
-  exists: typeof getMonthOnMonthAnalytics !== 'undefined',
-  type: typeof getMonthOnMonthAnalytics,
-  isFunction: typeof getMonthOnMonthAnalytics === 'function'
-});
-
-try {
-  if (typeof getMonthOnMonthAnalytics === 'function') {
-    router.get('/month-on-month', getMonthOnMonthAnalytics);
-    console.log('✓ Month-on-month route registered successfully at /api/analytics/month-on-month');
-  } else {
-    console.error('✗ ERROR: getMonthOnMonthAnalytics is not a function!', typeof getMonthOnMonthAnalytics);
-  }
-} catch (error) {
-  console.error('✗ ERROR registering month-on-month route:', error);
+// Month-on-month analytics route
+if (typeof getMonthOnMonthAnalytics === 'function') {
+  router.get('/month-on-month', validate(validateAnalyticsQuery), getMonthOnMonthAnalytics);
 }
-
-// Debug: Log registered routes
-console.log('Analytics routes registered:', {
-  '/': 'getAnalytics',
-  '/range-wise': 'getRangeWiseAnalytics',
-  '/fulfillment': 'getFulfillmentAnalytics',
-  '/load-over-time': 'getLoadOverTime',
-  '/revenue': 'getRevenueAnalytics',
-  '/cost': 'getCostAnalytics',
-  '/profit-loss': typeof getProfitLossAnalytics === 'function' ? 'getProfitLossAnalytics ✓' : 'MISSING ✗',
-  '/month-on-month': typeof getMonthOnMonthAnalytics === 'function' ? 'getMonthOnMonthAnalytics ✓' : 'MISSING ✗'
-});
 
 export default router;
 
