@@ -4,6 +4,7 @@ import RevenueCard from '../components/phase4/RevenueCard';
 import RevenueTable from '../components/phase5/RevenueTable';
 import RevenueOverTimeChart from '../components/phase5/RevenueOverTimeChart';
 import RevenueBreakdownChart from '../components/phase5/RevenueBreakdownChart';
+import MonthSelector from '../components/phase5/MonthSelector';
 import { BackgroundBeams } from '../components/ui/background-beams';
 import { useTheme } from '../context/ThemeContext';
 
@@ -40,6 +41,9 @@ export default function PowerBIDashboard() {
 
       {/* Main Content with proper spacing */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Month Selector */}
+        <MonthSelector />
+        
         {/* Revenue Card */}
         <div className="max-w-md mx-auto mb-8">
           <RevenueCard />

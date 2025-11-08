@@ -1275,22 +1275,37 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
     const granularity = req.query.granularity as string || 'daily';
 
-    // Build date filter query using indentDate instead of allocationDate
-    const dateFilter: any = {};
-    if (fromDate || toDate) {
-      dateFilter.indentDate = {};
-      if (fromDate) {
-        dateFilter.indentDate.$gte = fromDate;
+    // Query all indents first
+    let allIndents = await Trip.find({});
+    
+    // For monthly granularity, show all available months (like month-on-month graphs)
+    // For daily/weekly, apply date filtering
+    let indents = [...allIndents];
+    
+    if (granularity === 'monthly') {
+      // For monthly granularity, ignore date filters and show all available months
+      console.log(`[getRevenueAnalytics] Monthly granularity detected - showing all available months (ignoring date filter)`);
+      // Don't filter by date - use all indents
+      indents = allIndents;
+    } else {
+      // For daily/weekly, apply date filtering
+      // Build date filter query using indentDate instead of allocationDate
+      const dateFilter: any = {};
+      if (fromDate || toDate) {
+        dateFilter.indentDate = {};
+        if (fromDate) {
+          dateFilter.indentDate.$gte = fromDate;
+        }
+        if (toDate) {
+          const endDate = new Date(toDate);
+          endDate.setHours(23, 59, 59, 999);
+          dateFilter.indentDate.$lte = endDate;
+        }
       }
-      if (toDate) {
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
-        dateFilter.indentDate.$lte = endDate;
-      }
-    }
 
-    // Query database with date filter
-    const indents = await Trip.find(dateFilter);
+      // Query database with date filter
+      indents = await Trip.find(dateFilter);
+    }
 
     // Bucket rates by range
     const BUCKET_RATES: Record<string, number> = {
@@ -1364,7 +1379,8 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     indents.forEach(indent => {
       let key: string;
 
-      // Group by time period based on granularity using indentDate
+      // Group by time period based on granularity
+      // For monthly, use Freight Tiger Month if available (like month-on-month graphs)
       switch (granularity) {
         case 'daily':
           key = format(indent.indentDate, 'yyyy-MM-dd');
@@ -1375,7 +1391,19 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
           key = `Week ${week}, ${year}`;
           break;
         case 'monthly':
-          key = format(indent.indentDate, 'yyyy-MM');
+          // For monthly, prioritize Freight Tiger Month (like month-on-month graphs)
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth) {
+              key = normalizedMonth; // Use normalized month key (e.g., '2025-05')
+            } else {
+              // Fallback to indentDate if normalization fails
+              key = format(indent.indentDate, 'yyyy-MM');
+            }
+          } else {
+            // Fallback to indentDate if Freight Tiger Month is not available
+            key = format(indent.indentDate, 'yyyy-MM');
+          }
           break;
         default:
           key = format(indent.indentDate, 'yyyy-MM-dd');
@@ -1403,7 +1431,21 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     // Convert to array and format labels
     const sortedKeys = Object.keys(groupedData).sort();
     const revenueOverTime = sortedKeys.map(key => {
-      const formattedKey = formatTimeLabel(key, granularity);
+      let formattedKey: string;
+      if (granularity === 'monthly') {
+        // Format monthly keys as "MMM'yy" (e.g., "May'25")
+        try {
+          const [year, month] = key.split('-');
+          const monthNum = parseInt(month, 10);
+          const yearShort = year.slice(-2);
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          formattedKey = `${monthNames[monthNum - 1]}'${yearShort}`;
+        } catch (e) {
+          formattedKey = formatTimeLabel(key, granularity);
+        }
+      } else {
+        formattedKey = formatTimeLabel(key, granularity);
+      }
       return {
         date: formattedKey,
         revenue: groupedData[key]

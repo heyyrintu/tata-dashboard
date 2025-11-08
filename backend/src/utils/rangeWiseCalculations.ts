@@ -464,29 +464,22 @@ export async function calculateRangeWiseSummary(
     console.log(`[calculateRangeWiseSummary] Added "Duplicate Indents" row:`, JSON.stringify(duplicateRow, null, 2));
   }
 
-  // Step 12: Calculate totals directly from all indents in date range (not from rangeData)
-  // This ensures we count all buckets/barrels correctly, including cancelled indents
-  // and avoiding double-counting from "Duplicate Indents" row
-  let totalBuckets = 0;
-  let totalBarrels = 0;
+  // Step 12: Calculate totals from rangeData (matching Range-Wise Summary table logic)
+  // This ensures bucket/barrel counts match the Range-Wise Summary table's total row
+  // The frontend excludes "Other" and "Duplicate Indents" rows from the total
+  const standardRanges = rangeData.filter(item => 
+    item.range !== 'Other' && item.range !== 'Duplicate Indents'
+  );
   
-  allIndentsInDateRange.forEach((indent: any) => {
-    const count = indent.noOfBuckets || 0;
-    const material = (indent.material || '').trim();
-    
-    if (material === '20L Buckets') {
-      totalBuckets += count;
-    } else if (material === '210L Barrels') {
-      totalBarrels += count;
-    }
-  });
+  const totalBuckets = standardRanges.reduce((sum, item) => sum + item.bucketCount, 0);
+  const totalBarrels = standardRanges.reduce((sum, item) => sum + item.barrelCount, 0);
   
   console.log(`[calculateRangeWiseSummary] ===== FINAL RESULTS =====`);
   console.log(`[calculateRangeWiseSummary] Total unique indents: ${totalUniqueIndents}`);
   console.log(`[calculateRangeWiseSummary] Total rows: ${totalRows}`);
   console.log(`[calculateRangeWiseSummary] Total load: ${totalLoad} kg (${(totalLoad / 1000).toFixed(2)} tons)`);
-  console.log(`[calculateRangeWiseSummary] Total buckets (from all indents in date range): ${totalBuckets}`);
-  console.log(`[calculateRangeWiseSummary] Total barrels (from all indents in date range): ${totalBarrels}`);
+  console.log(`[calculateRangeWiseSummary] Total buckets (from valid indents only, matching Range-Wise Summary): ${totalBuckets}`);
+  console.log(`[calculateRangeWiseSummary] Total barrels (from valid indents only, matching Range-Wise Summary): ${totalBarrels}`);
   console.log(`[calculateRangeWiseSummary] Range data count: ${rangeData.length}`);
   
   // Debug: Compare with rangeData sum (should be different due to duplicate indents)

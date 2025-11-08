@@ -1,14 +1,43 @@
 import React from 'react';
-import { useRevenueData } from '../../hooks/useRevenueData';
+import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingSpinner } from '../LoadingSpinner';
 import { formatCurrency } from '../../utils/revenueCalculations';
 import { formatBucketBarrelCount } from '../../utils/rangeCalculations';
-import { RANGE_COLORS } from '../../utils/constants';
+import { RANGE_COLORS, BUCKET_RATES, BARREL_RATES } from '../../utils/constants';
 
 export default function RevenueTable() {
-  const { data, loading, error } = useRevenueData();
+  const { data, loading, error } = useRangeData();
   const { theme } = useTheme();
+
+  // Calculate revenue from Range-Wise Summary data
+  const calculateRevenue = (rangeData: Array<{ range: string; bucketCount: number; barrelCount: number }> | undefined) => {
+    if (!rangeData) return [];
+    
+    // Filter out "Other" and "Duplicate Indents" rows
+    const standardRanges = rangeData.filter(item => 
+      item.range !== 'Other' && item.range !== 'Duplicate Indents'
+    );
+    
+    return standardRanges.map(item => {
+      const bucketRate = BUCKET_RATES[item.range] || 0;
+      const barrelRate = BARREL_RATES[item.range] || 0;
+      const bucketRevenue = item.bucketCount * bucketRate;
+      const barrelRevenue = item.barrelCount * barrelRate;
+      const totalRevenue = bucketRevenue + barrelRevenue;
+      
+      return {
+        range: item.range,
+        bucketRate,
+        barrelRate,
+        bucketCount: item.bucketCount,
+        barrelCount: item.barrelCount,
+        bucketRevenue,
+        barrelRevenue,
+        revenue: totalRevenue
+      };
+    });
+  };
 
   const gradientWrapper = (content: React.ReactNode) => (
     <div className={`rounded-2xl ${
@@ -17,10 +46,9 @@ export default function RevenueTable() {
         : 'shadow-xl border border-blue-900/30'
     }`} style={theme === 'light' ? {
       background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)',
-      height: '520px'
-    } : { height: '520px' }}>
-      <div className={`rounded-2xl p-6 h-full flex flex-col ${
+      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
+    } : {}}>
+      <div className={`rounded-2xl p-6 flex flex-col ${
         theme === 'light' ? 'bg-white border-0' : 'bg-white'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
@@ -57,7 +85,9 @@ export default function RevenueTable() {
     );
   }
 
-  if (!data || !data.revenueByRange || data.revenueByRange.length === 0) {
+  const revenueByRange = calculateRevenue(data?.rangeData);
+  
+  if (!data || !data.rangeData || revenueByRange.length === 0) {
     return gradientWrapper(
       <>
         <h2 className={`text-lg font-semibold mb-4 ${
@@ -72,9 +102,9 @@ export default function RevenueTable() {
     );
   }
 
-  const totalRevenue = data.revenueByRange.reduce((sum, item) => sum + item.revenue, 0);
-  const totalBuckets = data.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0);
-  const totalBarrels = data.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0);
+  const totalRevenue = revenueByRange.reduce((sum, item) => sum + item.revenue, 0);
+  const totalBuckets = revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0);
+  const totalBarrels = revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0);
 
   return gradientWrapper(
     <>
@@ -82,7 +112,7 @@ export default function RevenueTable() {
         theme === 'light' ? 'text-gray-800' : 'text-white'
       }`}>Revenue by Distance Range</h2>
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overflow-y-visible">
         <table className="w-full">
           <thead>
             <tr className={theme === 'light' ? 'border-b border-gray-200' : 'border-b border-gray-300'}>
@@ -98,7 +128,7 @@ export default function RevenueTable() {
             </tr>
           </thead>
           <tbody>
-            {data.revenueByRange.map((item, index) => {
+            {revenueByRange.map((item, index) => {
               const rangeColor = RANGE_COLORS[item.range] || '#E01E1F';
               return (
                 <tr

@@ -1,16 +1,27 @@
 import { useDashboard } from '../../context/DashboardContext';
 import { useTheme } from '../../context/ThemeContext';
-import { useRevenueData } from '../../hooks/useRevenueData';
+import { useRangeData } from '../../hooks/useRangeData';
 import { LoadingSpinner } from '../LoadingSpinner';
 import { formatCurrency } from '../../utils/revenueCalculations';
+import { BUCKET_RATES, BARREL_RATES } from '../../utils/constants';
 
 export default function RevenueCard() {
   const { isLoading } = useDashboard();
   const { theme } = useTheme();
-  const { data: revenueData, loading: revenueLoading } = useRevenueData();
+  const { data: rangeData, loading: rangeLoading } = useRangeData();
 
-  // Get total revenue from revenue analytics endpoint
-  const totalRevenue = revenueData?.totalRevenue || 0;
+  // Calculate total revenue from Range-Wise Summary data
+  const totalRevenue = rangeData?.rangeData
+    ? rangeData.rangeData
+        .filter(item => item.range !== 'Other' && item.range !== 'Duplicate Indents')
+        .reduce((sum, item) => {
+          const bucketRate = BUCKET_RATES[item.range] || 0;
+          const barrelRate = BARREL_RATES[item.range] || 0;
+          const bucketRevenue = item.bucketCount * bucketRate;
+          const barrelRevenue = item.barrelCount * barrelRate;
+          return sum + bucketRevenue + barrelRevenue;
+        }, 0)
+    : 0;
 
   return (
     <div className={`glass-card rounded-2xl p-6 transition-all duration-300 transform hover:-translate-y-1 relative overflow-hidden group ${
@@ -29,7 +40,7 @@ export default function RevenueCard() {
           <p className={`text-sm font-medium mb-2 ${
             theme === 'light' ? 'text-gray-600' : 'text-slate-400'
           }`}>Total Revenue</p>
-          {isLoading || revenueLoading ? (
+          {isLoading || rangeLoading ? (
             <LoadingSpinner size="sm" />
           ) : (
             <p className={`text-4xl font-bold ${

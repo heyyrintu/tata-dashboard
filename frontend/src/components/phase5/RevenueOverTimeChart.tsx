@@ -29,7 +29,7 @@ ChartJS.register(
 );
 
 export default function RevenueOverTimeChart() {
-  const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
   const { data, loading, error } = useRevenueData(granularity);
   const { theme } = useTheme();
 
@@ -95,6 +95,31 @@ export default function RevenueOverTimeChart() {
         pointHoverRadius: 6,
       },
     ],
+  };
+
+  // Plugin to display values above points
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((dataset: any, i: number) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((point: any, index: number) => {
+          const value = dataset.data[index];
+          // Only show value if it's greater than 0
+          if (value > 0) {
+            ctx.save();
+            ctx.fillStyle = theme === 'light' ? 'rgba(30, 58, 138, 0.8)' : 'rgba(30, 58, 138, 0.8)';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            const formattedValue = formatIndianNumber(value);
+            ctx.fillText(`₹${formattedValue}`, point.x, point.y - 8);
+            ctx.restore();
+          }
+        });
+      });
+    }
   };
 
   const chartOptions = {
@@ -183,6 +208,7 @@ export default function RevenueOverTimeChart() {
         <Line
           data={chartData}
           options={chartOptions}
+          plugins={[valuePlugin]}
         />
       </div>
     </>

@@ -6,11 +6,11 @@ import {
   Legend,
 } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
-import { useRevenueData } from '../../hooks/useRevenueData';
+import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingSpinner } from '../LoadingSpinner';
 import { formatIndianNumber, formatPercentage } from '../../utils/revenueCalculations';
-import { BUCKET_COLORS, BARREL_COLORS } from '../../utils/constants';
+import { RANGE_COLORS, BUCKET_RATES, BARREL_RATES } from '../../utils/constants';
 
 ChartJS.register(
   ArcElement,
@@ -19,7 +19,8 @@ ChartJS.register(
 );
 
 export default function RevenueBreakdownChart() {
-  const { data, loading, error } = useRevenueData();
+  // ALL HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL RETURNS
+  const { data, loading, error } = useRangeData();
   const { theme } = useTheme();
   const metadataRef = useRef<Array<{
     range: string;
@@ -29,10 +30,80 @@ export default function RevenueBreakdownChart() {
     rate: number;
     percentage: number;
   }>>([]);
+  
+  // Store revenueByRange and theme in refs for plugin access - MUST BE BEFORE CONDITIONAL RETURNS
+  const revenueByRangeRef = useRef<Array<{
+    range: string;
+    bucketRate: number;
+    barrelRate: number;
+    bucketCount: number;
+    barrelCount: number;
+    bucketRevenue: number;
+    barrelRevenue: number;
+    revenue: number;
+  }>>([]);
+  const themeRef = useRef(theme);
+
+  // Calculate revenue from Range-Wise Summary data
+  const calculateRevenue = (rangeData: Array<{ range: string; bucketCount: number; barrelCount: number }> | undefined) => {
+    if (!rangeData) return [];
+    
+    // Filter out "Other" and "Duplicate Indents" rows
+    const standardRanges = rangeData.filter(item => 
+      item.range !== 'Other' && item.range !== 'Duplicate Indents'
+    );
+    
+    return standardRanges.map(item => {
+      const bucketRate = BUCKET_RATES[item.range] || 0;
+      const barrelRate = BARREL_RATES[item.range] || 0;
+      const bucketRevenue = item.bucketCount * bucketRate;
+      const barrelRevenue = item.barrelCount * barrelRate;
+      const totalRevenue = bucketRevenue + barrelRevenue;
+      
+      return {
+        range: item.range,
+        bucketRate,
+        barrelRate,
+        bucketCount: item.bucketCount,
+        barrelCount: item.barrelCount,
+        bucketRevenue,
+        barrelRevenue,
+        revenue: totalRevenue
+      };
+    });
+  };
+
+  // Calculate revenue data - MUST BE BEFORE CONDITIONAL RETURNS
+  const revenueByRange = useMemo(() => {
+    if (!data?.rangeData) return [];
+    return calculateRevenue(data.rangeData);
+  }, [data?.rangeData]);
+  
+  const totalRevenue = useMemo(() => {
+    if (!revenueByRange || revenueByRange.length === 0) return 0;
+    return revenueByRange.reduce((sum, item) => sum + item.revenue, 0);
+  }, [revenueByRange]);
+  
+  // Update refs
+  revenueByRangeRef.current = revenueByRange;
+  themeRef.current = theme;
 
   // Move useMemo to top level - before any conditional returns
   const chartData = useMemo(() => {
-    if (!data || !data.revenueByRange || data.revenueByRange.length === 0) {
+    if (!data?.rangeData) {
+      return {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: [],
+          borderColor: [],
+        }],
+      };
+    }
+    
+    const calculatedRevenue = calculateRevenue(data.rangeData);
+    
+    if (!calculatedRevenue || calculatedRevenue.length === 0) {
       return {
         labels: [],
         datasets: [{
@@ -43,7 +114,7 @@ export default function RevenueBreakdownChart() {
       };
     }
 
-    const totalRevenue = data.revenueByRange.reduce((sum, item) => sum + item.revenue, 0);
+    const totalRev = calculatedRevenue.reduce((sum, item) => sum + item.revenue, 0);
     
     // Create labels and data arrays for donut chart
     const labels: string[] = [];
@@ -59,36 +130,21 @@ export default function RevenueBreakdownChart() {
       percentage: number;
     }> = [];
     
-    data.revenueByRange.forEach((item, index) => {
-      // Bucket segment
-      if (item.bucketRevenue > 0) {
-        labels.push(`${item.range} - Bucket`);
-        revenueData.push(item.bucketRevenue);
-        backgroundColors.push(BUCKET_COLORS[index] + '80');
-        borderColors.push(BUCKET_COLORS[index]);
+    calculatedRevenue.forEach((item) => {
+      // Combine bucket and barrel revenue into a single segment per range
+      if (item.revenue > 0) {
+        const rangeColor = RANGE_COLORS[item.range] || '#9CA3AF'; // Default to gray if range not found
+        labels.push(item.range);
+        revenueData.push(item.revenue);
+        backgroundColors.push(rangeColor + '80');
+        borderColors.push(rangeColor);
         metadataArray.push({
           range: item.range,
-          itemType: 'Bucket',
-          count: item.bucketCount,
-          revenue: item.bucketRevenue,
-          rate: item.bucketRate,
-          percentage: (item.bucketRevenue / totalRevenue) * 100,
-        });
-      }
-      
-      // Barrel segment
-      if (item.barrelRevenue > 0) {
-        labels.push(`${item.range} - Barrel`);
-        revenueData.push(item.barrelRevenue);
-        backgroundColors.push(BARREL_COLORS[index] + '80');
-        borderColors.push(BARREL_COLORS[index]);
-        metadataArray.push({
-          range: item.range,
-          itemType: 'Barrel',
-          count: item.barrelCount,
-          revenue: item.barrelRevenue,
-          rate: item.barrelRate,
-          percentage: (item.barrelRevenue / totalRevenue) * 100,
+          itemType: 'Total',
+          count: item.bucketCount + item.barrelCount,
+          revenue: item.revenue,
+          rate: 0, // Not applicable for combined
+          percentage: totalRev > 0 ? (item.revenue / totalRev) * 100 : 0,
         });
       }
     });
@@ -105,7 +161,131 @@ export default function RevenueBreakdownChart() {
         borderWidth: 2,
       }],
     };
-  }, [data?.revenueByRange]);
+  }, [data?.rangeData]);
+
+  // Custom plugin to display percentages on donut segments - MUST BE BEFORE CONDITIONAL RETURNS
+  const percentagePlugin = useMemo(() => {
+    const currentTheme = theme;
+    return {
+      id: 'percentageLabels',
+      afterDraw: (chart: any) => {
+        try {
+          const ctx = chart.ctx;
+          const chartData = chart.data;
+          const meta = chart.getDatasetMeta(0);
+          
+          if (!chartData.labels || chartData.labels.length === 0 || !meta || !meta.data) return;
+          
+          const total = chartData.datasets[0].data.reduce((a: number, b: number) => a + b, 0);
+          
+          meta.data.forEach((segment: any, index: number) => {
+            const value = chartData.datasets[0].data[index];
+            if (value === 0 || value === undefined) return;
+            
+            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+            
+            // Only show label if segment is large enough (at least 5%)
+            if (parseFloat(percentage) >= 5) {
+              const arc = segment;
+              const angle = (arc.startAngle + arc.endAngle) / 2;
+              const radius = (arc.innerRadius + arc.outerRadius) / 2;
+              const centerX = arc.x;
+              const centerY = arc.y;
+              const x = centerX + Math.cos(angle) * radius;
+              const y = centerY + Math.sin(angle) * radius;
+              
+              // Get range from metadata
+              const item = metadataRef.current[index];
+              const range = item ? item.range : '';
+              
+              ctx.save();
+              ctx.fillStyle = currentTheme === 'light' ? '#1F2937' : '#F9FAFB';
+              ctx.font = 'bold 12px sans-serif';
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              
+              // Display range and percentage on separate lines
+              if (range) {
+                ctx.fillText(range, x, y - 8);
+              }
+              ctx.fillText(`${percentage}%`, x, y + 8);
+              ctx.restore();
+            }
+          });
+        } catch (error) {
+          console.error('[RevenueBreakdownChart] Error in percentagePlugin:', error);
+        }
+      }
+    };
+  }, [theme]);
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: true,
+    aspectRatio: 1,
+    cutout: '65%',
+    plugins: {
+      legend: {
+        display: true,
+        position: 'bottom' as const,
+        labels: {
+          boxWidth: 12,
+          boxHeight: 12,
+          padding: 10,
+          font: {
+            size: 11,
+            weight: 'normal' as const,
+          },
+          color: theme === 'light' ? '#1F2937' : '#F9FAFB',
+          usePointStyle: false,
+          generateLabels: function(chart: any) {
+            const data = chart.data;
+            if (data.labels && data.labels.length && data.datasets.length) {
+              const dataset = data.datasets[0];
+              const total = dataset.data.reduce((a: number, b: number) => a + b, 0);
+              return data.labels.map((label: string, i: number) => {
+                const value = dataset.data[i];
+                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                return {
+                  text: `${label} (${percentage}%)`,
+                  fillStyle: dataset.backgroundColor[i],
+                  strokeStyle: dataset.borderColor[i],
+                  lineWidth: dataset.borderWidth,
+                  hidden: false,
+                  index: i
+                };
+              });
+            }
+            return [];
+          }
+        }
+      },
+      tooltip: {
+        enabled: true,
+        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+        titleColor: theme === 'light' ? '#111827' : '#111827',
+        bodyColor: theme === 'light' ? '#111827' : '#111827',
+        borderColor: theme === 'light' ? '#E5E7EB' : '#374151',
+        borderWidth: 1,
+        cornerRadius: 8,
+        callbacks: {
+          label: function(context: any) {
+            const index = context.dataIndex;
+            const item = metadataRef.current[index];
+            if (!item) return '';
+            const rangeItem = revenueByRangeRef.current.find(r => r.range === item.range);
+            return [
+              `Range: ${item.range}`,
+              `Bucket Revenue: ₹${formatIndianNumber(rangeItem?.bucketRevenue || 0)}`,
+              `Barrel Revenue: ₹${formatIndianNumber(rangeItem?.barrelRevenue || 0)}`,
+              `Total Revenue: ₹${formatIndianNumber(item.revenue)}`,
+              `Percentage: ${formatPercentage(item.percentage)}`
+            ];
+          }
+        }
+      },
+    },
+  };
 
   const gradientWrapper = (content: React.ReactNode) => (
     <div className={`rounded-2xl ${
@@ -125,6 +305,7 @@ export default function RevenueBreakdownChart() {
     </div>
   );
 
+  // NOW WE CAN HAVE CONDITIONAL RETURNS - ALL HOOKS ARE CALLED ABOVE
   if (loading) {
     return gradientWrapper(
       <div className="flex items-center justify-center h-full">
@@ -143,8 +324,8 @@ export default function RevenueBreakdownChart() {
       </div>
     );
   }
-
-  if (!data || !data.revenueByRange || data.revenueByRange.length === 0) {
+  
+  if (!data || !data.rangeData || revenueByRange.length === 0) {
     return gradientWrapper(
       <div className="flex items-center justify-center h-full">
         <div className="text-sm text-gray-400">No revenue data available</div>
@@ -152,147 +333,46 @@ export default function RevenueBreakdownChart() {
     );
   }
 
-  const totalRevenue = data.revenueByRange.reduce((sum, item) => sum + item.revenue, 0);
-
-  // Custom plugin to display percentages on donut segments
-  const percentagePlugin = {
-    id: 'percentageLabels',
-    afterDraw: (chart: any) => {
-      const ctx = chart.ctx;
-      const data = chart.data;
-      const meta = chart.getDatasetMeta(0);
-      
-      if (!data.labels || data.labels.length === 0) return;
-      
-      const total = data.datasets[0].data.reduce((a: number, b: number) => a + b, 0);
-      
-      meta.data.forEach((segment: any, index: number) => {
-        const value = data.datasets[0].data[index];
-        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-        
-        // Only show label if segment is large enough (at least 5%)
-        if (parseFloat(percentage) >= 5) {
-          const arc = segment;
-          const angle = (arc.startAngle + arc.endAngle) / 2;
-          const radius = (arc.innerRadius + arc.outerRadius) / 2;
-          const centerX = arc.x;
-          const centerY = arc.y;
-          const x = centerX + Math.cos(angle) * radius;
-          const y = centerY + Math.sin(angle) * radius;
-          
-          // Get range from metadata
-          const item = metadataRef.current[index];
-          const range = item ? item.range : '';
-          
-          ctx.save();
-          ctx.fillStyle = '#1F2937';
-          ctx.font = 'bold 12px sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          
-          // Display range and percentage on separate lines
-          ctx.fillText(range, x, y - 8);
-          ctx.fillText(`${percentage}%`, x, y + 8);
-          ctx.restore();
-        }
-      });
-    }
-  };
-
-  const chartOptions = {
-    responsive: true,
-    maintainAspectRatio: true,
-    aspectRatio: 1,
-    cutout: '65%',
-    plugins: {
-      legend: {
-        display: false,
-        position: 'bottom' as const,
-        labels: {
-          boxWidth: 12,
-          font: { size: 10 },
-          padding: 8,
-          color: '#E5E7EB',
-          usePointStyle: true,
-          pointStyle: 'rect' as const,
-          generateLabels: function(chart: any) {
-            const data = chart.data;
-            if (data.labels.length && data.datasets.length) {
-              const dataset = data.datasets[0];
-              const total = dataset.data.reduce((a: number, b: number) => a + b, 0);
-              return data.labels.map((label: string, i: number) => {
-                const value = dataset.data[i];
-                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                // Extract item type (Bucket or Barrel) from label, removing the range
-                const itemType = label.includes(' - ') ? label.split(' - ')[1] : label;
-                return {
-                  text: `${itemType} (${percentage}%)`,
-                  fillStyle: dataset.backgroundColor[i],
-                  strokeStyle: dataset.borderColor[i],
-                  lineWidth: dataset.borderWidth,
-                  hidden: false,
-                  index: i
-                };
-              });
-            }
-            return [];
-          }
-        }
-      },
-      tooltip: {
-        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-        titleColor: theme === 'light' ? '#111827' : '#111827',
-        bodyColor: theme === 'light' ? '#111827' : '#111827',
-        borderColor: theme === 'light' ? '#E5E7EB' : '#374151',
-        borderWidth: 1,
-        cornerRadius: 8,
-        callbacks: {
-          label: function(context: any) {
-            const index = context.dataIndex;
-            const item = metadataRef.current[index];
-            if (!item) return '';
-            return [
-              `Range: ${item.range}`,
-              `Type: ${item.itemType}`,
-              `Rate: ₹${item.rate}/${item.itemType === 'Bucket' ? 'bucket' : 'barrel'}`,
-              `Count: ${formatIndianNumber(item.count)} ${item.itemType === 'Bucket' ? 'buckets' : 'barrels'}`,
-              `Revenue: ₹${formatIndianNumber(item.revenue)}`,
-              `Percentage: ${formatPercentage(item.percentage)}`
-            ];
-          }
-        }
-      },
-    },
-  };
-
-  return gradientWrapper(
-    <>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-lg font-semibold text-left ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Range wise Revenue %</h3>
-      </div>
-      <div className="flex-1 relative flex items-center justify-center">
-        <div className="w-full h-full max-w-[379px] max-h-[379px]">
-          <Doughnut
-            data={chartData}
-            options={chartOptions}
-            plugins={[percentagePlugin]}
-          />
+  try {
+    return gradientWrapper(
+      <>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className={`text-lg font-semibold text-left ${
+            theme === 'light' ? 'text-black' : 'text-black'
+          }`}>Range wise Revenue %</h3>
         </div>
-        
-        {/* Centered text showing total revenue */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <div className={`text-2xl font-bold ${
-              theme === 'light' ? '!text-black' : '!text-black'
-            }`}>₹{formatIndianNumber(totalRevenue)}</div>
-            <div className={`text-xs ${
-              theme === 'light' ? '!text-black' : '!text-black'
-            }`}>Total Revenue</div>
+        <div className="flex-1 relative flex items-center justify-center">
+          <div className="w-full h-full max-w-[379px] max-h-[379px]">
+            <Doughnut
+              data={chartData}
+              options={chartOptions}
+              plugins={[percentagePlugin]}
+            />
+          </div>
+          
+          {/* Centered text showing total revenue */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="text-center">
+              <div className={`text-2xl font-bold ${
+                theme === 'light' ? 'text-black' : 'text-black'
+              }`}>₹{formatIndianNumber(totalRevenue)}</div>
+              <div className={`text-xs ${
+                theme === 'light' ? 'text-black' : 'text-black'
+              }`}>Total Revenue</div>
+            </div>
           </div>
         </div>
+      </>
+    );
+  } catch (err) {
+    console.error('[RevenueBreakdownChart] Render error:', err);
+    return gradientWrapper(
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="text-sm text-red-500 mb-2">Error rendering chart</div>
+          <div className="text-xs text-gray-400">{err instanceof Error ? err.message : 'Unknown error'}</div>
+        </div>
       </div>
-    </>
-  );
+    );
+  }
 }
