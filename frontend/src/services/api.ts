@@ -121,11 +121,9 @@ export const uploadExcel = async (file: File): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await api.post<UploadResponse>('/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  // Don't set Content-Type manually - axios will set it automatically for FormData
+  // This ensures the Authorization header from the interceptor is preserved
+  const response = await api.post<UploadResponse>('/upload', formData);
 
   return response.data;
 };
