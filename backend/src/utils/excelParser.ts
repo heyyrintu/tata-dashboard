@@ -168,20 +168,24 @@ const convertToDate = (value: any): Date => {
   if (!value && value !== 0) return new Date();
   
   // If it's already a Date object (shouldn't happen with cellDates: false, but handle it)
+  // Normalize to UTC start of day for consistency
   if (value instanceof Date) {
-    return value;
+    if (!isNaN(value.getTime())) {
+      return new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth(), value.getUTCDate(), 0, 0, 0, 0));
+    }
+    return new Date();
   }
   
   // Excel serial date number (days since 1900-01-01)
   if (typeof value === 'number') {
     // Excel epoch: Dec 31, 1899
     // Excel serial 1 = Jan 1, 1900
-    // Use 1899-12-31 as epoch to match Excel's display format (DD-MM-YYYY)
-    const excelEpoch = new Date(1899, 11, 31); // Dec 31, 1899 (month is 0-indexed)
+    // Use UTC epoch to avoid timezone issues - normalize to start of day in UTC
+    const excelEpoch = new Date(Date.UTC(1899, 11, 31, 0, 0, 0, 0)); // Dec 31, 1899 UTC (month is 0-indexed)
     const daysSinceEpoch = value - 1; // Serial 1 = day 0 from Dec 31, 1899 = Jan 1, 1900
     const date = new Date(excelEpoch.getTime() + daysSinceEpoch * 24 * 60 * 60 * 1000);
-    // Return date in local timezone (not UTC) to match Excel's display
-    return date;
+    // Return date normalized to UTC start of day for consistency
+    return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 0, 0, 0, 0));
   }
   
   // String format - parse as DD-MM-YYYY (Indian format)
@@ -200,8 +204,9 @@ const convertToDate = (value: any): Date => {
       // Always treat as DD-MM-YYYY for Indian date format
       // If day > 12, it's definitely DD-MM-YYYY
       // If day <= 12, we still assume DD-MM-YYYY (Indian format)
+      // Use UTC to avoid timezone issues - normalize to start of day in UTC
       if (day >= 1 && day <= 31 && month >= 1 && month <= 12) {
-        const date = new Date(year, month - 1, day);
+        const date = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
         if (!isNaN(date.getTime())) {
           return date;
         }
@@ -209,9 +214,10 @@ const convertToDate = (value: any): Date => {
     }
     
     // Try standard Date parsing as fallback
+    // Normalize to UTC start of day for consistency
     const parsed = new Date(value);
     if (!isNaN(parsed.getTime())) {
-      return parsed;
+      return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate(), 0, 0, 0, 0));
     }
   }
   

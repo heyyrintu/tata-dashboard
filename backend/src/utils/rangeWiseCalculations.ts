@@ -191,8 +191,7 @@ export async function calculateRangeWiseSummary(
       return indent.indentDate >= fromDate;
     });
   } else if (toDate) {
-    const endDate = new Date(toDate);
-    endDate.setHours(23, 59, 59, 999);
+    const endDate = endOfDayUTC(toDate);
     logger.debug('To date filter only', { toDate: toDate?.toISOString().split('T')[0] });
     validIndents = validIndents.filter((indent: any) => {
       if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
@@ -214,8 +213,7 @@ export async function calculateRangeWiseSummary(
   if (fromDate && toDate) {
     const fromMonth = format(fromDate, 'yyyy-MM');
     const toMonth = format(toDate, 'yyyy-MM');
-    const endDate = new Date(toDate);
-    endDate.setHours(23, 59, 59, 999);
+    const endDate = endOfDayUTC(toDate);
     
     if (fromMonth === toMonth) {
       // Single month - use Freight Tiger Month (same logic as validIndents)
@@ -278,8 +276,7 @@ export async function calculateRangeWiseSummary(
       }
     });
   } else if (toDate) {
-    const endDate = new Date(toDate);
-    endDate.setHours(23, 59, 59, 999);
+    const endDate = endOfDayUTC(toDate);
     allIndentsInDateRange = await Trip.find({
       indentDate: {
         $lte: endDate
