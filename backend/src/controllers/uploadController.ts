@@ -53,12 +53,52 @@ export const processExcelFile = async (
       };
     }
 
+    // Debug: Check if totalCost is being parsed
+    const indentsWithCost = indents.filter(indent => indent.totalCost && indent.totalCost > 0);
+    console.log(`[uploadController] Parsed ${indents.length} indents, ${indentsWithCost.length} with totalCost > 0`);
+    if (indentsWithCost.length > 0) {
+      const sampleTotalCost = indentsWithCost.slice(0, 5).reduce((sum, indent) => sum + (indent.totalCost || 0), 0);
+      console.log(`[uploadController] Sample totalCost from first 5 indents with cost: ₹${sampleTotalCost.toLocaleString('en-IN')}`);
+    }
+
     // Delete all existing data before inserting new data
     // Use maxTimeMS to prevent timeout errors
     await Trip.deleteMany({}).maxTimeMS(30000);
 
-    // Insert new data
-    await Trip.insertMany(indents);
+    // Insert new data in batches to avoid timeout
+    const batchSize = 100;
+    let insertedCount = 0;
+    for (let i = 0; i < indents.length; i += batchSize) {
+      const batch = indents.slice(i, i + batchSize);
+      await Trip.insertMany(batch, { ordered: false });
+      insertedCount += batch.length;
+      console.log(`[uploadController] Inserted batch ${Math.floor(i / batchSize) + 1}: ${batch.length} indents (${insertedCount}/${indents.length})`);
+    }
+    
+    // Verify data was inserted correctly
+    const totalInserted = await Trip.countDocuments({});
+    const insertedWithCost = await Trip.countDocuments({ totalCost: { $exists: true, $ne: 0 } });
+    const totalCostInserted = await Trip.aggregate([
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$totalCost', 0] } } } }
+    ]);
+    const totalCostValue = totalCostInserted.length > 0 ? totalCostInserted[0].total : 0;
+    
+    console.log(`[uploadController] Upload complete:`);
+    console.log(`  Total indents inserted: ${totalInserted} (expected: ${indents.length})`);
+    console.log(`  Indents with totalCost > 0: ${insertedWithCost}`);
+    console.log(`  Total cost in database: ₹${totalCostValue.toLocaleString('en-IN')}`);
+    
+    // Calculate expected total cost from parsed indents
+    const expectedTotalCost = indents.reduce((sum, indent) => sum + (indent.totalCost || 0), 0);
+    console.log(`  Expected total cost: ₹${expectedTotalCost.toLocaleString('en-IN')}`);
+    
+    if (totalInserted !== indents.length) {
+      console.warn(`[uploadController] WARNING: Inserted count (${totalInserted}) doesn't match parsed count (${indents.length})`);
+    }
+    
+    if (Math.abs(totalCostValue - expectedTotalCost) > 0.01) {
+      console.warn(`[uploadController] WARNING: Database total cost (₹${totalCostValue.toLocaleString('en-IN')}) doesn't match expected (₹${expectedTotalCost.toLocaleString('en-IN')})`);
+    }
 
     return {
       success: true,

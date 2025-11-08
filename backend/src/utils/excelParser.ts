@@ -36,7 +36,12 @@ const normalizeRange = (range: string | null | undefined): string => {
 export const parseExcelFile = (filePath: string): ITrip[] => {
   try {
     // Read WITHOUT cellDates to get raw values, then parse manually as DD-MM-YYYY
-    const workbook = XLSX.readFile(filePath, { type: 'file', cellDates: false });
+    // Read with cellFormula: true to get calculated values from formulas (needed for column AE)
+    const workbook = XLSX.readFile(filePath, { 
+      type: 'file', 
+      cellDates: false,
+      cellFormula: true  // Read formulas to get calculated values (needed for column AE)
+    });
     
     // Find 'OPs Data' sheet
     let sheetName = 'OPs Data';
@@ -47,6 +52,14 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
     }
     
     const worksheet = workbook.Sheets[sheetName];
+    
+    // Extend range to include column AE (index 30) and AK (index 36) if needed
+    const range = XLSX.utils.decode_range(worksheet['!ref'] || 'A1');
+    if (range.e.c < 36) {
+      range.e.c = 36; // Extend to column AK (for P & L)
+      worksheet['!ref'] = XLSX.utils.encode_range(range);
+    }
+    
     const data: ExcelRow[] = XLSX.utils.sheet_to_json(worksheet);
 
     // Validate required columns
@@ -83,6 +96,57 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         range: normalizeRange(row['Range']),
         remarks: row['REMARKS'] || row['Remarks'] || '',
         freightTigerMonth: convertFreightTigerMonth(row['Freight Tiger Month']),
+        // Use column AE (index 30) for Total Cost - this is the 2nd "Total Cost" column
+        // Column AE has formula: W+Y+AB+AD (sum of multiple cost components)
+        // When reading with sheet_to_json, column AE is at index 30
+        totalCost: (() => {
+          const rowKeys = Object.keys(row);
+          // Column AE is the 31st column (0-indexed: 30)
+          // Get value from column index 30 directly
+          if (rowKeys.length > 30 && rowKeys[30]) {
+            const aeValue = row[rowKeys[30]];
+            if (aeValue !== undefined && aeValue !== null && aeValue !== '') {
+              const numValue = parseFloat(aeValue);
+              if (!isNaN(numValue)) {
+                return numValue;
+              }
+            }
+          }
+          // Fallback: try common header names for column AE
+          const aeValue = row['Any Other Cost'] || row['Total Cost_1'];
+          if (aeValue !== undefined && aeValue !== null && aeValue !== '') {
+            const numValue = parseFloat(aeValue);
+            if (!isNaN(numValue)) {
+              return numValue;
+            }
+          }
+          // Last fallback: original "Total Cost" column (column T, index 19)
+          return parseFloat(row['Total Cost']) || 0;
+        })(),
+        // Use column AK (index 36) for Profit & Loss - column header 'P & L'
+        // Column AK is the 37th column (0-indexed: 36)
+        profitLoss: (() => {
+          const rowKeys = Object.keys(row);
+          // Get value from column index 36 directly
+          if (rowKeys.length > 36 && rowKeys[36]) {
+            const akValue = row[rowKeys[36]];
+            if (akValue !== undefined && akValue !== null && akValue !== '') {
+              const numValue = parseFloat(akValue);
+              if (!isNaN(numValue)) {
+                return numValue;
+              }
+            }
+          }
+          // Fallback: try header name 'P & L'
+          const akValue = row['P & L'] || row['P&L'];
+          if (akValue !== undefined && akValue !== null && akValue !== '') {
+            const numValue = parseFloat(akValue);
+            if (!isNaN(numValue)) {
+              return numValue;
+            }
+          }
+          return 0;
+        })(),
       } as any;
     });
 

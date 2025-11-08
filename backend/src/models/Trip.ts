@@ -23,6 +23,8 @@ export interface ITrip extends Document {
   range: string;
   remarks: string;
   freightTigerMonth: string;
+  totalCost: number;
+  profitLoss: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +53,8 @@ const TripSchema = new Schema<ITrip>(
     range: { type: String },
     remarks: { type: String },
     freightTigerMonth: { type: String },
+    totalCost: { type: Number },
+    profitLoss: { type: Number },
   },
   {
     timestamps: true,

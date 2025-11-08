@@ -273,6 +273,8 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
         rangeDataLength: result.rangeData.length,
         totalUniqueIndents: result.totalUniqueIndents,
         totalLoad: result.totalLoad,
+        totalCost: result.totalCost,
+        totalProfitLoss: result.totalProfitLoss,
         totalRows: result.totalRows
       });
     } catch (calcError) {
@@ -369,6 +371,8 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       rangeDataLength: finalRangeData.length,
       totalUniqueIndents: result.totalUniqueIndents,
       totalLoad: result.totalLoad,
+      totalCost: result.totalCost,
+      totalProfitLoss: result.totalProfitLoss,
       totalRows: result.totalRows
     });
 
@@ -378,6 +382,8 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       locations: locations || [],
       totalUniqueIndents: result.totalUniqueIndents || 0,
       totalLoad: result.totalLoad || 0, // Total load in kg
+      totalCost: result.totalCost || 0, // Total cost
+      totalProfitLoss: result.totalProfitLoss || 0, // Total profit & loss
       totalBuckets: result.totalBuckets || 0,
       totalBarrels: result.totalBarrels || 0,
       totalRows: result.totalRows || 0,
@@ -1474,6 +1480,346 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch revenue analytics'
+    });
+  }
+};
+
+export const getCostAnalytics = async (req: Request, res: Response) => {
+  try {
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+    const granularity = req.query.granularity as string || 'daily';
+
+    // Query all indents first
+    let allIndents = await Trip.find({});
+    
+    // For monthly granularity, show all available months (like month-on-month graphs)
+    // For daily/weekly, apply date filtering
+    let indents = [...allIndents];
+    
+    if (granularity === 'monthly') {
+      // For monthly granularity, ignore date filters and show all available months
+      console.log(`[getCostAnalytics] Monthly granularity detected - showing all available months (ignoring date filter)`);
+      // Don't filter by date - use all indents
+      indents = allIndents;
+    } else {
+      // For daily/weekly, apply date filtering
+      // Build date filter query using indentDate instead of allocationDate
+      const dateFilter: any = {};
+      if (fromDate || toDate) {
+        dateFilter.indentDate = {};
+        if (fromDate) {
+          dateFilter.indentDate.$gte = fromDate;
+        }
+        if (toDate) {
+          const endDate = new Date(toDate);
+          endDate.setHours(23, 59, 59, 999);
+          dateFilter.indentDate.$lte = endDate;
+        }
+      }
+
+      // Query database with date filter
+      indents = await Trip.find(dateFilter);
+    }
+
+    // Range mappings - values are normalized during parsing
+    const rangeMappings = [
+      { label: '0-100Km' },
+      { label: '101-250Km' },
+      { label: '251-400Km' },
+      { label: '401-600Km' },
+    ];
+
+    // Calculate cost by range - sum totalCost from indents
+    const costByRange = rangeMappings.map(({ label }) => {
+      const rangeIndents = indents.filter(indent => {
+        // Since ranges are normalized during parsing, we can do direct comparison
+        return indent.range === label;
+      });
+
+      // Sum totalCost from all indents in this range
+      const totalCost = rangeIndents.reduce((sum, indent) => {
+        return sum + (indent.totalCost || 0);
+      }, 0);
+
+      return {
+        range: label,
+        cost: totalCost
+      };
+    });
+
+    // Calculate total cost
+    const totalCost = costByRange.reduce((sum, item) => sum + item.cost, 0);
+
+    // Calculate cost over time
+    const groupedData: Record<string, number> = {};
+
+    indents.forEach(indent => {
+      let key: string;
+
+      // Group by time period based on granularity
+      // For monthly, use Freight Tiger Month if available (like month-on-month graphs)
+      switch (granularity) {
+        case 'daily':
+          key = format(indent.indentDate, 'yyyy-MM-dd');
+          break;
+        case 'weekly':
+          const week = getISOWeek(indent.indentDate);
+          const year = indent.indentDate.getFullYear();
+          key = `Week ${week}, ${year}`;
+          break;
+        case 'monthly':
+          // For monthly, prioritize Freight Tiger Month (like month-on-month graphs)
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth) {
+              key = normalizedMonth; // Use normalized month key (e.g., '2025-05')
+            } else {
+              // Fallback to indentDate if normalization fails
+              key = format(indent.indentDate, 'yyyy-MM');
+            }
+          } else {
+            // Fallback to indentDate if Freight Tiger Month is not available
+            key = format(indent.indentDate, 'yyyy-MM');
+          }
+          break;
+        default:
+          key = format(indent.indentDate, 'yyyy-MM-dd');
+      }
+
+      if (!groupedData[key]) {
+        groupedData[key] = 0;
+      }
+
+      // Sum totalCost directly
+      groupedData[key] += indent.totalCost || 0;
+    });
+
+    // Convert to array and format labels
+    const sortedKeys = Object.keys(groupedData).sort();
+    const costOverTime = sortedKeys.map(key => {
+      let formattedKey: string;
+      if (granularity === 'monthly') {
+        // Format monthly keys as "MMM'yy" (e.g., "May'25")
+        try {
+          const [year, month] = key.split('-');
+          const monthNum = parseInt(month, 10);
+          const yearShort = year.slice(-2);
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          formattedKey = `${monthNames[monthNum - 1]}'${yearShort}`;
+        } catch (e) {
+          formattedKey = formatTimeLabel(key, granularity);
+        }
+      } else {
+        formattedKey = formatTimeLabel(key, granularity);
+      }
+      return {
+        date: formattedKey,
+        cost: groupedData[key]
+      };
+    });
+
+    console.log('Cost Analytics Response:', {
+      costByRangeCount: costByRange.length,
+      totalCost,
+      costOverTimeCount: costOverTime.length,
+      indentsCount: indents.length
+    });
+
+    res.json({
+      success: true,
+      costByRange,
+      totalCost,
+      costOverTime,
+      granularity,
+      dateRange: {
+        from: fromDate?.toISOString().split('T')[0] || null,
+        to: toDate?.toISOString().split('T')[0] || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch cost analytics'
+    });
+  }
+};
+
+export const getProfitLossAnalytics = async (req: Request, res: Response) => {
+  try {
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+    const granularity = req.query.granularity as string || 'daily';
+
+    // Query all indents first
+    let allIndents = await Trip.find({});
+    
+    // For monthly granularity, show all available months (like month-on-month graphs)
+    // For daily/weekly, apply date filtering
+    let indents = [...allIndents];
+    
+    if (granularity === 'monthly') {
+      // For monthly granularity, ignore date filters and show all available months
+      console.log(`[getProfitLossAnalytics] Monthly granularity detected - showing all available months (ignoring date filter)`);
+      // Don't filter by date - use all indents
+      indents = allIndents;
+    } else {
+      // For daily/weekly, apply date filtering
+      // Build date filter query using indentDate instead of allocationDate
+      const dateFilter: any = {};
+      if (fromDate || toDate) {
+        dateFilter.indentDate = {};
+        if (fromDate) {
+          dateFilter.indentDate.$gte = fromDate;
+        }
+        if (toDate) {
+          const endDate = new Date(toDate);
+          endDate.setHours(23, 59, 59, 999);
+          dateFilter.indentDate.$lte = endDate;
+        }
+      }
+
+      // Query database with date filter
+      indents = await Trip.find(dateFilter);
+    }
+
+    // Range mappings - values are normalized during parsing
+    const rangeMappings = [
+      { label: '0-100Km' },
+      { label: '101-250Km' },
+      { label: '251-400Km' },
+      { label: '401-600Km' },
+    ];
+
+    // Calculate profit/loss by range - sum profitLoss from indents
+    const profitLossByRange = rangeMappings.map(({ label }) => {
+      const rangeIndents = indents.filter(indent => {
+        // Since ranges are normalized during parsing, we can do direct comparison
+        return indent.range === label;
+      });
+
+      // Sum profitLoss from all indents in this range
+      const totalProfitLoss = rangeIndents.reduce((sum, indent) => {
+        return sum + (indent.profitLoss || 0);
+      }, 0);
+
+      return {
+        range: label,
+        profitLoss: totalProfitLoss
+      };
+    });
+
+    // Calculate total profit/loss
+    const totalProfitLoss = profitLossByRange.reduce((sum, item) => sum + item.profitLoss, 0);
+
+    // Calculate profit/loss over time
+    const groupedData: Record<string, number> = {};
+
+    indents.forEach(indent => {
+      let key: string;
+
+      // Group by time period based on granularity
+      // For monthly, use Freight Tiger Month if available (like month-on-month graphs)
+      switch (granularity) {
+        case 'daily':
+          key = format(indent.indentDate, 'yyyy-MM-dd');
+          break;
+        case 'weekly':
+          const week = getISOWeek(indent.indentDate);
+          const year = indent.indentDate.getFullYear();
+          key = `Week ${week}, ${year}`;
+          break;
+        case 'monthly':
+          // For monthly, prioritize Freight Tiger Month (like month-on-month graphs)
+          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
+            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
+            if (normalizedMonth) {
+              key = normalizedMonth; // Use normalized month key (e.g., '2025-05')
+            } else {
+              // Fallback to indentDate if normalization fails
+              key = format(indent.indentDate, 'yyyy-MM');
+            }
+          } else {
+            // Fallback to indentDate if Freight Tiger Month is not available
+            key = format(indent.indentDate, 'yyyy-MM');
+          }
+          break;
+        default:
+          key = format(indent.indentDate, 'yyyy-MM-dd');
+      }
+      if (!groupedData[key]) groupedData[key] = 0;
+      groupedData[key] += indent.profitLoss || 0;
+    });
+
+    // Format time labels
+    const formatTimeLabel = (key: string, granularity: string): string => {
+      if (granularity === 'weekly') {
+        return key; // Already formatted as "Week X, YYYY"
+      } else if (granularity === 'monthly') {
+        try {
+          const [year, month] = key.split('-');
+          const monthNum = parseInt(month, 10);
+          const yearShort = year.slice(-2);
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          return `${monthNames[monthNum - 1]}'${yearShort}`;
+        } catch (e) {
+          return key;
+        }
+      } else {
+        // Daily
+        try {
+          const date = parse(key, 'yyyy-MM-dd', new Date());
+          return format(date, 'dd MMM');
+        } catch (e) {
+          return key;
+        }
+      }
+    };
+
+    const sortedKeys = Object.keys(groupedData).sort();
+    const profitLossOverTime = sortedKeys.map(key => {
+      let formattedKey: string;
+      if (granularity === 'monthly') {
+        try {
+          const [year, month] = key.split('-');
+          const monthNum = parseInt(month, 10);
+          const yearShort = year.slice(-2);
+          const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          formattedKey = `${monthNames[monthNum - 1]}'${yearShort}`;
+        } catch (e) {
+          formattedKey = formatTimeLabel(key, granularity);
+        }
+      } else {
+        formattedKey = formatTimeLabel(key, granularity);
+      }
+      return {
+        date: formattedKey,
+        profitLoss: groupedData[key]
+      };
+    });
+
+    console.log('Profit & Loss Analytics Response:', {
+      profitLossByRangeCount: profitLossByRange.length,
+      totalProfitLoss,
+      profitLossOverTimeCount: profitLossOverTime.length,
+      indentsCount: indents.length
+    });
+
+    res.json({
+      success: true,
+      profitLossByRange,
+      totalProfitLoss,
+      profitLossOverTime,
+      granularity,
+      dateRange: {
+        from: fromDate?.toISOString().split('T')[0] || null,
+        to: toDate?.toISOString().split('T')[0] || null
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch profit & loss analytics'
     });
   }
 };
