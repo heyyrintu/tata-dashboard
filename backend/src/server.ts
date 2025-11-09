@@ -31,10 +31,49 @@ if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
 }
 
+// API root endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    status: 'OK',
+    message: 'TATA Dashboard API',
+    version: '1.0.0',
+    endpoints: {
+      upload: '/api/upload',
+      analytics: {
+        base: '/api/analytics',
+        routes: [
+          'GET /api/analytics - Get summary cards (totalIndents, totalTrips)',
+          'GET /api/analytics/range-wise - Get range-wise summary',
+          'GET /api/analytics/fulfillment - Get fulfillment analytics',
+          'GET /api/analytics/load-over-time - Get load over time',
+          'GET /api/analytics/revenue - Get revenue analytics',
+          'GET /api/analytics/cost - Get cost analytics',
+          'GET /api/analytics/profit-loss - Get profit/loss analytics',
+          'GET /api/analytics/month-on-month - Get month-on-month data',
+          'GET /api/analytics/debug/calculations - Debug all calculations',
+          'GET /api/analytics/export-all - Export all indents to Excel (with date filter)',
+          'GET /api/analytics/fulfillment/export-missing - Export missing indents to Excel'
+        ]
+      },
+      email: '/api/email',
+      health: '/health'
+    }
+  });
+});
+
 // Routes
 app.use('/api/upload', uploadRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/email', emailRoutes);
+
+// Debug: Log all registered routes
+console.log('[Server] ========================================');
+console.log('[Server] Routes registered:');
+console.log('[Server] - /api/upload');
+console.log('[Server] - /api/analytics');
+console.log('[Server]   └─ /api/analytics/export-all (NEW - Excel export)');
+console.log('[Server] - /api/email');
+console.log('[Server] ========================================');
 
 // Health check endpoint
 app.get('/health', (req, res) => {

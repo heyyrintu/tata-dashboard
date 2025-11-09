@@ -42,10 +42,13 @@ export interface UploadResponse {
 export interface RangeWiseData {
   range: string;
   indentCount: number;
+  uniqueIndentCount?: number;
   totalLoad: number;
   percentage: number;
   bucketCount: number;
   barrelCount: number;
+  totalCost?: number;
+  profitLoss?: number;
 }
 
 export interface LocationData {
@@ -61,6 +64,20 @@ export interface RangeWiseResponse {
   success: boolean;
   rangeData: RangeWiseData[];
   locations: LocationData[];
+  totalUniqueIndents?: number;
+  totalLoad?: number;
+  totalCost?: number;
+  totalProfitLoss?: number;
+  totalBuckets?: number;
+  totalBarrels?: number;
+  totalRows?: number;
+  totalLoadDetails?: {
+    totalRows: number;
+    rowsWithLoad: number;
+    rowsWithoutRange: number;
+    uniqueIndents: number;
+    duplicates: number;
+  };
   dateRange: {
     from: string | null;
     to: string | null;

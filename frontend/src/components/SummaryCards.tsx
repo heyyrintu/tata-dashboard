@@ -6,10 +6,24 @@ import { LoadingSpinner } from './LoadingSpinner';
 import { calculateTotalLoad } from '../utils/phase4Calculations';
 
 export default function SummaryCards() {
-  const { metrics, isLoading } = useDashboard();
+  const { metrics, isLoading, dateRange } = useDashboard();
   const { theme } = useTheme();
   const { data: revenueData, loading: revenueLoading } = useRevenueData();
   const { data: rangeData, loading: rangeLoading } = useRangeData();
+
+  console.log('[SummaryCards] ===== RENDER =====');
+  console.log('[SummaryCards] Input data:', {
+    metrics,
+    dateRange: {
+      from: dateRange.from?.toISOString().split('T')[0] || 'null',
+      to: dateRange.to?.toISOString().split('T')[0] || 'null'
+    },
+    rangeDataExists: !!rangeData,
+    revenueDataExists: !!revenueData,
+    isLoading,
+    rangeLoading,
+    revenueLoading
+  });
 
   // Calculate total load: use totalLoad from API if available, otherwise sum from rangeData
   // Convert from kg to tons (divide by 1000)
@@ -20,7 +34,7 @@ export default function SummaryCards() {
   
   // Debug logging
   if (rangeData) {
-    console.log('[SummaryCards] Total Load Debug:', {
+    console.log('[SummaryCards] Total Load Calculation:', {
       totalLoadFromAPI_kg: rangeData.totalLoad,
       totalLoadFromRangeData_kg: rangeData.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0,
       finalTotalLoad_kg: totalLoadKg,
@@ -37,11 +51,13 @@ export default function SummaryCards() {
   
   // Debug logging
   if (rangeData) {
-    console.log('[SummaryCards] Bucket+Barrel Count Debug:', {
+    console.log('[SummaryCards] Bucket+Barrel Count Calculation:', {
       totalBucketsFromAPI: rangeData.totalBuckets,
       totalBarrelsFromAPI: rangeData.totalBarrels,
       finalTotalBuckets: totalBuckets,
-      finalTotalBarrels: totalBarrels
+      finalTotalBarrels: totalBarrels,
+      rangeDataBuckets: rangeData.rangeData?.reduce((sum, item) => sum + (item.bucketCount || 0), 0) || 0,
+      rangeDataBarrels: rangeData.rangeData?.reduce((sum, item) => sum + (item.barrelCount || 0), 0) || 0
     });
   }
   
@@ -62,8 +78,19 @@ export default function SummaryCards() {
     barrelsConvertedToBuckets: totalBarrels * 10.5,
     totalBucketsIncludingBarrels,
     totalTripCount: metrics.totalIndentsUnique,
-    avgBucketsPerTrip
+    avgBucketsPerTrip,
+    avgBucketsPerTripRounded
   });
+
+  console.log('[SummaryCards] Final Display Values:', {
+    totalIndents: metrics.totalIndents,
+    totalTrips: metrics.totalIndentsUnique,
+    totalLoad_tons: totalLoad,
+    totalBuckets,
+    totalBarrels,
+    avgBucketsPerTrip: avgBucketsPerTripRounded
+  });
+  console.log('[SummaryCards] ===== END RENDER =====');
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
@@ -160,7 +187,7 @@ export default function SummaryCards() {
                   ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
                   : 'text-white'
               }`}>
-                {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(totalLoad)}
+                {totalLoad > 0 ? new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(totalLoad) : '0'}
                 <span className={`text-[18px] ${
                   theme === 'light'
                     ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
@@ -200,8 +227,8 @@ export default function SummaryCards() {
                   ? 'bg-gradient-to-r from-orange-400 to-orange-600 bg-clip-text text-transparent'
                   : 'text-white'
               }`}>
-                <p>Bucket - {new Intl.NumberFormat('en-IN').format(totalBuckets)}</p>
-                <p>Barrel - {new Intl.NumberFormat('en-IN').format(totalBarrels)}</p>
+                <p>Bucket - {totalBuckets > 0 ? new Intl.NumberFormat('en-IN').format(totalBuckets) : '0'}</p>
+                <p>Barrel - {totalBarrels > 0 ? new Intl.NumberFormat('en-IN').format(totalBarrels) : '0'}</p>
               </div>
           )}
         </div>
@@ -235,7 +262,7 @@ export default function SummaryCards() {
                   ? 'bg-gradient-to-r from-red-400 to-red-600 bg-clip-text text-transparent'
                   : 'text-white'
               }`}>
-                {avgBucketsPerTripRounded}
+                {avgBucketsPerTripRounded > 0 ? avgBucketsPerTripRounded : '0'}
               </p>
             )}
           </div>

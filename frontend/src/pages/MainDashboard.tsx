@@ -23,18 +23,29 @@ function MainDashboard() {
   const navigate = useNavigate();
 
   const fetchInitialData = useCallback(async () => {
+    console.log('[MainDashboard] fetchInitialData called with dateRange:', {
+      from: dateRange.from?.toISOString().split('T')[0] || 'null',
+      to: dateRange.to?.toISOString().split('T')[0] || 'null'
+    });
     setIsLoading(true);
     try {
       const data = await getAnalytics(dateRange.from || undefined, dateRange.to || undefined);
+      console.log('[MainDashboard] Analytics data received:', {
+        totalIndents: data.totalIndents,
+        totalIndentsUnique: data.totalIndentsUnique,
+        dateRange: data.dateRange
+      });
       setMetrics({
         totalIndents: data.totalIndents,
         totalIndentsUnique: data.totalIndentsUnique,
       });
       // If we have data, set uploadedFileName so dashboard shows content
       if (data.totalIndents > 0 && !uploadedFileName) {
+        console.log('[MainDashboard] Setting uploadedFileName to email-processed');
         setUploadedFileName('email-processed');
       }
     } catch (error) {
+      console.error('[MainDashboard] Error fetching analytics:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch analytics');
     } finally {
       setIsLoading(false);
@@ -44,15 +55,19 @@ function MainDashboard() {
   // Check for data on mount (even without uploadedFileName)
   useEffect(() => {
     // Always try to fetch data on mount to check if data exists
+    console.log('[MainDashboard] Mounting - fetching initial data');
     fetchInitialData();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount
 
   // Fetch analytics when date range changes (if we have data)
   useEffect(() => {
     if (uploadedFileName) {
+      console.log('[MainDashboard] Date range changed - fetching data');
       fetchInitialData();
     }
-  }, [dateRange.from, dateRange.to, uploadedFileName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dateRange.from, dateRange.to, uploadedFileName]); // fetchInitialData is stable due to useCallback
 
   useEffect(() => {
     if (theme === 'light') {

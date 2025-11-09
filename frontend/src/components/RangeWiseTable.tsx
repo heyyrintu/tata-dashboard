@@ -8,7 +8,19 @@ import { RANGE_COLORS } from '../utils/constants';
 export default function RangeWiseTable() {
   const { data, loading } = useRangeData();
   const { theme } = useTheme();
-  const { metrics } = useDashboard();
+  const { metrics, dateRange } = useDashboard();
+
+  console.log('[RangeWiseTable] ===== RENDER =====');
+  console.log('[RangeWiseTable] Input data:', {
+    dataExists: !!data,
+    rangeDataLength: data?.rangeData?.length || 0,
+    loading,
+    dateRange: {
+      from: dateRange.from?.toISOString().split('T')[0] || 'null',
+      to: dateRange.to?.toISOString().split('T')[0] || 'null'
+    },
+    metrics
+  });
 
   return (
     <div className={`rounded-2xl ${
@@ -121,6 +133,12 @@ export default function RangeWiseTable() {
                 // Filter out "Other" and "Duplicate Indents" rows for all total calculations
                 const standardRanges = data.rangeData.filter(item => item.range !== 'Other' && item.range !== 'Duplicate Indents');
                 
+                console.log('[RangeWiseTable] Total Row Calculation:', {
+                  allRanges: data.rangeData.map(r => r.range),
+                  standardRanges: standardRanges.map(r => r.range),
+                  excludedRanges: data.rangeData.filter(item => item.range === 'Other' || item.range === 'Duplicate Indents').map(r => r.range)
+                });
+                
                 // Total indent count: sum of standard ranges only (exclude "Other" and "Duplicate Indents")
                 const totalIndents = standardRanges.reduce((sum, item) => sum + (item.uniqueIndentCount ?? item.indentCount), 0);
                 
@@ -134,6 +152,16 @@ export default function RangeWiseTable() {
                 // Total buckets and barrels: sum of standard ranges only (exclude "Other" and "Duplicate Indents")
                 const totalBuckets = standardRanges.reduce((sum, item) => sum + item.bucketCount, 0);
                 const totalBarrels = standardRanges.reduce((sum, item) => sum + item.barrelCount, 0);
+                
+                console.log('[RangeWiseTable] Total Row Values:', {
+                  totalIndents,
+                  totalPercentage,
+                  totalLoad_kg: totalLoad,
+                  totalLoad_tons: totalLoad / 1000,
+                  totalBuckets,
+                  totalBarrels
+                });
+                console.log('[RangeWiseTable] ===== END RENDER =====');
                 
                 return (
                   <tr className={`border-t-2 font-bold ${

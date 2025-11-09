@@ -67,7 +67,7 @@ const checkAllCostColumns = () => {
     
     if (rowsWithAnyOtherCost.length > 0) {
       console.log(`\n  ⚠️  Found ${rowsWithAnyOtherCost.length} rows with "Any Other Cost" but 0 in other columns:`);
-      rowsWithAnyOtherCost.forEach((row, idx) => {
+      rowsWithAnyOtherCost.forEach((row: any, idx) => {
         const anyOtherCost = parseFloat(row['Any Other Cost'] || 0);
         console.log(`    ${idx + 1}. Indent: ${row['Indent']}, Any Other Cost: ₹${anyOtherCost}, Total Cost_1: ₹${parseFloat(row['Total Cost_1'] || 0)}, Total Cost: ₹${parseFloat(row['Total Cost'] || 0)}`);
       });

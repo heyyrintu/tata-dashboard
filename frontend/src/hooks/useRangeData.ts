@@ -54,6 +54,12 @@ export const useRangeData = () => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchRangeData = useCallback(async () => {
+    console.log('[useRangeData] ===== FETCH START =====');
+    console.log('[useRangeData] Date range:', {
+      from: dateRange.from?.toISOString().split('T')[0] || 'null',
+      to: dateRange.to?.toISOString().split('T')[0] || 'null'
+    });
+    
     setLoading(true);
     setError(null);
 
@@ -64,29 +70,36 @@ export const useRangeData = () => {
         rangeDataLength: response.rangeData?.length || 0,
         rangeDataRanges: response.rangeData?.map(r => r.range) || [],
         hasOther: response.rangeData?.some(r => r.range === 'Other') || false,
+        hasDuplicateIndents: response.rangeData?.some(r => r.range === 'Duplicate Indents') || false,
         totalUniqueIndents: response.totalUniqueIndents,
         totalLoad: response.totalLoad,
         totalCost: response.totalCost,
         totalProfitLoss: response.totalProfitLoss,
-        totalRows: response.totalRows
+        totalBuckets: response.totalBuckets,
+        totalBarrels: response.totalBarrels,
+        totalRows: response.totalRows,
+        dateRange: response.dateRange
       });
       
       // Check if we have valid data
       if (response.success && response.rangeData && response.rangeData.length > 0) {
+        console.log('[useRangeData] Setting valid data');
         setData(response);
       } else if (response.success && response.rangeData && response.rangeData.length === 0) {
         // Even if rangeData is empty, set the response so we can show totals
-        console.log('[useRangeData] Range data is empty, but response is valid');
+        console.log('[useRangeData] Range data is empty, but response is valid - setting data anyway');
         setData(response);
       } else {
         console.warn('[useRangeData] Invalid response structure:', response);
         setError('Invalid response from server');
         setData(null);
       }
+      console.log('[useRangeData] ===== FETCH END =====');
     } catch (err) {
-      console.error('[useRangeData] Error fetching data:', err);
+      console.error('[useRangeData] ERROR fetching data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch range-wise data');
       setData(null);
+      console.log('[useRangeData] ===== FETCH END (ERROR) =====');
     } finally {
       setLoading(false);
     }

@@ -37,9 +37,10 @@ interface DashboardProviderProps {
 
 export const DashboardProvider = ({ children }: DashboardProviderProps) => {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
+  // Default to no date filter (null) to show all data initially
   const [dateRange, setDateRangeState] = useState<{ from: Date | null; to: Date | null }>({
-    from: subDays(new Date(), 30),
-    to: new Date(),
+    from: null,
+    to: null,
   });
   const [metrics, setMetrics] = useState({ totalIndents: 0, totalIndentsUnique: 0 });
   const [isLoading, setIsLoading] = useState(false);

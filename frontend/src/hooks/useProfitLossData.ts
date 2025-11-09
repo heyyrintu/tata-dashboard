@@ -13,10 +13,11 @@ export const useProfitLossData = (granularity: 'daily' | 'weekly' | 'monthly' = 
     setError(null);
 
     try {
-      const fromDate = dateRange.from ? new Date(dateRange.from) : undefined;
-      const toDate = dateRange.to ? new Date(dateRange.to) : undefined;
-      
-      const response = await getProfitLossAnalytics(granularity, fromDate, toDate);
+      const response = await getProfitLossAnalytics(
+        granularity,
+        dateRange.from || undefined,
+        dateRange.to || undefined
+      );
       setData(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch profit & loss data');

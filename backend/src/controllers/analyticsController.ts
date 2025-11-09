@@ -3,252 +3,75 @@ import Trip from '../models/Trip';
 import { parseDateParam } from '../utils/dateFilter';
 import { format, startOfWeek, getISOWeek, parse } from 'date-fns';
 import { calculateTripsByVehicleDay, type TripDocument } from '../utils/tripCount';
+import { normalizeFreightTigerMonth } from '../utils/freightTigerMonth';
+import { filterIndentsByDate } from '../utils/dateFiltering';
+import { calculateCardValues } from '../utils/cardCalculations';
 import * as XLSX from 'xlsx';
-
-// Helper function to normalize Freight Tiger Month to 'yyyy-MM' format
-const normalizeFreightTigerMonth = (monthValue: string): string | null => {
-  if (!monthValue || typeof monthValue !== 'string') return null;
-  
-  const trimmed = monthValue.trim();
-  if (trimmed === '') return null;
-  
-  // Try various formats:
-  // 1. "May'25" or "May'24" -> "2025-05" (most common from Excel)
-  // 2. "May 2025" -> "2025-05"
-  // 3. "05-2025" or "05/2025" -> "2025-05"
-  // 4. "2025-05" -> "2025-05" (already correct)
-  
-  // Fix common typos: "0ct" -> "Oct" (zero instead of O)
-  const fixedTrimmed = trimmed.replace(/^0ct/i, 'Oct').replace(/^0ctober/i, 'October');
-  
-  // Format: "May'25" or "May'24" (most common from Excel parsing)
-  try {
-    const parsed = parse(fixedTrimmed, "MMM''yy", new Date());
-    if (!isNaN(parsed.getTime())) {
-      return format(parsed, 'yyyy-MM');
-    }
-  } catch (e) {}
-  
-  // Format: "May 2025" or "May 2024"
-  try {
-    const parsed = parse(fixedTrimmed, 'MMMM yyyy', new Date());
-    if (!isNaN(parsed.getTime())) {
-      return format(parsed, 'yyyy-MM');
-    }
-  } catch (e) {}
-  
-  // Format: "05-2025" or "05/2025" or "0ct-25" (with typo)
-  // Handle "0ct-25" -> October
-  if (/^0ct-?\d{2}$/i.test(trimmed)) {
-    const yearMatch = trimmed.match(/-?(\d{2})$/);
-    if (yearMatch) {
-      const year = parseInt(yearMatch[1], 10);
-      const fullYear = year < 50 ? 2000 + year : 1900 + year;
-      return `${fullYear}-10`; // October is month 10
-    }
-  }
-  
-  const mmYYYYPattern = /^(\d{1,2})[-\/](\d{4})$/;
-  const mmMatch = trimmed.match(mmYYYYPattern);
-  if (mmMatch) {
-    const month = parseInt(mmMatch[1], 10);
-    const year = parseInt(mmMatch[2], 10);
-    if (month >= 1 && month <= 12) {
-      return `${year}-${String(month).padStart(2, '0')}`;
-    }
-  }
-  
-  // Format: "2025-05" (already correct)
-  const yyyyMMPattern = /^(\d{4})-(\d{2})$/;
-  const yyyyMMMatch = trimmed.match(yyyyMMPattern);
-  if (yyyyMMMatch) {
-    const year = parseInt(yyyyMMMatch[1], 10);
-    const month = parseInt(yyyyMMMatch[2], 10);
-    if (month >= 1 && month <= 12) {
-      return `${year}-${String(month).padStart(2, '0')}`;
-    }
-  }
-  
-  // If none match, return null (will fallback to indentDate)
-  return null;
-};
 
 export const getAnalytics = async (req: Request, res: Response) => {
   try {
+    console.log(`[getAnalytics] ===== START =====`);
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
+    console.log(`[getAnalytics] Input params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+    console.log(`[getAnalytics] Raw query params: fromDate=${req.query.fromDate || 'undefined'}, toDate=${req.query.toDate || 'undefined'}`);
 
-    // Query all trips (we'll filter by Freight Tiger Month or indentDate)
+    // Query all trips from database
     const allIndents = await Trip.find({});
     console.log(`[getAnalytics] Total indents from DB: ${allIndents.length}`);
-
-    // For Card 1 (Total Indents): Use ALL indents (including cancelled ones with blank range)
-    // For other calculations: Filter to only include indents with Range value (canceled indents don't have range)
-    console.log(`[getAnalytics] All indents (including cancelled): ${allIndents.length}`);
-
-    // For Card 1 (Total Indents): We need to filter ALL indents (including cancelled) by date
-    // Then count unique indent values from the filtered ALL indents
-    let allIndentsFiltered = [...allIndents]; // Start with all indents (including cancelled)
     
-    // Apply date filtering to ALL indents (for Card 1) - prioritize Freight Tiger Month if date range is a single month
+    // Debug: Check sample indent dates from DB
+    if (allIndents.length > 0) {
+      const sampleIndents = allIndents.slice(0, 3).map((indent: any) => ({
+        indent: indent.indent,
+        indentDate: indent.indentDate,
+        indentDateType: typeof indent.indentDate,
+        indentDateIsDate: indent.indentDate instanceof Date,
+        indentDateISO: indent.indentDate instanceof Date ? indent.indentDate.toISOString() : String(indent.indentDate)
+      }));
+      console.log(`[getAnalytics] Sample indents from DB (first 3):`, sampleIndents);
+    }
+
+    // Use clean card calculation utility (single source of truth)
+    const cardResults = calculateCardValues(allIndents, fromDate, toDate);
+    
+    // COMPARISON: If single month filter, compare with month-on-month logic
     if (fromDate && toDate) {
-      // Check if the date range represents a single month
       const fromMonth = format(fromDate, 'yyyy-MM');
-      const toMonth = format(toDate, 'yyyy-MM');
-      
-      console.log(`[getAnalytics] Date filter: ${fromDate?.toISOString().split('T')[0]} to ${toDate?.toISOString().split('T')[0]}`);
-      console.log(`[getAnalytics] Month keys: ${fromMonth} to ${toMonth}`);
-      
+      const toMonth = format(toDate as Date, 'yyyy-MM');
       if (fromMonth === toMonth) {
-        // Single month filter - use Freight Tiger Month to match month-on-month logic
-        console.log(`[getAnalytics] Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
-        const targetMonthKey = fromMonth;
+        console.log(`[getAnalytics] ===== COMPARISON WITH MONTH-ON-MONTH =====`);
+        console.log(`[getAnalytics] Month: ${fromMonth}`);
+        console.log(`[getAnalytics] Card 1 (Total Indents): ${cardResults.totalIndents}`);
+        console.log(`[getAnalytics] Card 2 (Total Trips): ${cardResults.totalTrips}`);
+        console.log(`[getAnalytics] NOTE: These should match month-on-month chart for ${fromMonth}`);
         
-        allIndentsFiltered = allIndentsFiltered.filter(indent => {
-          // Primary: Use Freight Tiger Month if available
-          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
-            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
-            if (normalizedMonth === targetMonthKey) {
-              return true;
-            }
-          }
-          // Fallback: Use indentDate if Freight Tiger Month is not available
-          if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
-            return indent.indentDate >= fromDate && indent.indentDate <= toDate;
-          }
-          return false;
-        });
-        
-        // If no results using Freight Tiger Month, fallback to indentDate only
-        if (allIndentsFiltered.length === 0) {
-          console.log(`[getAnalytics] No matches found with Freight Tiger Month, falling back to indentDate only`);
-          const endDate = new Date(toDate);
-          endDate.setHours(23, 59, 59, 999);
-          allIndentsFiltered = allIndents.filter(indent => {
-            if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
-            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
-          });
+        // Run debug comparison
+        try {
+          const { debugCompareCalculations } = await import('../utils/debugComparison');
+          await debugCompareCalculations(fromMonth);
+        } catch (e) {
+          console.log(`[getAnalytics] Debug comparison failed:`, e);
         }
-      } else {
-        // Multiple months or date range - filter by indentDate (primary) and also check Freight Tiger Month
-        console.log(`[getAnalytics] Date range filter: ${fromMonth} to ${toMonth}, using indentDate with Freight Tiger Month fallback`);
-        allIndentsFiltered = allIndentsFiltered.filter(indent => {
-          // Check if indentDate matches the range
-          const dateMatches = indent.indentDate && 
-                             indent.indentDate instanceof Date && 
-                             !isNaN(indent.indentDate.getTime()) &&
-                             indent.indentDate >= fromDate && 
-                             indent.indentDate <= toDate;
-          
-          // Also check if Freight Tiger Month matches any month in the range
-          let freightTigerMatches = false;
-          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
-            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
-            if (normalizedMonth) {
-              // Check if normalized month falls within the date range
-              const monthDate = new Date(normalizedMonth + '-01');
-              freightTigerMatches = monthDate >= fromDate && monthDate <= toDate;
-            }
-          }
-          
-          return dateMatches || freightTigerMatches;
-        });
-      }
-    } else if (fromDate) {
-      // Only fromDate - filter by indentDate (primary)
-      console.log(`[getAnalytics] From date filter only: ${fromDate?.toISOString().split('T')[0]}`);
-      allIndentsFiltered = allIndentsFiltered.filter(indent => {
-        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
-          return indent.indentDate >= fromDate;
-        }
-        return false;
-      });
-    } else if (toDate) {
-      // Only toDate - filter by indentDate (primary)
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
-      console.log(`[getAnalytics] To date filter only: ${toDate?.toISOString().split('T')[0]}`);
-      allIndentsFiltered = allIndentsFiltered.filter(indent => {
-        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
-          return indent.indentDate <= endDate;
-        }
-        return false;
-      });
-    }
-    // else: No date filter - use all indents (already set above)
-    
-    console.log(`[getAnalytics] All indents filtered (including cancelled): ${allIndentsFiltered.length}`);
-    
-    // Now filter validIndents (for other calculations) - same date filtering logic
-    // Filter to only include indents with Range value (canceled indents don't have range)
-    // IMPORTANT: This excludes cancelled trips (blank range column) for Card 2 (Total Trips)
-    let validIndents = allIndentsFiltered.filter(indent => indent.range && indent.range.trim() !== '');
-    console.log(`[getAnalytics] Final filtered valid indents (with range, excluding cancelled): ${validIndents.length}`);
-    console.log(`[getAnalytics] Sample indents (first 3):`, validIndents.slice(0, 3).map(i => ({
-      indent: i.indent,
-      freightTigerMonth: i.freightTigerMonth,
-      indentDate: i.indentDate?.toISOString().split('T')[0]
-    })));
-    
-    // Total Indents (Card 1): count of unique indent values from ALL indents (including cancelled)
-    const uniqueIndents = new Set(allIndentsFiltered.filter(t => t.indent).map(t => t.indent));
-    let totalIndents = uniqueIndents.size;
-    console.log(`[getAnalytics] Total unique indents (including cancelled): ${totalIndents}`);
-
-    // Total Trips (Card 2): Apply OLD Card 1 logic - count unique indent values from validIndents (excluded cancelled)
-    // This is the same logic Card 1 used to have before including cancelled indents
-    const uniqueIndentsForCard2 = new Set(validIndents.filter(t => t.indent).map(t => t.indent));
-    let totalTrips = uniqueIndentsForCard2.size;
-    console.log(`[getAnalytics] Card 2: Total unique indents (excluding cancelled): ${totalTrips}`);
-
-    // If still no data after all filtering, log warning and try to show all data
-    if (validIndents.length === 0) {
-      console.warn(`[getAnalytics] WARNING: No valid indents found after filtering!`);
-      console.warn(`[getAnalytics] Date range: ${fromDate?.toISOString().split('T')[0] || 'none'} to ${toDate?.toISOString().split('T')[0] || 'none'}`);
-      console.warn(`[getAnalytics] Total indents in DB: ${allIndents.length}`);
-      const validIndentsNoDateFilter = allIndents.filter(indent => indent.range && indent.range.trim() !== '');
-      console.warn(`[getAnalytics] Valid indents (with range, no date filter): ${validIndentsNoDateFilter.length}`);
-      
-      // Show sample dates from database
-      if (validIndentsNoDateFilter.length > 0) {
-        const sampleDates = validIndentsNoDateFilter.slice(0, 5).map(indent => ({
-          indent: indent.indent,
-          indentDate: indent.indentDate,
-          freightTigerMonth: indent.freightTigerMonth
-        }));
-        console.warn(`[getAnalytics] Sample dates from DB:`, JSON.stringify(sampleDates, null, 2));
-      }
-      
-      // If date filter is too restrictive, use all valid indents (without date filter)
-      if (fromDate && toDate) {
-        console.warn(`[getAnalytics] Date filter too restrictive, using all valid indents without date filter`);
-        validIndents = validIndentsNoDateFilter;
         
-        // Recalculate with all data
-        const uniqueIndentsRecalc = new Set(validIndents.map(indent => indent.indent));
-        totalIndents = uniqueIndentsRecalc.size;
-        
-        // Recalculate Card 2 using old Card 1 logic (unique indents from validIndents)
-        const uniqueIndentsRecalcCard2 = new Set(validIndents.filter(t => t.indent).map(t => t.indent));
-        totalTrips = uniqueIndentsRecalcCard2.size;
-        
-        console.log(`[getAnalytics] Recalculated with all data: totalIndents=${totalIndents}, totalTrips=${totalTrips}`);
+        console.log(`[getAnalytics] ===== END COMPARISON =====`);
       }
     }
-
-    console.log(`[getAnalytics] Final results: totalIndents=${totalIndents}, totalTrips=${totalTrips}`);
+    
+    console.log(`[getAnalytics] ===== END =====`);
     
     res.json({
       success: true,
-      totalIndents,
-      totalIndentsUnique: totalTrips,
+      totalIndents: cardResults.totalIndents,
+      totalIndentsUnique: cardResults.totalTrips,
       dateRange: {
         from: fromDate?.toISOString().split('T')[0] || null,
         to: toDate?.toISOString().split('T')[0] || null
       },
-      recordsProcessed: validIndents.length
+      recordsProcessed: cardResults.validIndentsCount
     });
   } catch (error) {
+    console.error(`[getAnalytics] ERROR:`, error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch analytics'
@@ -282,37 +105,10 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       throw calcError;
     }
 
-    // Calculate location-wise data
+    // Calculate location-wise data using clean date filtering utility
     const allIndents = await Trip.find({});
-    let validIndents = allIndents.filter(indent => indent.range && indent.range.trim() !== '');
-    
-    // Apply same date filtering
-    if (fromDate && toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
-      validIndents = validIndents.filter(indent => {
-        if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
-          return false;
-        }
-        return indent.indentDate >= fromDate && indent.indentDate <= endDate;
-      });
-    } else if (fromDate) {
-      validIndents = validIndents.filter(indent => {
-        if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
-          return false;
-        }
-        return indent.indentDate >= fromDate;
-      });
-    } else if (toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
-      validIndents = validIndents.filter(indent => {
-        if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) {
-          return false;
-        }
-        return indent.indentDate <= endDate;
-      });
-    }
+    const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
+    const { allIndentsFiltered, validIndents } = dateFilterResult;
 
     const locationMap = new Map<string, { indentCount: number; totalLoad: number; range: string }>();
     validIndents.forEach(indent => {
@@ -333,33 +129,12 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     }));
 
     // Get all indents in date range for total load details
-    let allIndentsInDateRange: any[] = [];
-    if (fromDate && toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
-      allIndentsInDateRange = await Trip.find({
-        indentDate: {
-          $gte: fromDate,
-          $lte: endDate
-        }
-      });
-    } else if (fromDate) {
-      allIndentsInDateRange = await Trip.find({
-        indentDate: {
-          $gte: fromDate
-        }
-      });
-    } else if (toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
-      allIndentsInDateRange = await Trip.find({
-        indentDate: {
-          $lte: endDate
-        }
-      });
-    } else {
-      allIndentsInDateRange = allIndents;
-    }
+    // IMPORTANT: Use ONLY Indent Date column (column 'B') - same as filterIndentsByDate
+    // This ensures consistency with all other analytics functions
+    const dateFilterResultForLoad = filterIndentsByDate(allIndents, fromDate, toDate);
+    const allIndentsInDateRange = dateFilterResultForLoad.allIndentsFiltered;
+    
+    console.log(`[getRangeWiseAnalytics] Total Load Details: allIndentsInDateRange.length=${allIndentsInDateRange.length} (using same date filtering as calculateRangeWiseSummary)`);
 
     const indentsWithLoad = allIndentsInDateRange.filter((indent: any) => (indent.totalLoad || 0) > 0).length;
     const indentsWithoutRange = allIndentsInDateRange.filter((indent: any) => !indent.range || indent.range.trim() === '').length;
@@ -375,6 +150,36 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       totalProfitLoss: result.totalProfitLoss,
       totalRows: result.totalRows
     });
+
+    // Get card values for comparison
+    const cardResults = calculateCardValues(allIndents, fromDate, toDate);
+    
+    console.log(`[getRangeWiseAnalytics] ===== FINAL RESPONSE =====`);
+    console.log(`[getRangeWiseAnalytics] IMPORTANT: These values MUST match Card calculations:`);
+    console.log(`[getRangeWiseAnalytics] Card 1 (Total Indents): ${cardResults.totalIndents}`);
+    console.log(`[getRangeWiseAnalytics] Card 2 (Total Trip): ${cardResults.totalTrips} - should match totalUniqueIndents: ${result.totalUniqueIndents}`);
+    console.log(`[getRangeWiseAnalytics] Card 3 (Total Load): ${cardResults.totalLoad} kg = ${(cardResults.totalLoad / 1000).toFixed(2)} tons - should match: ${result.totalLoad} kg`);
+    console.log(`[getRangeWiseAnalytics] Card 4 (Buckets): ${cardResults.totalBuckets} - should match: ${result.totalBuckets}`);
+    console.log(`[getRangeWiseAnalytics] Card 4 (Barrels): ${cardResults.totalBarrels} - should match: ${result.totalBarrels}`);
+    console.log(`[getRangeWiseAnalytics] Card 5 (Avg Buckets/Trip): ${cardResults.avgBucketsPerTrip}`);
+    console.log(`[getRangeWiseAnalytics] rangeData.length: ${finalRangeData.length}`);
+    console.log(`[getRangeWiseAnalytics] totalRows: ${result.totalRows || 0}`);
+    
+    // Verify values match
+    if (result.totalUniqueIndents !== cardResults.totalTrips) {
+      console.warn(`[getRangeWiseAnalytics] WARNING: totalUniqueIndents (${result.totalUniqueIndents}) != Card 2 (${cardResults.totalTrips})`);
+    }
+    if (result.totalLoad !== cardResults.totalLoad) {
+      console.warn(`[getRangeWiseAnalytics] WARNING: totalLoad (${result.totalLoad}) != Card 3 (${cardResults.totalLoad})`);
+    }
+    if (result.totalBuckets !== cardResults.totalBuckets) {
+      console.warn(`[getRangeWiseAnalytics] WARNING: totalBuckets (${result.totalBuckets}) != Card 4 (${cardResults.totalBuckets})`);
+    }
+    if (result.totalBarrels !== cardResults.totalBarrels) {
+      console.warn(`[getRangeWiseAnalytics] WARNING: totalBarrels (${result.totalBarrels}) != Card 4 (${cardResults.totalBarrels})`);
+    }
+    
+    console.log(`[getRangeWiseAnalytics] ===== END =====`);
 
     res.json({
       success: true,
@@ -400,7 +205,7 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error(`[getRangeWiseAnalytics] Error:`, error);
+    console.error(`[getRangeWiseAnalytics] ERROR:`, error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch range-wise analytics'
@@ -417,90 +222,15 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
     const allIndents = await Trip.find({});
     console.log(`[getFulfillmentAnalytics] Step 1: Total indents from DB: ${allIndents.length}`);
 
-    // STEP 2: Apply date filtering (same as getAnalytics - Freight Tiger Month for single month, indentDate for ranges)
-    let filteredIndents = [...allIndents];
-    
-    if (fromDate && toDate) {
-      const fromMonth = format(fromDate, 'yyyy-MM');
-      const toMonth = format(toDate, 'yyyy-MM');
-      
-      console.log(`[getFulfillmentAnalytics] Step 2: Date filter: ${fromDate?.toISOString().split('T')[0]} to ${toDate?.toISOString().split('T')[0]}`);
-      
-      if (fromMonth === toMonth) {
-        // Single month filter - use Freight Tiger Month
-        console.log(`[getFulfillmentAnalytics] Step 2: Single month filter detected: ${fromMonth}, using Freight Tiger Month`);
-        const targetMonthKey = fromMonth;
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
-        
-        filteredIndents = filteredIndents.filter(indent => {
-          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
-            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
-            if (normalizedMonth === targetMonthKey) {
-              return true;
-            }
-          }
-          if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
-            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
-          }
-          return false;
-        });
-        
-        // Fallback to indentDate only if no results
-        if (filteredIndents.length === 0) {
-          console.log(`[getFulfillmentAnalytics] Step 2: No matches with Freight Tiger Month, falling back to indentDate only`);
-          filteredIndents = allIndents.filter(indent => {
-            if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
-            return indent.indentDate >= fromDate && indent.indentDate <= endDate;
-          });
-        }
-      } else {
-        // Multiple months or date range - filter by indentDate with Freight Tiger Month fallback
-        console.log(`[getFulfillmentAnalytics] Step 2: Date range filter: ${fromMonth} to ${toMonth}`);
-        const endDate = new Date(toDate);
-        endDate.setHours(23, 59, 59, 999);
-        
-        filteredIndents = filteredIndents.filter(indent => {
-          const dateMatches = indent.indentDate && 
-                             indent.indentDate instanceof Date && 
-                             !isNaN(indent.indentDate.getTime()) &&
-                             indent.indentDate >= fromDate && 
-                             indent.indentDate <= endDate;
-          
-          let freightTigerMatches = false;
-          if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
-            const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
-            if (normalizedMonth) {
-              const monthDate = new Date(normalizedMonth + '-01');
-              freightTigerMatches = monthDate >= fromDate && monthDate <= endDate;
-            }
-          }
-          
-          return dateMatches || freightTigerMatches;
-        });
-      }
-    } else if (fromDate) {
-      filteredIndents = filteredIndents.filter(indent => {
-        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
-          return indent.indentDate >= fromDate;
-        }
-        return false;
-      });
-    } else if (toDate) {
-      const endDate = new Date(toDate);
-      endDate.setHours(23, 59, 59, 999);
-      filteredIndents = filteredIndents.filter(indent => {
-        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
-          return indent.indentDate <= endDate;
-        }
-        return false;
-      });
-    }
+    // STEP 2: Use clean date filtering utility (same as all other analytics functions)
+    console.log(`[getFulfillmentAnalytics] Step 2: Applying date filter: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+    const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
+    const filteredIndents = dateFilterResult.allIndentsFiltered;
     
     console.log(`[getFulfillmentAnalytics] Step 2: Filtered indents after date filter: ${filteredIndents.length}`);
 
     // STEP 3: Filter for non-blank range (exclude cancelled indents - same as trip count logic)
-    const indents = filteredIndents.filter(indent => indent.range && indent.range.trim() !== '');
+    const indents = dateFilterResult.validIndents;
     console.log(`[getFulfillmentAnalytics] Step 3: Valid indents (with non-blank range, including duplicates): ${indents.length}`);
 
     // STEP 4: Define bucket ranges
@@ -845,12 +575,12 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
     
     // Log sample missing indents for debugging
     if (missingIndentsArray.length > 0) {
-      console.log(`[exportMissingIndents] Sample missing indents (first 3):`, missingIndentsArray.slice(0, 3).map(i => ({
-        indent: i.indent,
-        material: i.material,
-        noOfBuckets: i.noOfBuckets,
-        range: i.range
-      })));
+    console.log(`[exportMissingIndents] Sample missing indents (first 3):`, missingIndentsArray.slice(0, 3).map((i: any) => ({
+      indent: i.indent,
+      material: i.material,
+      noOfBuckets: i.noOfBuckets,
+      range: i.range
+    })));
     } else {
       console.log(`[exportMissingIndents] No missing indents found. All Card 2 indents are in Fulfillment Trends.`);
     }
@@ -886,7 +616,7 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
         'Freight Tiger Month': ''
       }];
     } else {
-      excelData = missingIndentsArray.map((indent, index) => ({
+      excelData = missingIndentsArray.map((indent: any, index) => ({
         'S.No': index + 1,
         'Indent Date': indent.indentDate ? format(indent.indentDate, 'yyyy-MM-dd') : '',
         'Indent': indent.indent || '',
@@ -996,6 +726,156 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to export missing indents'
+    });
+  }
+};
+
+/**
+ * Export all indents filtered by date range to Excel
+ * Includes ALL columns from the database, sorted by indentDate
+ */
+export const exportAllIndents = async (req: Request, res: Response) => {
+  try {
+    console.log(`[exportAllIndents] ===== START =====`);
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+    console.log(`[exportAllIndents] Date filter: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+
+    // Get all indents from database
+    const allIndents = await Trip.find({}).lean();
+    console.log(`[exportAllIndents] Total indents from DB: ${allIndents.length}`);
+
+    // Filter by date using the same logic as other analytics
+    const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
+    const filteredIndents = dateFilterResult.allIndentsFiltered;
+    
+    console.log(`[exportAllIndents] Filtered indents: ${filteredIndents.length}`);
+
+    // Sort by indentDate (ascending)
+    filteredIndents.sort((a: any, b: any) => {
+      const dateA = a.indentDate instanceof Date ? a.indentDate : new Date(a.indentDate);
+      const dateB = b.indentDate instanceof Date ? b.indentDate : new Date(b.indentDate);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    // Prepare Excel data with ALL columns from Trip model
+    const excelData = filteredIndents.map((indent: any, index: number) => {
+      return {
+        'S.No': index + 1,
+        'Indent Date': indent.indentDate 
+          ? (indent.indentDate instanceof Date 
+              ? format(indent.indentDate, 'dd-MM-yyyy') 
+              : format(new Date(indent.indentDate), 'dd-MM-yyyy'))
+          : '',
+        'Indent': indent.indent || '',
+        'Allocation Date': indent.allocationDate
+          ? (indent.allocationDate instanceof Date
+              ? format(indent.allocationDate, 'dd-MM-yyyy')
+              : format(new Date(indent.allocationDate), 'dd-MM-yyyy'))
+          : '',
+        'Customer Name': indent.customerName || '',
+        'Location': indent.location || '',
+        'Vehicle Model': indent.vehicleModel || '',
+        'Vehicle Number': indent.vehicleNumber || '',
+        'Vehicle Based': indent.vehicleBased || '',
+        'LR No': indent.lrNo || '',
+        'Material': indent.material || '',
+        'Load Per Bucket': indent.loadPerBucket || 0,
+        'No. of Buckets': indent.noOfBuckets || 0,
+        'Total Load (Kgs)': indent.totalLoad || 0,
+        'POD Received': indent.podReceived || '',
+        'Loading Charge': indent.loadingCharge || 0,
+        'Unloading Charge': indent.unloadingCharge || 0,
+        'Actual Running': indent.actualRunning || 0,
+        'Billable Running': indent.billableRunning || 0,
+        'Range': indent.range || '',
+        'Remarks': indent.remarks || '',
+        'Freight Tiger Month': indent.freightTigerMonth || '',
+        'Total Cost': indent.totalCost || 0,
+        'Profit/Loss': indent.profitLoss || 0,
+        'Created At': indent.createdAt
+          ? (indent.createdAt instanceof Date
+              ? format(indent.createdAt, 'dd-MM-yyyy HH:mm:ss')
+              : format(new Date(indent.createdAt), 'dd-MM-yyyy HH:mm:ss'))
+          : '',
+        'Updated At': indent.updatedAt
+          ? (indent.updatedAt instanceof Date
+              ? format(indent.updatedAt, 'dd-MM-yyyy HH:mm:ss')
+              : format(new Date(indent.updatedAt), 'dd-MM-yyyy HH:mm:ss'))
+          : ''
+      };
+    });
+
+    console.log(`[exportAllIndents] Prepared ${excelData.length} rows for export`);
+
+    // Create Excel workbook
+    const workbook = XLSX.utils.book_new();
+    
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    
+    // Set column widths for better readability
+    const colWidths = [
+      { wch: 8 },   // S.No
+      { wch: 12 },  // Indent Date
+      { wch: 15 },  // Indent
+      { wch: 12 },  // Allocation Date
+      { wch: 20 },  // Customer Name
+      { wch: 20 },  // Location
+      { wch: 15 },  // Vehicle Model
+      { wch: 15 },  // Vehicle Number
+      { wch: 15 },  // Vehicle Based
+      { wch: 12 },  // LR No
+      { wch: 15 },  // Material
+      { wch: 15 },  // Load Per Bucket
+      { wch: 15 },  // No. of Buckets
+      { wch: 15 },  // Total Load (Kgs)
+      { wch: 12 },  // POD Received
+      { wch: 15 },  // Loading Charge
+      { wch: 15 },  // Unloading Charge
+      { wch: 15 },  // Actual Running
+      { wch: 15 },  // Billable Running
+      { wch: 15 },  // Range
+      { wch: 20 },  // Remarks
+      { wch: 18 },  // Freight Tiger Month
+      { wch: 15 },  // Total Cost
+      { wch: 15 },  // Profit/Loss
+      { wch: 20 },  // Created At
+      { wch: 20 }   // Updated At
+    ];
+    worksheet['!cols'] = colWidths;
+    
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'All Indents');
+    
+    // Generate Excel buffer
+    const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    
+    console.log(`[exportAllIndents] Excel buffer size: ${excelBuffer.length} bytes`);
+
+    // Set response headers
+    const dateRangeStr = fromDate && toDate 
+      ? `${format(fromDate, 'yyyy-MM-dd')}_to_${format(toDate, 'yyyy-MM-dd')}`
+      : fromDate
+      ? `${format(fromDate, 'yyyy-MM-dd')}_onwards`
+      : toDate
+      ? `up_to_${format(toDate, 'yyyy-MM-dd')}`
+      : 'all_dates';
+    const filename = `All_Indents_${dateRangeStr}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', excelBuffer.length.toString());
+
+    // Send Excel file
+    res.send(excelBuffer);
+
+    console.log(`[exportAllIndents] ===== END =====`);
+  } catch (error) {
+    console.error(`[exportAllIndents] Error:`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to export indents'
     });
   }
 };
@@ -1883,41 +1763,10 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
       console.log(`[getMonthOnMonthAnalytics] Processing month: ${monthKey}`);
       console.log(`[getMonthOnMonthAnalytics] Month range: ${monthStart.toISOString()} to ${monthEnd.toISOString()}`);
 
-      // Filter ALL indents (including cancelled) to this month for Card 1 (Indent Count)
-      // Use same date filtering logic as getAnalytics
-      let allIndentsForMonth = allIndents.filter(indent => {
-        // Primary: Use Freight Tiger Month column if available
-        if (indent.freightTigerMonth && typeof indent.freightTigerMonth === 'string' && indent.freightTigerMonth.trim() !== '') {
-          const normalizedMonth = normalizeFreightTigerMonth(indent.freightTigerMonth.trim());
-          if (normalizedMonth === monthKey) {
-            return true;
-          }
-          if (normalizedMonth === null) {
-            // Fall through to indentDate check below
-          } else {
-            // Normalized to a different month, exclude this indent
-            return false;
-          }
-        }
-        // Fallback: Use indentDate if Freight Tiger Month is not available or failed to normalize
-        if (indent.indentDate && indent.indentDate instanceof Date && !isNaN(indent.indentDate.getTime())) {
-          return indent.indentDate >= monthStart && indent.indentDate <= monthEnd;
-        }
-        return false;
-      });
-
-      // If no results using Freight Tiger Month, fallback to indentDate only (same as getAnalytics)
-      if (allIndentsForMonth.length === 0) {
-        console.log(`[getMonthOnMonthAnalytics] ${monthKey}: No matches found with Freight Tiger Month, falling back to indentDate only`);
-        allIndentsForMonth = allIndents.filter(indent => {
-          if (!indent.indentDate || !(indent.indentDate instanceof Date) || isNaN(indent.indentDate.getTime())) return false;
-          return indent.indentDate >= monthStart && indent.indentDate <= monthEnd;
-        });
-      }
-
-      // Filter validIndents (excluding cancelled) from the date-filtered allIndentsForMonth
-      // This matches getAnalytics logic: validIndents = allIndentsFiltered.filter(indent => indent.range && indent.range.trim() !== '')
-      const validIndentsForMonth = allIndentsForMonth.filter(indent => indent.range && indent.range.trim() !== '');
+      // Use clean date filtering utility (same as getAnalytics and calculateRangeWiseSummary)
+      const dateFilterResult = filterIndentsByDate(allIndents, monthStart, monthEnd);
+      const allIndentsForMonth = dateFilterResult.allIndentsFiltered;
+      const validIndentsForMonth = dateFilterResult.validIndents;
 
       console.log(`[getMonthOnMonthAnalytics] ${monthKey}: All indents (including cancelled): ${allIndentsForMonth.length}`);
       console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Valid indents (excluding cancelled): ${validIndentsForMonth.length}`);

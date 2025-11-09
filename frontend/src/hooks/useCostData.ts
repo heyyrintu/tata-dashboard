@@ -13,10 +13,11 @@ export const useCostData = (granularity: 'daily' | 'weekly' | 'monthly' = 'month
     setError(null);
 
     try {
-      const fromDate = dateRange.from ? new Date(dateRange.from) : undefined;
-      const toDate = dateRange.to ? new Date(dateRange.to) : undefined;
-      
-      const response = await getCostAnalytics(granularity, fromDate, toDate);
+      const response = await getCostAnalytics(
+        granularity,
+        dateRange.from || undefined,
+        dateRange.to || undefined
+      );
       setData(response);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch cost data');
