@@ -4,6 +4,12 @@ interface Analytics {
   success: boolean;
   totalIndents: number;
   totalIndentsUnique: number;
+  totalLoad?: number; // Total load in kg (from ALL indents, including cancelled)
+  totalBuckets?: number; // From valid indents only, excluding Other/Duplicate
+  totalBarrels?: number; // From valid indents only, excluding Other/Duplicate
+  avgBucketsPerTrip?: number; // Rounded average
+  totalCost?: number; // From ALL indents, including cancelled
+  totalProfitLoss?: number; // From ALL indents, including cancelled
   dateRange: {
     from: string | null;
     to: string | null;

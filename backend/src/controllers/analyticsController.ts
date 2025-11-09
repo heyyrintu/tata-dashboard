@@ -64,6 +64,12 @@ export const getAnalytics = async (req: Request, res: Response) => {
       success: true,
       totalIndents: cardResults.totalIndents,
       totalIndentsUnique: cardResults.totalTrips,
+      totalLoad: cardResults.totalLoad, // Total load in kg (from ALL indents, including cancelled)
+      totalBuckets: cardResults.totalBuckets, // From valid indents only, excluding Other/Duplicate
+      totalBarrels: cardResults.totalBarrels, // From valid indents only, excluding Other/Duplicate
+      avgBucketsPerTrip: cardResults.avgBucketsPerTrip, // Rounded average
+      totalCost: cardResults.totalCost, // From ALL indents, including cancelled
+      totalProfitLoss: cardResults.totalProfitLoss, // From ALL indents, including cancelled
       dateRange: {
         from: fromDate?.toISOString().split('T')[0] || null,
         to: toDate?.toISOString().split('T')[0] || null

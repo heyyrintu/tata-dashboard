@@ -1,6 +1,5 @@
 import Trip from '../models/Trip';
 import { format } from 'date-fns';
-import { normalizeFreightTigerMonth } from './freightTigerMonth';
 import { filterIndentsByDate } from './dateFiltering';
 import { calculateCardValues } from './cardCalculations';
 
@@ -284,6 +283,9 @@ export async function calculateRangeWiseSummary(
   // Verify that rangeData totals match card calculation totals
   const rangeDataTotalBuckets = rangeData.reduce((sum, item) => sum + item.bucketCount, 0);
   const rangeDataTotalBarrels = rangeData.reduce((sum, item) => sum + item.barrelCount, 0);
+  const rangeDataTotalLoad = rangeData.reduce((sum, item) => sum + item.totalLoad, 0);
+  const rangeDataTotalCost = rangeData.reduce((sum, item) => sum + (item.totalCost || 0), 0);
+  const rangeDataTotalProfitLoss = rangeData.reduce((sum, item) => sum + (item.profitLoss || 0), 0);
   
   console.log(`[calculateRangeWiseSummary] ===== FINAL RESULTS =====`);
   console.log(`[calculateRangeWiseSummary] Total unique indents (Card 2): ${totalUniqueIndents}`);
@@ -291,15 +293,27 @@ export async function calculateRangeWiseSummary(
   console.log(`[calculateRangeWiseSummary] Total load (Card 3): ${totalLoad} kg (${(totalLoad / 1000).toFixed(2)} tons)`);
   console.log(`[calculateRangeWiseSummary] Total buckets (Card 4): ${totalBuckets}`);
   console.log(`[calculateRangeWiseSummary] Total barrels (Card 4): ${totalBarrels}`);
+  console.log(`[calculateRangeWiseSummary] Total cost: ₹${totalCost.toLocaleString('en-IN')}`);
+  console.log(`[calculateRangeWiseSummary] Total profit/loss: ₹${totalProfitLoss.toLocaleString('en-IN')}`);
   console.log(`[calculateRangeWiseSummary] Range data buckets sum: ${rangeDataTotalBuckets} (should match Card 4: ${totalBuckets})`);
   console.log(`[calculateRangeWiseSummary] Range data barrels sum: ${rangeDataTotalBarrels} (should match Card 4: ${totalBarrels})`);
+  console.log(`[calculateRangeWiseSummary] Range data load sum: ${rangeDataTotalLoad} kg (from valid indents only, Card 3 includes cancelled: ${totalLoad} kg)`);
+  console.log(`[calculateRangeWiseSummary] Range data cost sum: ₹${rangeDataTotalCost.toLocaleString('en-IN')} (from valid indents only, Card total includes cancelled: ₹${totalCost.toLocaleString('en-IN')})`);
   console.log(`[calculateRangeWiseSummary] Range data count: ${rangeData.length}`);
   
+  // Verify buckets and barrels match (these should match exactly since both exclude Other/Duplicate)
   if (rangeDataTotalBuckets !== totalBuckets || rangeDataTotalBarrels !== totalBarrels) {
-    console.warn(`[calculateRangeWiseSummary] WARNING: Range data totals don't match card calculation!`);
+    console.warn(`[calculateRangeWiseSummary] ⚠️ WARNING: Range data totals don't match card calculation!`);
     console.warn(`[calculateRangeWiseSummary] Buckets: rangeData=${rangeDataTotalBuckets}, card=${totalBuckets}`);
     console.warn(`[calculateRangeWiseSummary] Barrels: rangeData=${rangeDataTotalBarrels}, card=${totalBarrels}`);
+  } else {
+    console.log(`[calculateRangeWiseSummary] ✓ Buckets and barrels match card calculations`);
   }
+  
+  // Note: Total load and cost from rangeData will be LESS than card totals because:
+  // - Range data is calculated from validIndents only (excludes cancelled)
+  // - Card totals include cancelled indents
+  // This is expected and correct behavior
   
   console.log(`[calculateRangeWiseSummary] =========================`);
 
