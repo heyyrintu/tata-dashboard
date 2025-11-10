@@ -396,11 +396,17 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
 
 export const exportMissingIndents = async (req: Request, res: Response) => {
   try {
-    const fromDate = parseDateParam(req.query.fromDate as string);
-    const toDate = parseDateParam(req.query.toDate as string);
+    // Store original query params for display
+    const originalFromDateStr = req.query.fromDate as string | undefined;
+    const originalToDateStr = req.query.toDate as string | undefined;
+    
+    // Parse dates as UTC (no timezone shifts)
+    const fromDate = parseDateParam(originalFromDateStr);
+    const toDate = parseDateParam(originalToDateStr);
 
     console.log(`[exportMissingIndents] ===== START =====`);
     console.log(`[exportMissingIndents] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+    console.log(`[exportMissingIndents] Raw query params: fromDate=${originalFromDateStr || 'undefined'}, toDate=${originalToDateStr || 'undefined'}`);
 
     // STEP 1: Get all indents that match Card 2 criteria (non-blank range, date filtered)
     const allIndents = await Trip.find({});
@@ -659,8 +665,8 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
       ['Export Information', ''],
       ['Generated Date', format(new Date(), 'yyyy-MM-dd HH:mm:ss')],
       ['Date Range Filter', ''],
-      ['From Date', fromDate ? format(fromDate, 'yyyy-MM-dd') : 'All Dates'],
-      ['To Date', toDate ? format(toDate, 'yyyy-MM-dd') : 'All Dates'],
+      ['From Date', originalFromDateStr || 'All Dates'],
+      ['To Date', originalToDateStr || 'All Dates'],
       ['', ''],
       ['Calculation Summary', ''],
       ['Total Card 2 Indents (Unique)', card2UniqueIndents.size],

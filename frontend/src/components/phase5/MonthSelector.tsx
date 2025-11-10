@@ -25,7 +25,8 @@ export default function MonthSelector() {
     
     if (monthValue) {
       const [year, month] = monthValue.split('-');
-      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 2); // Start from day 2
+      startDate.setHours(0, 0, 0, 0); // Ensure start of day
       const endDate = new Date(parseInt(year), parseInt(month), 0); // Last day of month
       endDate.setHours(23, 59, 59, 999);
       setDateRange(startDate, endDate);

@@ -77,159 +77,99 @@ export function filterIndentsByDate(
 
   // Apply date filtering using ONLY indentDate
   if (fromDateSerial !== null && toDateSerial !== null) {
-    const fromMonth = format(fromDate!, 'yyyy-MM');
-    const toMonth = format(toDate!, 'yyyy-MM');
+    // CRITICAL FIX: Always use the ACTUAL fromDate and toDate provided, NOT month boundaries
+    // This ensures 1 day, 7 days, or any custom range works correctly
+    console.log(`[filterIndentsByDate] Date range filter: ${fromDate!.toISOString().split('T')[0]} to ${toDate!.toISOString().split('T')[0]}`);
+    console.log(`[filterIndentsByDate] Using ACTUAL date range (not month boundaries)`);
+    console.log(`[filterIndentsByDate] - fromDate: Serial ${fromDateSerial} (${fromDate!.toISOString().split('T')[0]})`);
+    console.log(`[filterIndentsByDate] - toDate: Serial ${toDateSerial} (${toDate!.toISOString().split('T')[0]})`);
 
-    if (fromMonth === toMonth) {
-      // SINGLE MONTH - Use month boundaries from indentDate
-      targetMonthKey = fromMonth;
-      monthStart = new Date(fromMonth + '-01');
-      monthStart.setHours(0, 0, 0, 0);
-      monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0);
-      monthEnd.setHours(23, 59, 59, 999);
+    // Extract date components from filter dates (already UTC dates from parseDateParam)
+    // No normalization needed - dates are already UTC at midnight
+    const normalizedFromSerial = toExcelSerialNumber(fromDate);
+    const normalizedToSerial = toExcelSerialNumber(toDate);
+    
+    console.log(`[filterIndentsByDate] Date range (Excel serial):`);
+    console.log(`[filterIndentsByDate] - fromDate: Serial ${normalizedFromSerial} (${fromDate!.toISOString().split('T')[0]})`);
+    console.log(`[filterIndentsByDate] - toDate: Serial ${normalizedToSerial} (${toDate!.toISOString().split('T')[0]})`);
 
-      console.log(`[filterIndentsByDate] Single month filter: ${targetMonthKey}`);
-      console.log(`[filterIndentsByDate] Month boundaries: ${monthStart.toISOString()} to ${monthEnd.toISOString()}`);
-
-      // Convert month boundaries to Excel serial numbers
-      const monthStartSerial = toExcelSerialNumber(monthStart);
-      const monthEndSerial = toExcelSerialNumber(monthEnd);
-      
-      console.log(`[filterIndentsByDate] Month boundaries (Excel serial):`);
-      console.log(`[filterIndentsByDate] - monthStart: Serial ${monthStartSerial} (${monthStart!.toISOString().split('T')[0]})`);
-      console.log(`[filterIndentsByDate] - monthEnd: Serial ${monthEndSerial} (${monthEnd!.toISOString().split('T')[0]})`);
-
-      // Debug: Check sample indent dates before filtering
-      const sampleIndents = allIndentsFiltered.slice(0, 5).map((indent: any) => {
-        const indentSerial = toExcelSerialNumber(indent.indentDate);
-        const inRange = indentSerial !== null ? (indentSerial >= monthStartSerial! && indentSerial <= monthEndSerial!) : false;
-        return {
-          indent: indent.indent,
-          indentDateRaw: indent.indentDate,
-          indentDateType: typeof indent.indentDate,
-          indentDateSerial: indentSerial,
-          monthStartSerial: monthStartSerial,
-          monthEndSerial: monthEndSerial,
-          inRange: inRange,
-          reason: indentSerial === null ? 'PARSE_FAILED' : !inRange ? 'OUT_OF_RANGE' : 'IN_RANGE'
-        };
-      });
-      console.log(`[filterIndentsByDate] Sample indent dates (first 5) - BEFORE FILTERING:`, sampleIndents);
-      
-      // Count how many will pass/fail
-      let passCount = 0;
-      let failCount = 0;
-      allIndentsFiltered.forEach((indent: any) => {
-        const indentSerial = toExcelSerialNumber(indent.indentDate);
-        if (indentSerial !== null && indentSerial >= monthStartSerial! && indentSerial <= monthEndSerial!) {
-          passCount++;
-        } else {
-          failCount++;
-        }
-      });
-      console.log(`[filterIndentsByDate] Expected results: ${passCount} will pass, ${failCount} will fail`);
-
-      // Filter using ONLY indentDate - compare using Excel serial numbers
-      allIndentsFiltered = allIndentsFiltered.filter(indent => {
-        if (!indent.indentDate) {
-          return false;
-        }
-        // Convert indent date to Excel serial number
-        const indentSerial = toExcelSerialNumber(indent.indentDate);
-        
-        if (indentSerial === null) {
-          return false;
-        }
-
-        // Compare using Excel serial numbers (simple integer comparison)
-        return indentSerial >= monthStartSerial! && indentSerial <= monthEndSerial!;
-      });
-
-      console.log(`[filterIndentsByDate] Filtered indents for single month: ${allIndentsFiltered.length}`);
-      
-      // Log sample dates after filtering
-      if (allIndentsFiltered.length > 0) {
-        const sampleAfter = allIndentsFiltered.slice(0, 3).map((indent: any) => {
-          const indentSerial = toExcelSerialNumber(indent.indentDate);
-          const parsed = parseDateValue(indent.indentDate);
-          return {
-            indent: indent.indent,
-            indentDateSerial: indentSerial,
-            indentDateFormatted: parsed ? parsed.toISOString().split('T')[0] : 'FAILED',
-            monthStartSerial: monthStartSerial,
-            monthEndSerial: monthEndSerial
-          };
-        });
-        console.log(`[filterIndentsByDate] Sample filtered indents (first 3) - AFTER FILTERING:`, sampleAfter);
+    // Debug: Check sample indent dates before filtering
+    const sampleIndents = allIndentsFiltered.slice(0, 5).map((indent: any) => {
+      const indentSerial = toExcelSerialNumber(indent.indentDate);
+      const inRange = indentSerial !== null ? (indentSerial >= normalizedFromSerial! && indentSerial <= normalizedToSerial!) : false;
+      return {
+        indent: indent.indent,
+        indentDateRaw: indent.indentDate,
+        indentDateType: typeof indent.indentDate,
+        indentDateSerial: indentSerial,
+        fromDateSerial: normalizedFromSerial,
+        toDateSerial: normalizedToSerial,
+        inRange: inRange,
+        reason: indentSerial === null ? 'PARSE_FAILED' : !inRange ? 'OUT_OF_RANGE' : 'IN_RANGE'
+      };
+    });
+    console.log(`[filterIndentsByDate] Sample indent dates (first 5) - BEFORE FILTERING:`, sampleIndents);
+    
+    // Count how many will pass/fail
+    let passCount = 0;
+    let failCount = 0;
+    allIndentsFiltered.forEach((indent: any) => {
+      const indentSerial = toExcelSerialNumber(indent.indentDate);
+      if (indentSerial !== null && indentSerial >= normalizedFromSerial! && indentSerial <= normalizedToSerial!) {
+        passCount++;
+      } else {
+        failCount++;
       }
-    } else {
-      // MULTI-MONTH RANGE - Use indentDate only
-      console.log(`[filterIndentsByDate] Multi-month range filter: ${fromMonth} to ${toMonth}`);
+    });
+    console.log(`[filterIndentsByDate] Expected results: ${passCount} will pass, ${failCount} will fail`);
 
-      // Debug: Check sample indent dates before filtering
-      const sampleIndentsMulti = allIndentsFiltered.slice(0, 5).map((indent: any) => {
+    // Filter using ONLY indentDate - compare using Excel serial numbers with ACTUAL date range
+    allIndentsFiltered = allIndentsFiltered.filter(indent => {
+      if (!indent.indentDate) {
+        return false;
+      }
+      // Convert indent date to Excel serial number
+      const indentSerial = toExcelSerialNumber(indent.indentDate);
+      
+      if (indentSerial === null) {
+        return false;
+      }
+
+      // Compare using Excel serial numbers with ACTUAL fromDate/toDate (not month boundaries)
+      return indentSerial >= normalizedFromSerial! && indentSerial <= normalizedToSerial!;
+    });
+
+    console.log(`[filterIndentsByDate] Filtered indents for date range: ${allIndentsFiltered.length}`);
+    
+    // Log sample dates after filtering
+    if (allIndentsFiltered.length > 0) {
+      const sampleAfter = allIndentsFiltered.slice(0, 3).map((indent: any) => {
         const indentSerial = toExcelSerialNumber(indent.indentDate);
         const parsed = parseDateValue(indent.indentDate);
-        const inRange = indentSerial !== null ? (indentSerial >= fromDateSerial! && indentSerial <= toDateSerial!) : false;
         return {
           indent: indent.indent,
-          indentDateRaw: indent.indentDate,
-          indentDateType: typeof indent.indentDate,
           indentDateSerial: indentSerial,
           indentDateFormatted: parsed ? parsed.toISOString().split('T')[0] : 'FAILED',
-          fromDateSerial: fromDateSerial,
-          toDateSerial: toDateSerial,
-          inRange: inRange,
-          reason: indentSerial === null ? 'PARSE_FAILED' : !inRange ? 'OUT_OF_RANGE' : 'IN_RANGE'
+          fromDateSerial: normalizedFromSerial,
+          toDateSerial: normalizedToSerial
         };
       });
-      console.log(`[filterIndentsByDate] Sample indent dates (first 5) - BEFORE FILTERING:`, sampleIndentsMulti);
-      
-      // Count how many will pass/fail
-      let passCountMulti = 0;
-      let failCountMulti = 0;
-      allIndentsFiltered.forEach((indent: any) => {
-        const indentSerial = toExcelSerialNumber(indent.indentDate);
-        if (indentSerial !== null && indentSerial >= fromDateSerial! && indentSerial <= toDateSerial!) {
-          passCountMulti++;
-        } else {
-          failCountMulti++;
-        }
-      });
-      console.log(`[filterIndentsByDate] Expected results: ${passCountMulti} will pass, ${failCountMulti} will fail`);
-
-      allIndentsFiltered = allIndentsFiltered.filter(indent => {
-        if (!indent.indentDate) {
-          return false;
-        }
-        // Convert indent date to Excel serial number
-        const indentSerial = toExcelSerialNumber(indent.indentDate);
-        
-        if (indentSerial === null) {
-          return false;
-        }
-
-        // Compare using Excel serial numbers (simple integer comparison)
-        return indentSerial >= fromDateSerial! && indentSerial <= toDateSerial!;
-      });
-
-      console.log(`[filterIndentsByDate] Filtered indents for date range: ${allIndentsFiltered.length}`);
-      
-      // Log sample dates after filtering
-      if (allIndentsFiltered.length > 0) {
-        const sampleAfter = allIndentsFiltered.slice(0, 3).map((indent: any) => {
-          const indentSerial = toExcelSerialNumber(indent.indentDate);
-          const parsed = parseDateValue(indent.indentDate);
-          return {
-            indent: indent.indent,
-            indentDateSerial: indentSerial,
-            indentDateFormatted: parsed ? parsed.toISOString().split('T')[0] : 'FAILED',
-            fromDateSerial: fromDateSerial,
-            toDateSerial: toDateSerial
-          };
-        });
-        console.log(`[filterIndentsByDate] Sample filtered indents (first 3) - AFTER FILTERING:`, sampleAfter);
-      }
+      console.log(`[filterIndentsByDate] Sample filtered indents (first 3) - AFTER FILTERING:`, sampleAfter);
+    }
+    
+    // Check if it's a single month for month-on-month compatibility (metadata only, not for filtering)
+    const fromMonth = format(fromDate!, 'yyyy-MM');
+    const toMonth = format(toDate!, 'yyyy-MM');
+    if (fromMonth === toMonth) {
+      targetMonthKey = fromMonth;
+      // Create month boundaries as UTC dates (date-only)
+      const [year, month] = fromMonth.split('-').map(Number);
+      monthStart = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+      // Last day of month in UTC
+      monthEnd = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+      console.log(`[filterIndentsByDate] Note: This is within a single month (${targetMonthKey}), but using actual date range for filtering`);
+    } else {
+      console.log(`[filterIndentsByDate] Multi-month range: ${fromMonth} to ${toMonth}`);
     }
   } else if (fromDateSerial !== null) {
     // Only fromDate - use indentDate only
@@ -276,45 +216,86 @@ export function filterIndentsByDate(
   // Filter out cancelled indents (no range) for validIndents
   const validIndents = allIndentsFiltered.filter(indent => indent.range && indent.range.trim() !== '');
 
+  // VERIFICATION: Double-check that all filtered indents are actually within the date range
+  if (fromDateSerial !== null && toDateSerial !== null) {
+    let outOfRangeCount = 0;
+    const outOfRangeIndents: any[] = [];
+    
+    // Use the same Excel serial numbers as filtering (dates are already UTC, date-only)
+    const minSerial = fromDateSerial;
+    const maxSerial = toDateSerial;
+    
+    allIndentsFiltered.forEach((indent: any) => {
+      const indentSerial = toExcelSerialNumber(indent.indentDate);
+      if (indentSerial !== null) {
+        // Always use ACTUAL fromDate/toDate (not month boundaries)
+        if (indentSerial < minSerial! || indentSerial > maxSerial!) {
+          outOfRangeCount++;
+          if (outOfRangeIndents.length < 10) {
+            const parsed = parseDateValue(indent.indentDate);
+            outOfRangeIndents.push({
+              indent: indent.indent || 'NO_INDENT',
+              indentDate: parsed ? parsed.toISOString().split('T')[0] : 'INVALID',
+              indentSerial,
+              minSerial,
+              maxSerial,
+              reason: indentSerial < minSerial! ? 'BEFORE_RANGE' : 'AFTER_RANGE'
+            });
+          }
+        }
+      }
+    });
+    
+    if (outOfRangeCount > 0) {
+      console.error(`[filterIndentsByDate] ⚠️⚠️⚠️ CRITICAL ERROR: Found ${outOfRangeCount} indents OUTSIDE the date filter range!`);
+      console.error(`[filterIndentsByDate] This should NEVER happen - filtering logic has a bug!`);
+      console.error(`[filterIndentsByDate] Out of range indents (first 10):`, outOfRangeIndents);
+      // Remove out-of-range indents using ACTUAL date range
+      allIndentsFiltered = allIndentsFiltered.filter((indent: any) => {
+        const indentSerial = toExcelSerialNumber(indent.indentDate);
+        if (indentSerial === null) return false;
+        return indentSerial >= minSerial! && indentSerial <= maxSerial!;
+      });
+      console.log(`[filterIndentsByDate] Removed ${outOfRangeCount} out-of-range indents. New count: ${allIndentsFiltered.length}`);
+    } else {
+      console.log(`[filterIndentsByDate] ✓ Verification passed: All ${allIndentsFiltered.length} filtered indents are within the date range`);
+    }
+  }
+
   console.log(`[filterIndentsByDate] Final results:`);
   console.log(`[filterIndentsByDate] - All indents filtered (including cancelled): ${allIndentsFiltered.length}`);
   console.log(`[filterIndentsByDate] - Valid indents (excluding cancelled): ${validIndents.length}`);
   
-  // Log ALL filtered indents with details
-  console.log(`[filterIndentsByDate] ===== ALL FILTERED INDENTS (${allIndentsFiltered.length} total) =====`);
-  allIndentsFiltered.forEach((indent: any, index: number) => {
-    console.log(`[filterIndentsByDate] Indent ${index + 1}:`, {
-      indent: indent.indent || 'NO_INDENT',
-      indentDate: indent.indentDate ? (indent.indentDate instanceof Date ? indent.indentDate.toISOString().split('T')[0] : String(indent.indentDate)) : 'NO_DATE',
-      range: indent.range || 'CANCELLED',
-      material: indent.material || 'NO_MATERIAL',
-      noOfBuckets: indent.noOfBuckets || 0,
-      totalLoad: indent.totalLoad || 0,
-      totalCost: indent.totalCost || 0,
-      profitLoss: indent.profitLoss || 0,
-      location: indent.location || 'NO_LOCATION',
-      vehicleNumber: indent.vehicleNumber || 'NO_VEHICLE'
+  // Log summary of filtered indents (only if count is reasonable to avoid log spam)
+  if (allIndentsFiltered.length <= 100) {
+    console.log(`[filterIndentsByDate] ===== ALL FILTERED INDENTS (${allIndentsFiltered.length} total) =====`);
+    allIndentsFiltered.forEach((indent: any, index: number) => {
+      const indentSerial = toExcelSerialNumber(indent.indentDate);
+      const parsed = parseDateValue(indent.indentDate);
+      console.log(`[filterIndentsByDate] Indent ${index + 1}:`, {
+        indent: indent.indent || 'NO_INDENT',
+        indentDate: parsed ? parsed.toISOString().split('T')[0] : 'NO_DATE',
+        indentSerial,
+        range: indent.range || 'CANCELLED'
+      });
     });
-  });
-  console.log(`[filterIndentsByDate] ===== END OF ALL FILTERED INDENTS =====`);
+    console.log(`[filterIndentsByDate] ===== END OF ALL FILTERED INDENTS =====`);
+  } else {
+    console.log(`[filterIndentsByDate] Filtered ${allIndentsFiltered.length} indents (too many to log individually)`);
+    // Log sample
+    const sample = allIndentsFiltered.slice(0, 5).map((indent: any) => {
+      const indentSerial = toExcelSerialNumber(indent.indentDate);
+      const parsed = parseDateValue(indent.indentDate);
+      return {
+        indent: indent.indent || 'NO_INDENT',
+        indentDate: parsed ? parsed.toISOString().split('T')[0] : 'NO_DATE',
+        indentSerial
+      };
+    });
+    console.log(`[filterIndentsByDate] Sample (first 5):`, sample);
+  }
   
-  // Log VALID indents (excluding cancelled) with details
-  console.log(`[filterIndentsByDate] ===== VALID INDENTS (${validIndents.length} total, excluding cancelled) =====`);
-  validIndents.forEach((indent: any, index: number) => {
-    console.log(`[filterIndentsByDate] Valid Indent ${index + 1}:`, {
-      indent: indent.indent || 'NO_INDENT',
-      indentDate: indent.indentDate ? (indent.indentDate instanceof Date ? indent.indentDate.toISOString().split('T')[0] : String(indent.indentDate)) : 'NO_DATE',
-      range: indent.range || 'NO_RANGE',
-      material: indent.material || 'NO_MATERIAL',
-      noOfBuckets: indent.noOfBuckets || 0,
-      totalLoad: indent.totalLoad || 0,
-      totalCost: indent.totalCost || 0,
-      profitLoss: indent.profitLoss || 0,
-      location: indent.location || 'NO_LOCATION',
-      vehicleNumber: indent.vehicleNumber || 'NO_VEHICLE'
-    });
-  });
-  console.log(`[filterIndentsByDate] ===== END OF VALID INDENTS =====`);
+  console.log(`[filterIndentsByDate] Valid indents (excluding cancelled): ${validIndents.length}`);
   
   console.log(`[filterIndentsByDate] ===== END =====`);
 

@@ -31,7 +31,7 @@ export default function DateRangeSelector() {
   const handleMonthChange = (date: Date | null) => {
     if (date) {
       setPendingMonth(date);
-      const startDate = new Date(date.getFullYear(), date.getMonth(), 1);
+      const startDate = new Date(date.getFullYear(), date.getMonth(), 2); // Start from day 2
       startDate.setHours(0, 0, 0, 0); // Ensure start of day
       const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0); // Last day of month
       endDate.setHours(23, 59, 59, 999); // Set to end of day to include entire last day
@@ -41,6 +41,12 @@ export default function DateRangeSelector() {
   };
 
   const handleApplyFilter = () => {
+    console.log('[DateRangeSelector] ===== APPLYING FILTER =====');
+    console.log('[DateRangeSelector] Pending dates:', {
+      from: pendingFrom ? format(pendingFrom, 'yyyy-MM-dd') : 'null',
+      to: pendingTo ? format(pendingTo, 'yyyy-MM-dd') : 'null'
+    });
+    
     // Normalize dates to ensure correct boundaries
     let normalizedFrom = pendingFrom;
     let normalizedTo = pendingTo;
@@ -55,10 +61,21 @@ export default function DateRangeSelector() {
       normalizedTo.setHours(23, 59, 59, 999); // End of day
     }
     
+    console.log('[DateRangeSelector] Normalized dates:', {
+      from: normalizedFrom ? format(normalizedFrom, 'yyyy-MM-dd HH:mm:ss') : 'null',
+      to: normalizedTo ? format(normalizedTo, 'yyyy-MM-dd HH:mm:ss') : 'null',
+      fromISO: normalizedFrom?.toISOString(),
+      toISO: normalizedTo?.toISOString()
+    });
+    
+    console.log('[DateRangeSelector] Setting date range in context...');
     setDateRange(normalizedFrom, normalizedTo);
+    
     if (pendingMonth) {
       setSelectedMonthDate(pendingMonth);
     }
+    
+    console.log('[DateRangeSelector] ===== FILTER APPLIED =====');
   };
 
   const handleExportExcel = async () => {

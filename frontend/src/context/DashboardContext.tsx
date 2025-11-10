@@ -1,6 +1,5 @@
 import { createContext, useContext, useState } from 'react';
 import type { ReactNode } from 'react';
-import { subDays } from 'date-fns';
 
 export interface DashboardContextType {
   uploadedFileName: string | null;
@@ -47,7 +46,16 @@ export const DashboardProvider = ({ children }: DashboardProviderProps) => {
   const [error, setError] = useState<string | null>(null);
 
   const setDateRange = (from: Date | null, to: Date | null) => {
+    console.log('[DashboardContext] ===== SETTING DATE RANGE =====');
+    console.log('[DashboardContext] New date range:', {
+      from: from ? from.toISOString().split('T')[0] : 'null',
+      to: to ? to.toISOString().split('T')[0] : 'null',
+      fromISO: from?.toISOString(),
+      toISO: to?.toISOString()
+    });
     setDateRangeState({ from, to });
+    console.log('[DashboardContext] Date range updated in context');
+    console.log('[DashboardContext] ===== DATE RANGE SET =====');
   };
 
   const value: DashboardContextType = {

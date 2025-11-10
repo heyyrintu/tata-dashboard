@@ -137,7 +137,20 @@ export const getAnalytics = async (fromDate?: Date, toDate?: Date): Promise<Anal
     params.append('toDate', toDate.toISOString().split('T')[0]);
   }
 
-  const response = await api.get<Analytics>(`/analytics?${params.toString()}`);
+  const url = `/analytics${params.toString() ? `?${params.toString()}` : ''}`;
+  console.log('[API] getAnalytics called:', {
+    fromDate: fromDate ? fromDate.toISOString().split('T')[0] : 'undefined',
+    toDate: toDate ? toDate.toISOString().split('T')[0] : 'undefined',
+    url
+  });
+
+  const response = await api.get<Analytics>(url);
+  console.log('[API] getAnalytics response:', {
+    success: response.data.success,
+    totalIndents: response.data.totalIndents,
+    totalIndentsUnique: response.data.totalIndentsUnique,
+    dateRange: response.data.dateRange
+  });
   return response.data;
 };
 
@@ -151,7 +164,20 @@ export const getRangeWiseAnalytics = async (fromDate?: Date, toDate?: Date): Pro
     params.append('toDate', toDate.toISOString().split('T')[0]);
   }
 
-  const response = await api.get<RangeWiseResponse>(`/analytics/range-wise?${params.toString()}`);
+  const url = `/analytics/range-wise${params.toString() ? `?${params.toString()}` : ''}`;
+  console.log('[API] getRangeWiseAnalytics called:', {
+    fromDate: fromDate ? fromDate.toISOString().split('T')[0] : 'undefined',
+    toDate: toDate ? toDate.toISOString().split('T')[0] : 'undefined',
+    url
+  });
+
+  const response = await api.get<RangeWiseResponse>(url);
+  console.log('[API] getRangeWiseAnalytics response:', {
+    success: response.data.success,
+    rangeDataLength: response.data.rangeData?.length || 0,
+    totalUniqueIndents: response.data.totalUniqueIndents,
+    dateRange: response.data.dateRange
+  });
   return response.data;
 };
 
