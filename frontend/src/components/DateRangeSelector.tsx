@@ -11,7 +11,7 @@ export default function DateRangeSelector() {
   const { dateRange, setDateRange } = useDashboard();
   const { theme } = useTheme();
   // Initialize with current month if no date range is set
-  const [selectedMonthDate, setSelectedMonthDate] = useState<Date | null>(
+  const [, setSelectedMonthDate] = useState<Date | null>(
     dateRange.from && dateRange.to ? dateRange.from : new Date()
   );
   
@@ -27,6 +27,9 @@ export default function DateRangeSelector() {
     setPendingFrom(dateRange.from);
     setPendingTo(dateRange.to);
   }, [dateRange.from, dateRange.to]);
+
+  // Check if filter is active (dates are selected)
+  const isFilterActive = dateRange.from !== null && dateRange.to !== null;
 
   const handleMonthChange = (date: Date | null) => {
     if (date) {
@@ -78,113 +81,6 @@ export default function DateRangeSelector() {
     console.log('[DateRangeSelector] ===== FILTER APPLIED =====');
   };
 
-  const handleExportExcel = async () => {
-    try {
-      console.log('[EXPORT] Starting export...');
-      
-      // Use current date range (from context) or pending dates
-      const fromDate = dateRange.from || pendingFrom;
-      const toDate = dateRange.to || pendingTo;
-      
-      console.log('[EXPORT] Date range:', {
-        from: fromDate ? format(fromDate, 'yyyy-MM-dd') : 'null',
-        to: toDate ? format(toDate, 'yyyy-MM-dd') : 'null'
-      });
-      
-      // Build query parameters
-      const params = new URLSearchParams();
-      if (fromDate) {
-        params.append('fromDate', format(fromDate, 'yyyy-MM-dd'));
-      }
-      if (toDate) {
-        params.append('toDate', format(toDate, 'yyyy-MM-dd'));
-      }
-      
-      // Create download URL - use same base URL pattern as other API calls
-      const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-      const apiUrl = `${baseUrl}/analytics/export-all`;
-      const url = params.toString() ? `${apiUrl}?${params.toString()}` : apiUrl;
-      
-      console.log('[EXPORT] Calling URL:', url);
-      
-      // Use fetch to download the file (handles CORS properly)
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        },
-      });
-
-      console.log('[EXPORT] Response status:', response.status, response.statusText);
-      console.log('[EXPORT] Response headers:', Object.fromEntries(response.headers.entries()));
-
-      if (!response.ok) {
-        // Try to get error message from response
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        try {
-          const errorData = await response.json();
-          errorMessage = errorData.error || errorData.message || errorMessage;
-        } catch (e) {
-          // If response is not JSON, use status text
-          errorMessage = response.statusText || errorMessage;
-        }
-        console.error('[EXPORT] HTTP Error:', errorMessage);
-        throw new Error(errorMessage);
-      }
-
-      // Get the blob from the response
-      console.log('[EXPORT] Converting response to blob...');
-      const blob = await response.blob();
-      console.log('[EXPORT] Blob size:', blob.size, 'bytes');
-      console.log('[EXPORT] Blob type:', blob.type);
-      
-      // Check if blob is actually an Excel file
-      if (blob.size === 0) {
-        throw new Error('Received empty file from server');
-      }
-      
-      if (!blob.type.includes('spreadsheet') && !blob.type.includes('excel') && blob.type !== 'application/octet-stream') {
-        // Might be an error JSON response
-        const text = await blob.text();
-        try {
-          const errorData = JSON.parse(text);
-          throw new Error(errorData.error || errorData.message || 'Invalid file type received');
-        } catch (e) {
-          throw new Error(`Invalid file type: ${blob.type}. Response: ${text.substring(0, 100)}`);
-        }
-      }
-      
-      // Get filename from Content-Disposition header or use default
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'All_Indents.xlsx';
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/);
-        if (filenameMatch && filenameMatch[1]) {
-          filename = filenameMatch[1].replace(/['"]/g, '');
-        }
-      }
-      
-      console.log('[EXPORT] Filename:', filename);
-      
-      // Create a temporary URL and trigger download
-      const blobUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = blobUrl;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Clean up the blob URL
-      window.URL.revokeObjectURL(blobUrl);
-      
-      console.log('[EXPORT] Export completed successfully!');
-    } catch (error) {
-      console.error('[EXPORT] Error details:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      alert(`Failed to export Excel file: ${errorMessage}\n\nCheck the browser console for more details.`);
-    }
-  };
 
   return (
     <div 
@@ -259,13 +155,13 @@ export default function DateRangeSelector() {
             }`}>
               Month
             </label>
-            <div className={theme === 'light' ? 'date-input-red-border flex-1' : 'flex-1'}>
+            <div className={`relative ${theme === 'light' ? 'date-input-red-border flex-1' : 'flex-1'}`}>
               <DatePicker
                 selected={pendingMonth}
                 onChange={handleMonthChange}
                 dateFormat="MMMM yyyy"
                 showMonthYearPicker
-                className={`w-full px-4 py-3 rounded-lg transition-all duration-300 ${
+                className={`w-full px-4 py-3 pr-8 rounded-lg transition-all duration-300 ${
                   theme === 'light'
                     ? 'bg-white text-black focus:ring-2 hover:shadow-md'
                     : 'bg-gray-900 border border-gray-700 text-white focus:ring-2 focus:ring-white focus:border-gray-600 hover:border-gray-600 hover:shadow-lg hover:shadow-white/10'
@@ -273,45 +169,40 @@ export default function DateRangeSelector() {
                 maxDate={new Date()}
                 portalId="date-picker-portal"
               />
+              <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none ${
+                theme === 'light' ? 'text-gray-600' : 'text-gray-400'
+              }`}>
+                ↓
+              </div>
             </div>
           </div>
 
           <Button
             onClick={handleApplyFilter}
             borderRadius="0.5rem"
-            containerClassName="h-auto w-auto"
+            containerClassName="h-auto w-auto transition-all duration-300 hover:scale-105 active:scale-95"
             className={cn(
-              'px-6 py-2 text-base font-bold whitespace-nowrap',
-              theme === 'light' 
-                ? '!bg-white !text-[#FEA519] !border-neutral-200' 
-                : 'bg-slate-900 text-white border-slate-800'
+              'px-6 py-2 text-base font-bold whitespace-nowrap transition-all duration-300',
+              isFilterActive
+                ? theme === 'light'
+                  ? '!bg-orange-100 !text-[#E01E1F] !border-orange-300 hover:!bg-orange-200 hover:shadow-lg hover:shadow-orange-300/50 active:!bg-orange-300'
+                  : 'bg-blue-900 text-white border-blue-700 hover:bg-blue-800 hover:shadow-lg hover:shadow-blue-500/50 active:bg-blue-700'
+                : theme === 'light' 
+                  ? '!bg-white !text-[#FEA519] !border-neutral-200 hover:!bg-orange-50 hover:!text-[#E01E1F] hover:shadow-lg hover:shadow-orange-200/50 active:!bg-orange-100' 
+                  : 'bg-slate-900 text-white border-slate-800 hover:bg-slate-800 hover:shadow-lg hover:shadow-blue-500/30 active:bg-slate-700'
             )}
-            borderClassName={
-              theme === 'light'
-                ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)]'
-                : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)]'
-            }
+            borderClassName={cn(
+              'transition-all duration-300',
+              isFilterActive
+                ? theme === 'light'
+                  ? 'bg-[radial-gradient(#E01E1F_60%,transparent_40%)] hover:bg-[radial-gradient(#E01E1F_80%,transparent_20%)]'
+                  : 'bg-[radial-gradient(#0ea5e9_60%,transparent_40%)] hover:bg-[radial-gradient(#0ea5e9_80%,transparent_20%)]'
+                : theme === 'light'
+                  ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)] hover:bg-[radial-gradient(#E01E1F_60%,transparent_40%)]'
+                  : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)] hover:bg-[radial-gradient(#0ea5e9_60%,transparent_40%)]'
+            )}
           >
             Filter
-          </Button>
-
-          <Button
-            onClick={handleExportExcel}
-            borderRadius="0.5rem"
-            containerClassName="h-auto w-auto"
-            className={cn(
-              'px-6 py-2 text-base font-bold whitespace-nowrap',
-              theme === 'light' 
-                ? '!bg-white !text-green-600 !border-neutral-200' 
-                : 'bg-green-900 text-white border-green-800'
-            )}
-            borderClassName={
-              theme === 'light'
-                ? 'bg-[radial-gradient(#22c55e_40%,transparent_60%)]'
-                : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)]'
-            }
-          >
-            📥 Export Excel
           </Button>
         </div>
       </div>

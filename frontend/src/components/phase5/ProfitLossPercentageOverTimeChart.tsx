@@ -12,9 +12,10 @@ import {
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 import { useProfitLossData } from '../../hooks/useProfitLossData';
+import { useRevenueData } from '../../hooks/useRevenueData';
 import { LoadingSpinner } from '../LoadingSpinner';
 import TimeGranularityToggle from '../TimeGranularityToggle';
-import { formatIndianNumber } from '../../utils/profitLossCalculations';
+import { formatProfitLossPercentage } from '../../utils/profitLossCalculations';
 import { useTheme } from '../../context/ThemeContext';
 
 ChartJS.register(
@@ -28,10 +29,14 @@ ChartJS.register(
   Filler
 );
 
-export default function ProfitLossOverTimeChart() {
+export default function ProfitLossPercentageOverTimeChart() {
   const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
-  const { data, loading, error } = useProfitLossData(granularity);
+  const { data: profitLossData, loading: profitLossLoading, error: profitLossError } = useProfitLossData(granularity);
+  const { data: revenueData, loading: revenueLoading, error: revenueError } = useRevenueData(granularity);
   const { theme } = useTheme();
+
+  const loading = profitLossLoading || revenueLoading;
+  const error = profitLossError || revenueError;
 
   const gradientWrapper = (content: React.ReactNode) => (
     <div className={`rounded-2xl h-[368px] ${
@@ -62,42 +67,101 @@ export default function ProfitLossOverTimeChart() {
     return gradientWrapper(
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="text-sm text-red-400 mb-2">Error loading profit & loss data</div>
+          <div className="text-sm text-red-400 mb-2">Error loading profit & loss percentage data</div>
           <div className="text-xs text-gray-400">{error}</div>
         </div>
       </div>
     );
   }
 
-  if (!data || !data.profitLossOverTime || data.profitLossOverTime.length === 0) {
+  if (!profitLossData || !profitLossData.profitLossOverTime || profitLossData.profitLossOverTime.length === 0 ||
+      !revenueData || !revenueData.revenueOverTime || revenueData.revenueOverTime.length === 0) {
     return gradientWrapper(
       <div className="flex items-center justify-center h-full">
-        <div className="text-sm text-gray-400">No profit & loss data available</div>
+        <div className="text-sm text-gray-400">No profit & loss percentage data available</div>
       </div>
     );
   }
 
-  // Determine if overall trend is profit or loss for color
-  const totalPL = data.profitLossOverTime.reduce((sum, item) => sum + item.profitLoss, 0);
-  const isOverallProfit = totalPL >= 0;
-  const lineColor = isOverallProfit ? '#10B981' : '#EF4444'; // Green for profit, Red for loss
+  // Create a map of revenue by date for quick lookup
+  const revenueMap = new Map<string, number>();
+  if (revenueData?.revenueOverTime) {
+    revenueData.revenueOverTime.forEach(item => {
+      if (item && item.date) {
+        revenueMap.set(item.date, item.revenue || 0);
+      }
+    });
+  }
 
+  // Calculate profit/loss percentage for each time period
+  // Formula: (Profit/Loss / Cost Price) × 100
+  // Cost = Revenue - Profit/Loss
+  const profitLossPercentageOverTime = (profitLossData?.profitLossOverTime || []).map(item => {
+    if (!item || !item.date) {
+      return {
+        date: '',
+        profitLossPercentage: null as number | null
+      };
+    }
+    
+    const revenue = revenueMap.get(item.date) || 0;
+    const profitLoss = item.profitLoss || 0;
+    const cost = revenue - profitLoss; // Cost = Revenue - Profit/Loss
+    
+    // Calculate percentage: (Profit/Loss / Cost) × 100
+    // Handle edge case: if cost is 0, return null
+    if (cost === 0) {
+      return {
+        date: item.date,
+        profitLossPercentage: null as number | null
+      };
+    }
+    
+    return {
+      date: item.date,
+      profitLossPercentage: (profitLoss / cost) * 100
+    };
+  }).filter(item => item.date); // Filter out items with empty dates
+
+  // Prepare data with point colors based on positive/negative values
+  const allData = profitLossPercentageOverTime.map(item => item.profitLossPercentage);
+  const pointColors = allData.map(value => {
+    if (value === null || isNaN(value)) return '#9CA3AF'; // Gray for null
+    return value > 0 ? '#10B981' : value < 0 ? '#EF4444' : '#9CA3AF'; // Green for positive, Red for negative, Gray for zero
+  });
+
+  // Create segments for the line - split into profit (green) and loss (red) segments
+  // Chart.js v3+ supports segment colors
   const chartData = {
-    labels: data.profitLossOverTime.map(item => item.date),
+    labels: profitLossPercentageOverTime.map(item => item.date),
     datasets: [
       {
-        label: 'Profit & Loss',
-        data: data.profitLossOverTime.map(item => item.profitLoss),
-        borderColor: lineColor,
-        backgroundColor: lineColor + '1A', // 10% opacity
+        label: 'Profit & Loss %',
+        data: allData,
         borderWidth: 2,
         fill: true,
         tension: 0.4,
-        pointBackgroundColor: lineColor,
+        pointBackgroundColor: pointColors,
         pointBorderColor: '#ffffff',
         pointBorderWidth: 2,
         pointRadius: 4,
         pointHoverRadius: 6,
+        segment: {
+          borderColor: (ctx: any) => {
+            // Get the value of the current segment's end point
+            const value = ctx.p1?.parsed?.y;
+            if (value === null || value === undefined || isNaN(value)) return '#9CA3AF';
+            // Green for values above 0, red for values below 0
+            return value > 0 ? '#10B981' : value < 0 ? '#EF4444' : '#9CA3AF';
+          },
+          backgroundColor: (ctx: any) => {
+            // Get the value of the current segment's end point for fill color
+            const value = ctx.p1?.parsed?.y;
+            if (value === null || value === undefined || isNaN(value)) return 'rgba(156, 163, 175, 0.2)';
+            // Green fill for positive values, red fill for negative values
+            return value > 0 ? 'rgba(16, 185, 129, 0.3)' : value < 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(156, 163, 175, 0.2)';
+          }
+        }
       },
     ],
   };
@@ -111,17 +175,17 @@ export default function ProfitLossOverTimeChart() {
         const meta = chart.getDatasetMeta(i);
         meta.data.forEach((point: any, index: number) => {
           const value = dataset.data[index];
-          // Show value if it's not zero
-          if (Math.abs(value) > 0) {
+          // Show value if it's not null and not zero
+          if (value !== null && !isNaN(value) && Math.abs(value) > 0) {
             ctx.save();
-            const isProfit = value >= 0;
+            // Green for values above 0, red for values below 0
+            const isProfit = value > 0;
             ctx.fillStyle = isProfit ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)';
             ctx.font = 'bold 14px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
-            const formattedValue = formatIndianNumber(Math.abs(value));
-            const sign = value >= 0 ? '+' : '-';
-            ctx.fillText(`${sign}₹${formattedValue}`, point.x, point.y - 8);
+            const formattedValue = formatProfitLossPercentage(value);
+            ctx.fillText(formattedValue, point.x, point.y - 8);
             ctx.restore();
           }
         });
@@ -144,7 +208,7 @@ export default function ProfitLossOverTimeChart() {
           boxWidth: 8,
           font: { 
             size: 14,
-            weight: theme === 'light' ? (600 as const) : ('normal' as const),
+            weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
           },
           padding: 5,
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
@@ -159,18 +223,22 @@ export default function ProfitLossOverTimeChart() {
         cornerRadius: 8,
         titleFont: {
           size: 14,
-          weight: theme === 'light' ? (600 as const) : ('normal' as const),
+          weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
         },
         bodyFont: {
           size: 14,
-          weight: theme === 'light' ? (600 as const) : ('normal' as const),
+          weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
         },
         callbacks: {
           label: function(context: any) {
-            const value = context.parsed.y || 0;
-            const isProfit = value >= 0;
-            const sign = value >= 0 ? '+' : '-';
-            return `Profit & Loss: ${sign}₹${formatIndianNumber(Math.abs(value))} ${isProfit ? '(Profit)' : '(Loss)'}`;
+            const value = context.parsed.y;
+            if (value === null || isNaN(value)) {
+              return 'Profit & Loss %: N/A';
+            }
+            const formatted = formatProfitLossPercentage(value);
+            // Green for values above 0, red for values below 0
+            const isProfit = value > 0;
+            return `Profit & Loss %: ${formatted} ${isProfit ? '(Profit)' : value < 0 ? '(Loss)' : '(Neutral)'}`;
           }
         }
       },
@@ -180,7 +248,7 @@ export default function ProfitLossOverTimeChart() {
         ticks: {
           font: { 
             size: 14,
-            weight: theme === 'light' ? (600 as const) : ('normal' as const),
+            weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
           },
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           maxRotation: 0
@@ -198,8 +266,10 @@ export default function ProfitLossOverTimeChart() {
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           callback: function(value: any) {
             const numValue = Number(value);
-            const sign = numValue >= 0 ? '+' : '-';
-            return `${sign}${formatIndianNumber(Math.abs(numValue))}`;
+            if (isNaN(numValue)) {
+              return 'N/A';
+            }
+            return formatProfitLossPercentage(numValue);
           }
         },
         grid: {
@@ -215,7 +285,7 @@ export default function ProfitLossOverTimeChart() {
       <div className="flex justify-between items-center mb-4">
         <h3 className={`text-xl font-semibold text-left ${
           theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Monthly P & L ( In amount )</h3>
+        }`}>Monthly P & L ( In percentage )</h3>
         <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
       </div>
       <div className="flex-1">

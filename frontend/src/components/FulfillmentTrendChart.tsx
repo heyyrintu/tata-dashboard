@@ -81,6 +81,30 @@ export default function FulfillmentTrendChart() {
     ],
   };
 
+  // Plugin to display values above points
+  const valuePlugin = {
+    id: 'valueLabels',
+    afterDatasetsDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      chart.data.datasets.forEach((dataset: any, i: number) => {
+        const meta = chart.getDatasetMeta(i);
+        meta.data.forEach((point: any, index: number) => {
+          const value = dataset.data[index];
+          if (value !== null && value !== undefined && !isNaN(value)) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(224, 30, 31, 0.8)'; // Red color matching theme
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'bottom';
+            const formattedValue = `${value.toFixed(1)}%`;
+            ctx.fillText(formattedValue, point.x, point.y - 8);
+            ctx.restore();
+          }
+        });
+      });
+    }
+  };
+
   return gradientWrapper(
     <>
       <div className="flex justify-between items-center mb-4">
@@ -92,6 +116,7 @@ export default function FulfillmentTrendChart() {
       <div className="flex-1">
         <Line
           data={chartData}
+          plugins={[valuePlugin]}
           options={{
             responsive: true,
             maintainAspectRatio: false,
@@ -107,7 +132,7 @@ export default function FulfillmentTrendChart() {
                   boxWidth: 8,
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : 'normal',
                   },
                   padding: 5,
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
@@ -121,10 +146,10 @@ export default function FulfillmentTrendChart() {
                 borderWidth: 1,
                 cornerRadius: 8,
                 titleFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? 600 : 'normal',
                 },
                 bodyFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? 600 : 'normal',
                 },
               },
             },
@@ -133,7 +158,7 @@ export default function FulfillmentTrendChart() {
                 ticks: {
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : 'normal',
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   maxRotation: 0
@@ -146,7 +171,7 @@ export default function FulfillmentTrendChart() {
                 ticks: {
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : 'normal',
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   callback: function (value) {
@@ -159,7 +184,6 @@ export default function FulfillmentTrendChart() {
                 },
                 grid: {
                   color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
-                  drawBorder: false,
                 },
                 beginAtZero: true,
                 max: 120, // Set to 120% to add space at the top inside the chart area

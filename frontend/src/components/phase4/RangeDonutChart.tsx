@@ -153,7 +153,7 @@ export default function RangeDonutChart() {
                       boxWidth: 12,
                       font: {
                         size: 11,
-                        weight: '500' as const
+                        weight: 500 as const
                       },
                       padding: 10,
                       usePointStyle: true,

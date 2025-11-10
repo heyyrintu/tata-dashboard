@@ -180,9 +180,9 @@ export function calculateCardValues(
   const avgBucketsPerTripRounded = Math.round(avgBucketsPerTrip);
   console.log(`[calculateCardValues] Card 5 (Avg Buckets/Trip): ${avgBucketsPerTripRounded} (${totalBucketsIncludingBarrels} total buckets / ${totalTrips} trips)`);
 
-  // Step 7: Calculate additional metrics (Total Cost and Total Profit/Loss from ALL indents)
+  // Step 7: Calculate additional metrics (Total Cost from Column AE and Total Profit/Loss from ALL indents)
   const totalCost = allIndentsFiltered.reduce((sum: number, indent: any) => {
-    return sum + (indent.totalCost || 0);
+    return sum + (indent.totalCostAE || indent.totalCost || 0); // Use Column AE for other calculations
   }, 0);
   const totalProfitLoss = allIndentsFiltered.reduce((sum: number, indent: any) => {
     return sum + (indent.profitLoss || 0);

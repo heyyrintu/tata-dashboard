@@ -110,7 +110,7 @@ export default function CostOverTimeChart() {
           if (value > 0) {
             ctx.save();
             ctx.fillStyle = theme === 'light' ? 'rgba(59, 130, 246, 0.8)' : 'rgba(59, 130, 246, 0.8)';
-            ctx.font = 'bold 11px sans-serif';
+            ctx.font = 'bold 14px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
             const formattedValue = formatIndianNumber(value);
@@ -136,8 +136,8 @@ export default function CostOverTimeChart() {
         labels: {
           boxWidth: 8,
           font: { 
-            size: 10,
-            weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+            size: 14,
+            weight: theme === 'light' ? (600 as const) : ('normal' as const),
           },
           padding: 5,
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
@@ -151,10 +151,12 @@ export default function CostOverTimeChart() {
         borderWidth: 1,
         cornerRadius: 8,
         titleFont: {
-          weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+          size: 14,
+          weight: theme === 'light' ? (600 as const) : ('normal' as const),
         },
         bodyFont: {
-          weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+          size: 14,
+          weight: theme === 'light' ? (600 as const) : ('normal' as const),
         },
         callbacks: {
           label: function(context: any) {
@@ -167,8 +169,8 @@ export default function CostOverTimeChart() {
       x: {
         ticks: {
           font: { 
-            size: 10,
-            weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+            size: 14,
+            weight: theme === 'light' ? (600 as const) : ('normal' as const),
           },
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           maxRotation: 0
@@ -180,8 +182,8 @@ export default function CostOverTimeChart() {
       y: {
         ticks: {
           font: { 
-            size: 10,
-            weight: theme === 'light' ? ('600' as const) : ('normal' as const),
+            size: 14,
+            weight: theme === 'light' ? (600 as const) : ('normal' as const),
           },
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           callback: function(value: any) {
@@ -199,7 +201,7 @@ export default function CostOverTimeChart() {
   return gradientWrapper(
     <>
       <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-lg font-semibold text-left ${
+        <h3 className={`text-xl font-semibold text-left ${
           theme === 'light' ? 'text-black' : 'text-black'
         }`}>Cost Over Time</h3>
         <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />

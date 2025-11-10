@@ -148,6 +148,12 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
 
     // Ensure rangeData is always an array (should never be empty due to 4 predefined ranges)
     const finalRangeData = result.rangeData || [];
+    
+    if (false) {
+      console.warn(`[getRangeWiseAnalytics] ⚠️ WARNING: Total Km is 0! Check database and Excel parsing.`);
+    }
+    console.log(`[getRangeWiseAnalytics] =========================`);
+    
     console.log(`[getRangeWiseAnalytics] Final response:`, {
       rangeDataLength: finalRangeData.length,
       totalUniqueIndents: result.totalUniqueIndents,
@@ -803,7 +809,7 @@ export const exportAllIndents = async (req: Request, res: Response) => {
         'Range': indent.range || '',
         'Remarks': indent.remarks || '',
         'Freight Tiger Month': indent.freightTigerMonth || '',
-        'Total Cost': indent.totalCost || 0,
+        'Total Cost': indent.totalCostAE || 0,
         'Profit/Loss': indent.profitLoss || 0,
         'Created At': indent.createdAt
           ? (indent.createdAt instanceof Date
@@ -1429,9 +1435,9 @@ export const getCostAnalytics = async (req: Request, res: Response) => {
         return indent.range === label;
       });
 
-      // Sum totalCost from all indents in this range
+      // Sum totalCost from all indents in this range (use Column AE for cost analytics)
       const totalCost = rangeIndents.reduce((sum, indent) => {
-        return sum + (indent.totalCost || 0);
+        return sum + (indent.totalCostAE || 0);
       }, 0);
 
       return {
@@ -1483,8 +1489,8 @@ export const getCostAnalytics = async (req: Request, res: Response) => {
         groupedData[key] = 0;
       }
 
-      // Sum totalCost directly
-      groupedData[key] += indent.totalCost || 0;
+      // Sum totalCost directly (use Column AE for cost analytics)
+      groupedData[key] += indent.totalCostAE || 0;
     });
 
     // Convert to array and format labels

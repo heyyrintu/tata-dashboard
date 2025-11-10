@@ -24,7 +24,7 @@ export default function CostCard() {
       {theme === 'light' && (
         <div className="absolute inset-0 opacity-100 transition-opacity duration-300" style={{ background: `linear-gradient(to bottom right, rgba(59, 130, 246, 0.1), rgba(139, 92, 246, 0.1))` }}></div>
       )}
-      <div className="flex items-center justify-between relative z-10">
+      <div className="relative z-10">
         <div>
           <p className={`text-sm font-medium mb-2 ${
             theme === 'light' ? 'text-gray-600' : 'text-slate-400'
@@ -39,7 +39,6 @@ export default function CostCard() {
             }`}>{formatCost(totalCost)}</p>
           )}
         </div>
-        <div className="text-5xl opacity-80 group-hover:scale-110 transition-transform duration-300">💸</div>
       </div>
       <p className={`text-xs mt-4 relative z-10 ${
         theme === 'light' ? 'text-gray-500' : 'text-slate-500'

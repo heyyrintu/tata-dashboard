@@ -62,9 +62,9 @@ export default function SummaryCards() {
   }
   
   // Keep revenue metrics for other calculations if needed
-  const revenueTotalBuckets = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0) : 0;
-  const revenueTotalBarrels = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0) : 0;
-  const totalUnits = totalBuckets + totalBarrels;
+  // const revenueTotalBuckets = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0) : 0;
+  // const revenueTotalBarrels = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0) : 0;
+  // const totalUnits = totalBuckets + totalBarrels;
   
   // Calculate Avg Buckets/Trip: Convert barrels to buckets (1 barrel = 10.5 buckets) and divide by Card 2 (Total Trip)
   const totalBucketsIncludingBarrels = totalBuckets + (totalBarrels * 10.5);

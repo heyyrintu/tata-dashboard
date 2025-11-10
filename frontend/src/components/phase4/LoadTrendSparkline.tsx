@@ -88,7 +88,8 @@ export default function LoadTrendSparkline() {
                 position: 'top' as const,
                 labels: {
                   boxWidth: 8,
-                  font: { size: 10, color: '#374151' },
+                  font: { size: 10 },
+                  color: '#374151',
                   padding: 5
                 }
               },
@@ -107,7 +108,8 @@ export default function LoadTrendSparkline() {
                 type: 'linear' as const,
                 position: 'left' as const,
                 ticks: {
-                  font: { size: 10, color: '#374151' }
+                  font: { size: 10 },
+                  color: '#374151'
                 },
                 grid: {
                   display: false
@@ -117,7 +119,8 @@ export default function LoadTrendSparkline() {
                 type: 'linear' as const,
                 position: 'right' as const,
                 ticks: {
-                  font: { size: 10, color: '#374151' }
+                  font: { size: 10 },
+                  color: '#374151'
                 },
                 grid: {
                   drawOnChartArea: false
@@ -125,7 +128,8 @@ export default function LoadTrendSparkline() {
               },
               x: {
                 ticks: {
-                  font: { size: 10, color: '#374151' },
+                  font: { size: 10 },
+                  color: '#374151',
                   maxRotation: 0
                 },
                 grid: {

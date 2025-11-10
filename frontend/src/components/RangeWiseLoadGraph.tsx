@@ -65,6 +65,10 @@ export default function RangeWiseLoadGraph() {
 
   const chartData = calculateChartData(data.rangeData);
 
+  // Calculate max value from chart data and add 2000
+  const maxDataValue = Math.max(...(chartData.datasets[0]?.data || [0]), 0);
+  const yAxisMax = maxDataValue + 2000;
+
   // Plugin to display values above bars
   const valuePlugin = {
     id: 'valueLabels',
@@ -124,6 +128,7 @@ export default function RangeWiseLoadGraph() {
             },
             scales: {
               y: {
+                max: yAxisMax,
                 ticks: {
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   font: {

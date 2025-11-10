@@ -1,15 +1,63 @@
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
+import { useDashboard } from '../../context/DashboardContext';
 import { Button } from '../ui/moving-border';
-import { TypewriterEffect } from '../ui/typewriter-effect';
 import { cn } from '../../lib/utils';
+import { format } from 'date-fns';
 
 export default function CompactHeader() {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const words = [
-    { text: "KPI Dashboard" },
-  ];
+  const { dateRange, setDateRange } = useDashboard();
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+
+  // Initialize selectedMonth from dateRange
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      const fromMonth = format(dateRange.from, 'yyyy-MM');
+      const toMonth = format(dateRange.to, 'yyyy-MM');
+      if (fromMonth === toMonth) {
+        setSelectedMonth(fromMonth);
+      }
+    }
+  }, [dateRange.from, dateRange.to]);
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const monthValue = e.target.value;
+    setSelectedMonth(monthValue);
+    
+    if (monthValue) {
+      const [year, month] = monthValue.split('-');
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 2); // Start from day 2
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(parseInt(year), parseInt(month), 0); // Last day of month
+      endDate.setHours(23, 59, 59, 999);
+      setDateRange(startDate, endDate);
+    }
+  };
+
+  // Generate month options (last 12 months + current month)
+  const generateMonthOptions = () => {
+    const options = [];
+    const today = new Date();
+    
+    for (let i = 12; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthKey = format(date, 'yyyy-MM');
+      const monthLabel = format(date, 'MMMM'); // Only month name
+      options.push({ value: monthKey, label: monthLabel });
+    }
+    
+    return options;
+  };
+
+  const monthOptions = generateMonthOptions();
+  
+  // Get current month display text (only month name)
+  // const currentMonthDisplay = selectedMonth 
+  //   ? format(new Date(selectedMonth + '-01'), 'MMMM')
+  //   : 'All Months';
 
   return (
     <header className={`sticky top-0 z-50 backdrop-blur-lg shadow-xl ${
@@ -44,18 +92,60 @@ export default function CompactHeader() {
             </div>
           </div>
 
-          {/* Center: Typewriter Effect */}
+          {/* Center: Dashboard Title */}
           <div className="flex-1 flex justify-center">
             <div className={`backdrop-blur-lg px-6 py-3 shadow-lg ${
               theme === 'light'
                 ? 'bg-white/50 border border-gray-200/50'
                 : 'bg-white/10 border border-white/20'
             }`}>
-              <TypewriterEffect
-                words={words}
-                className={theme === 'light' ? 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent font-bold' : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent font-bold'}
-                cursorClassName={theme === 'light' ? 'bg-gradient-to-r from-red-600 to-yellow-500' : 'bg-gradient-to-r from-red-600 to-yellow-500'}
-              />
+              <div className={`text-center text-2xl font-bold ${
+                theme === 'light' 
+                  ? 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent' 
+                  : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent'
+              }`}>
+                Finance Dashboard
+              </div>
+            </div>
+          </div>
+
+          {/* Month Selector */}
+          <div className="flex items-center mx-4">
+            <div className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 ${
+              theme === 'light'
+                ? 'bg-gradient-to-r from-red-50 to-yellow-50 border-2 border-red-200/50'
+                : 'bg-gradient-to-r from-red-900/30 to-yellow-900/30 border-2 border-red-500/30'
+            }`}>
+              <div className="flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${
+                  theme === 'light' ? 'text-red-600' : 'text-yellow-400'
+                }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <div className="relative">
+                  <select
+                    value={selectedMonth}
+                    onChange={handleMonthChange}
+                    className={`px-3 py-1.5 pr-6 rounded-md text-xs font-semibold transition-all duration-300 appearance-none cursor-pointer ${
+                      theme === 'light'
+                        ? 'bg-white/90 text-gray-900 border-2 border-red-300/50 focus:ring-2 focus:ring-red-500 focus:border-red-500 hover:border-red-400'
+                        : 'bg-gray-900/90 border-2 border-yellow-500/30 text-white focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 hover:border-yellow-400'
+                    }`}
+                  >
+                    <option value="">All Months</option>
+                    {monthOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <div className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-sm font-bold ${
+                    theme === 'light' ? 'text-red-600' : 'text-yellow-400'
+                  }`}>
+                    ↓
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -64,18 +154,19 @@ export default function CompactHeader() {
             <Button
               onClick={() => navigate('/')}
               borderRadius="0.5rem"
-              containerClassName="h-auto w-auto"
+              containerClassName="h-auto w-auto transition-all duration-300 hover:scale-105 active:scale-95"
               className={cn(
-                'px-4 py-2 text-sm font-bold whitespace-nowrap',
+                'px-4 py-2 text-sm font-bold whitespace-nowrap transition-all duration-300',
                 theme === 'light'
-                  ? '!bg-white !text-[#FEA519] !border-neutral-200' // Yellow text
-                  : 'bg-slate-900 text-white border-slate-800'
+                  ? '!bg-white !text-[#FEA519] !border-neutral-200 hover:!bg-orange-50 hover:!text-[#E01E1F] hover:shadow-lg hover:shadow-orange-200/50 active:!bg-orange-100' // Yellow text
+                  : 'bg-slate-900 text-white border-slate-800 hover:bg-slate-800 hover:shadow-lg hover:shadow-blue-500/30 active:bg-slate-700'
               )}
-              borderClassName={
+              borderClassName={cn(
+                'transition-all duration-300',
                 theme === 'light'
-                  ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)]' // Red border
-                  : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)]'
-              }
+                  ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)] hover:bg-[radial-gradient(#E01E1F_60%,transparent_40%)]' // Red border
+                  : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)] hover:bg-[radial-gradient(#0ea5e9_60%,transparent_40%)]'
+              )}
             >
               Back to Dashboard
             </Button>

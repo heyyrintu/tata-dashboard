@@ -1,12 +1,18 @@
-import { Button } from './ui/moving-border';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
-import { cn } from '../lib/utils';
+import { useDashboard } from '../context/DashboardContext';
+import { format } from 'date-fns';
 
 export default function Header() {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { dateRange } = useDashboard();
+  
+  // Format the selected month from dateRange (e.g., Jan'25, Mar'24)
+  const selectedMonthText = dateRange.from && dateRange.to
+    ? format(dateRange.from, "MMM''yy")
+    : 'All Months';
 
   return (
     <header className={`sticky top-0 z-50 backdrop-blur-lg shadow-xl ${
@@ -58,27 +64,42 @@ export default function Header() {
             </div>
           </div>
 
+          {/* Selected Month Display */}
+          {location.pathname === '/' && (
+            <div className="flex items-center mx-4">
+              <div className={`backdrop-blur-md px-4 py-2 shadow-lg ${
+                theme === 'light'
+                  ? 'bg-gray-100/70 border border-gray-300'
+                  : 'bg-white/70 border border-white/20'
+              }`}>
+                <div className={`text-center text-base font-semibold ${
+                  theme === 'light' 
+                    ? 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent' 
+                    : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent'
+                }`}>
+                  {selectedMonthText}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Right: Navigation Buttons */}
           <div className="flex items-center gap-3">
             {location.pathname === '/' && (
-              <Button
+              <button
                 onClick={() => navigate('/powerbi')}
-                borderRadius="0.5rem"
-                containerClassName="h-auto w-auto"
-                className={cn(
-                  'px-4 py-2 text-sm font-bold whitespace-nowrap',
-                  theme === 'light' 
-                    ? '!bg-white !text-[#FEA519] !border-neutral-200' 
-                    : 'bg-slate-900 text-white border-slate-800'
-                )}
-                borderClassName={
+                className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-300 ${
                   theme === 'light'
-                    ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)]'
-                    : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)]'
-                }
+                    ? 'bg-gradient-to-br from-green-400 via-emerald-500 to-teal-600'
+                    : 'bg-gradient-to-br from-green-600 via-emerald-600 to-teal-600'
+                }`}
+                aria-label="Finance Dashboard"
+                title="Finance Dashboard"
               >
-                KPI Dashboard
-              </Button>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
             )}
             {/* Theme Toggle Button */}
             <button

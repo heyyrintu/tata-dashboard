@@ -32,8 +32,8 @@ interface RangeWiseData {
   percentage: number;
   bucketCount: number;
   barrelCount: number;
-  totalCost?: number;
-  profitLoss?: number;
+  totalCostAE?: number; // From Column AE - main total cost
+  profitLoss?: number
 }
 
 interface LocationData {

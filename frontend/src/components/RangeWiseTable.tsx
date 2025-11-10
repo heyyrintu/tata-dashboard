@@ -2,7 +2,7 @@ import { useRangeData } from '../hooks/useRangeData';
 import { useTheme } from '../context/ThemeContext';
 import { useDashboard } from '../context/DashboardContext';
 import { LoadingSpinner } from './LoadingSpinner';
-import { formatLoad, formatPercentage, formatBucketBarrelCount } from '../utils/rangeCalculations';
+import { formatPercentage, formatBucketBarrelCount } from '../utils/rangeCalculations';
 import { RANGE_COLORS } from '../utils/constants';
 
 export default function RangeWiseTable() {
@@ -114,7 +114,7 @@ export default function RangeWiseTable() {
                   >
                     <td className={`py-3 px-4 ${
                       theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>Duplicate Indents</td>
+                    }`}>Multiple Points</td>
                     <td className={`py-3 px-4 font-medium ${
                       theme === 'light' ? 'text-black' : 'text-black'
                     }`}>{duplicateRow.uniqueIndentCount ?? duplicateRow.indentCount}</td>

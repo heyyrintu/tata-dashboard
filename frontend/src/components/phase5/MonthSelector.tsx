@@ -64,22 +64,29 @@ export default function MonthSelector() {
         }`}>
           Select Month:
         </label>
-        <select
-          value={selectedMonth}
-          onChange={handleMonthChange}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
-            theme === 'light'
-              ? 'bg-white text-black border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
-              : 'bg-gray-900 border border-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-          }`}
-        >
-          <option value="">All Months</option>
-          {monthOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
+        <div className="relative">
+          <select
+            value={selectedMonth}
+            onChange={handleMonthChange}
+            className={`px-4 py-2 pr-8 rounded-lg text-sm font-medium transition-all duration-300 appearance-none cursor-pointer ${
+              theme === 'light'
+                ? 'bg-white text-black border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
+                : 'bg-gray-900 border border-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
+            }`}
+          >
+            <option value="">All Months</option>
+            {monthOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <div className={`absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none ${
+            theme === 'light' ? 'text-gray-600' : 'text-gray-400'
+          }`}>
+            ↓
+          </div>
+        </div>
       </div>
     </div>
   );

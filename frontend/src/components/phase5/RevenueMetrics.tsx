@@ -1,6 +1,6 @@
 import { useDashboard } from '../../context/DashboardContext';
 import { useRevenueData } from '../../hooks/useRevenueData';
-import { calculateRevenueMetrics } from '../../utils/revenueCalculations';
+// import { calculateRevenueMetrics } from '../../utils/revenueCalculations';
 
 export default function RevenueMetrics() {
   const { metrics } = useDashboard();
@@ -10,7 +10,7 @@ export default function RevenueMetrics() {
     return null;
   }
 
-  const totalRevenue = revenueData.totalRevenue;
+  // const totalRevenue = revenueData.totalRevenue;
   const totalBuckets = revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0);
   const totalBarrels = revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0);
   const totalBucketRevenue = revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketRevenue, 0);

@@ -83,7 +83,7 @@ export default function FulfillmentTable() {
           Error: {error}
         </div>
       ) : data && data.fulfillmentData && data.fulfillmentData.length > 0 ? (
-        <div className="overflow-x-auto h-64 overflow-y-auto">
+        <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className={theme === 'light' ? 'border-b border-gray-200' : 'border-b border-gray-300'}>
@@ -125,21 +125,10 @@ export default function FulfillmentTable() {
                     <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{bucketRange}</td>
                     <td className={`py-3 px-4 font-medium text-center ${
                       theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{formatIndentCount(item.tripCount)}</td>
+                    }`}>{formatIndentCount(item.tripCount || item.indentCount || 0)}</td>
                   </tr>
                 );
               })}
-              {/* Total Row */}
-              <tr className={`border-t-2 ${
-                theme === 'light' ? 'border-gray-300 bg-gray-50' : 'border-gray-400 bg-gray-100'
-              }`}>
-                <td className={`py-3 px-4 font-bold ${
-                  theme === 'light' ? 'text-black' : 'text-black'
-                }`}>Total</td>
-                <td className={`py-3 px-4 font-bold text-center ${
-                  theme === 'light' ? 'text-black' : 'text-black'
-                }`}>{formatIndentCount(data.totalTrips || 0)}</td>
-              </tr>
             </tbody>
           </table>
         </div>

@@ -110,7 +110,7 @@ export default function RevenueOverTimeChart() {
           if (value > 0) {
             ctx.save();
             ctx.fillStyle = theme === 'light' ? 'rgba(30, 58, 138, 0.8)' : 'rgba(30, 58, 138, 0.8)';
-            ctx.font = 'bold 11px sans-serif';
+            ctx.font = 'bold 14px sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
             const formattedValue = formatIndianNumber(value);
@@ -136,8 +136,8 @@ export default function RevenueOverTimeChart() {
         labels: {
           boxWidth: 8,
           font: { 
-            size: 10,
-            weight: theme === 'light' ? '600' : 'normal',
+            size: 14,
+            weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
           },
           padding: 5,
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
@@ -151,10 +151,12 @@ export default function RevenueOverTimeChart() {
         borderWidth: 1,
         cornerRadius: 8,
         titleFont: {
-          weight: theme === 'light' ? '600' : 'normal',
+          size: 14,
+          weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
         },
         bodyFont: {
-          weight: theme === 'light' ? '600' : 'normal',
+          size: 14,
+          weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
         },
         callbacks: {
           label: function(context: any) {
@@ -167,8 +169,8 @@ export default function RevenueOverTimeChart() {
       x: {
         ticks: {
           font: { 
-            size: 10,
-            weight: theme === 'light' ? '600' : 'normal',
+            size: 14,
+            weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
           },
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           maxRotation: 0
@@ -180,8 +182,8 @@ export default function RevenueOverTimeChart() {
       y: {
         ticks: {
           font: { 
-            size: 10,
-            weight: theme === 'light' ? '600' : 'normal',
+            size: 14,
+            weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
           },
           color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
           callback: function(value: any) {
@@ -199,7 +201,7 @@ export default function RevenueOverTimeChart() {
   return gradientWrapper(
     <>
       <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-lg font-semibold text-left ${
+        <h3 className={`text-xl font-semibold text-left ${
           theme === 'light' ? 'text-black' : 'text-black'
         }`}>Revenue Over Time</h3>
         <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />

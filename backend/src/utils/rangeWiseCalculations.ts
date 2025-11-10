@@ -5,133 +5,95 @@ import { calculateCardValues } from './cardCalculations';
 
 interface RangeWiseData {
   range: string;
-  indentCount: number; // Total rows in this range
-  uniqueIndentCount: number; // Unique indent values in this range
-  totalLoad: number; // Total load in kg
-  percentage: number; // Percentage of total rows
+  indentCount: number;
+  uniqueIndentCount: number;
+  totalLoad: number;
+  percentage: number;
   bucketCount: number;
   barrelCount: number;
-  totalCost: number; // Total cost for this range
-  profitLoss: number; // Profit & Loss for this range
+  totalCostAE: number; // From Column AE - main total cost
+  profitLoss: number;
 }
 
 interface RangeWiseCalculationResult {
   rangeData: RangeWiseData[];
-  totalUniqueIndents: number; // Global unique indent count (matching Card 2)
-  totalLoad: number; // Total load in kg (from all indents in date range)
-  totalRows: number; // Total rows (all indent rows including duplicates)
+  totalUniqueIndents: number;
+  totalLoad: number;
+  totalRows: number;
   totalBuckets: number;
   totalBarrels: number;
-  totalCost: number; // Total cost (from all indents in date range)
-  totalProfitLoss: number; // Total profit & loss (from all indents in date range)
+  totalCost: number;
+  totalProfitLoss: number;
 }
 
-/**
- * Calculate Range-Wise Summary data
- * LOGIC: Filter by indentDate FIRST, then calculate range-wise data from filtered indents
- * This matches Card 2 (Total Trip) logic - uses validIndents (excludes cancelled)
- */
 export async function calculateRangeWiseSummary(
   fromDate: Date | null | undefined,
   toDate: Date | null | undefined
 ): Promise<RangeWiseCalculationResult> {
-  console.log(`[calculateRangeWiseSummary] ===== START =====`);
-  console.log(`[calculateRangeWiseSummary] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+  console.log(`[calculateRangeWiseSummary] Date range: ${fromDate?.toISOString().split('T')[0] || 'null'} to ${toDate?.toISOString().split('T')[0] || 'null'}`);
 
-  // Step 1: Query ALL trips from database
+  // Step 1: Get all indents from database
   const allIndents = await Trip.find({}).lean();
-  console.log(`[calculateRangeWiseSummary] Step 1: Total indents from DB: ${allIndents.length}`);
-
-  // Step 2: Apply date filtering FIRST (using indentDate only, Excel serial numbers)
-  console.log(`[calculateRangeWiseSummary] Step 2: Applying date filter using indentDate only...`);
+  console.log(`[calculateRangeWiseSummary] Total indents in DB: ${allIndents.length}`);
+  
+  // Step 2: Filter by date
   const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
-  const { allIndentsFiltered, validIndents } = dateFilterResult;
+  const validIndents = dateFilterResult.allIndentsFiltered.filter((indent: any) => {
+    const remarks = (indent.remarks || '').toLowerCase().trim();
+    return !remarks.includes('cancelled') && !remarks.includes('cancel');
+  });
   
-  console.log(`[calculateRangeWiseSummary] Step 2: After date filter - allIndentsFiltered=${allIndentsFiltered.length}, validIndents=${validIndents.length}`);
+  console.log(`[calculateRangeWiseSummary] Valid indents after date filter: ${validIndents.length}`);
   
-  if (dateFilterResult.targetMonthKey) {
-    console.log(`[calculateRangeWiseSummary] Single month filter: ${dateFilterResult.targetMonthKey}`);
-    console.log(`[calculateRangeWiseSummary] Month boundaries: ${dateFilterResult.monthStart?.toISOString()} to ${dateFilterResult.monthEnd?.toISOString()}`);
-  }
-
-  // Step 3: Calculate card values (for totals) - this will filter internally
-  console.log(`[calculateRangeWiseSummary] Step 3: Calculating card values...`);
-  const cardResults = calculateCardValues(allIndents, fromDate, toDate);
-  
-  // Step 4: Use card calculation results for totals (ensures consistency)
-  // IMPORTANT: These values MUST match the card calculations exactly
-  const totalUniqueIndents = cardResults.totalTrips; // Card 2 value
-  const totalLoad = cardResults.totalLoad; // Card 3 value (in kg) - from ALL indents (including cancelled)
-  const totalCost = cardResults.totalCost; // From ALL indents (including cancelled)
-  const totalProfitLoss = cardResults.totalProfitLoss; // From ALL indents (including cancelled)
-  const totalBuckets = cardResults.totalBuckets; // Card 4 value (from valid indents only, excluding Other/Duplicate)
-  const totalBarrels = cardResults.totalBarrels; // Card 4 value (from valid indents only, excluding Other/Duplicate)
-  
-  console.log(`[calculateRangeWiseSummary] Step 4: Using card calculation values:`);
-  console.log(`[calculateRangeWiseSummary] - totalUniqueIndents (Card 2): ${totalUniqueIndents}`);
-  console.log(`[calculateRangeWiseSummary] - totalLoad (Card 3): ${totalLoad} kg = ${(totalLoad / 1000).toFixed(2)} tons`);
-  console.log(`[calculateRangeWiseSummary] - totalCost: ₹${totalCost.toLocaleString('en-IN')}`);
-  console.log(`[calculateRangeWiseSummary] - totalProfitLoss: ₹${totalProfitLoss.toLocaleString('en-IN')}`);
-  console.log(`[calculateRangeWiseSummary] - totalBuckets (Card 4): ${totalBuckets}`);
-  console.log(`[calculateRangeWiseSummary] - totalBarrels (Card 4): ${totalBarrels}`);
-  
-  // Step 5: Calculate total rows (all valid indent rows including duplicates)
-  // This is used for percentage calculations
+  // Step 3: Calculate totals
   const totalRows = validIndents.length;
-  console.log(`[calculateRangeWiseSummary] Step 5: Total rows (valid indents only, excluding cancelled): ${totalRows}`);
-
-  // Step 6: Define range mappings
+  const uniqueIndents = new Set(validIndents.map((indent: any) => indent.indent).filter(Boolean));
+  const totalUniqueIndents = uniqueIndents.size;
+  
+  const totalLoad = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
+  const totalCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE
+  const totalProfitLoss = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
+  
+  let totalBuckets = 0;
+  let totalBarrels = 0;
+  
+  validIndents.forEach((indent: any) => {
+    const count = indent.noOfBuckets || 0;
+    const material = (indent.material || '').trim();
+    if (material === '20L Buckets') totalBuckets += count;
+    else if (material === '210L Barrels') totalBarrels += count;
+  });
+  
+  // Step 4: Calculate range-wise data
   const rangeMappings = [
     { label: '0-100Km' },
     { label: '101-250Km' },
     { label: '251-400Km' },
-    { label: '401-600Km' },
+    { label: '401-600Km' }
   ];
-
-  // Step 7: Calculate range-wise data from FILTERED validIndents
-  // IMPORTANT: Use only validIndents (already filtered by date) - excludes cancelled
-  console.log(`[calculateRangeWiseSummary] Step 7: Calculating range-wise data from ${validIndents.length} valid indents...`);
   
   const rangeData: RangeWiseData[] = rangeMappings.map(({ label }) => {
-    // Filter validIndents by range (already date-filtered)
-    const rangeIndents = validIndents.filter((indent: any) => {
-      return indent.range === label;
-    });
-    
-    console.log(`[calculateRangeWiseSummary] Range "${label}": ${rangeIndents.length} indents`);
-    
-    // Total rows in this range (including duplicates)
+    const rangeIndents = validIndents.filter((indent: any) => indent.range === label);
     const indentCount = rangeIndents.length;
-    
-    // Unique indent count in this range
-    const uniqueIndentsInRange = new Set(
-      rangeIndents.filter((t: any) => t.indent).map((t: any) => t.indent)
-    );
+    const uniqueIndentsInRange = new Set(rangeIndents.filter((t: any) => t.indent).map((t: any) => t.indent));
     const uniqueIndentCount = uniqueIndentsInRange.size;
     
-    // Total load in this range (sum of all rows)
-    const totalLoadInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (indent.totalLoad || 0), 0);
-    const totalCostInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (indent.totalCost || 0), 0);
-    const profitLossInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (indent.profitLoss || 0), 0);
+    const totalLoadInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
+    const totalCostAEInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE
+    const profitLossInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
     
-    // Percentage based on total rows
     const percentage = totalRows > 0 ? (indentCount / totalRows) * 100 : 0;
     
-    // Count buckets and barrels separately
     let bucketCount = 0;
     let barrelCount = 0;
     
     rangeIndents.forEach((indent: any) => {
       const count = indent.noOfBuckets || 0;
       const material = (indent.material || '').trim();
-      
-      if (material === '20L Buckets') {
-        bucketCount += count;
-      } else if (material === '210L Barrels') {
-        barrelCount += count;
-      }
+      if (material === '20L Buckets') bucketCount += count;
+      else if (material === '210L Barrels') barrelCount += count;
     });
-
+    
     return {
       range: label,
       indentCount,
@@ -140,43 +102,25 @@ export async function calculateRangeWiseSummary(
       percentage: parseFloat(percentage.toFixed(2)),
       bucketCount,
       barrelCount,
-      totalCost: totalCostInRange,
+      totalCostAE: totalCostAEInRange, // From Column AE
       profitLoss: profitLossInRange
     };
   });
   
-  console.log(`[calculateRangeWiseSummary] Range data created: ${rangeData.length} ranges`);
-  console.log(`[calculateRangeWiseSummary] Sample range data:`, rangeData.slice(0, 2).map(r => ({
-    range: r.range,
-    indentCount: r.indentCount,
-    uniqueIndentCount: r.uniqueIndentCount,
-    totalCost: r.totalCost
-  })));
-  console.log(`[calculateRangeWiseSummary] Full range data with costs:`, rangeData.map(r => ({
-    range: r.range,
-    indentCount: r.indentCount,
-    totalCost: r.totalCost
-  })));
-
-  // Step 8: Calculate "Other" category for non-matching ranges
-  // IMPORTANT: Use only validIndents (already date-filtered)
-  const matchedRanges = new Set(rangeMappings.map(({ label }) => label));
+  // Step 5: Add "Other" range
   const otherIndents = validIndents.filter((indent: any) => {
-    return indent.range && indent.range.trim() !== '' && !matchedRanges.has(indent.range);
+    const range = (indent.range || '').trim();
+    return range && !rangeMappings.some(m => m.label === range);
   });
   
-  console.log(`[calculateRangeWiseSummary] Step 8: Other indents found: ${otherIndents.length}`);
-  
   if (otherIndents.length > 0) {
+    const uniqueOtherIndents = new Set(otherIndents.filter((t: any) => t.indent).map((t: any) => t.indent));
     const otherIndentCount = otherIndents.length;
-    const uniqueOtherIndents = new Set(
-      otherIndents.filter((t: any) => t.indent).map((t: any) => t.indent)
-    );
     const uniqueIndentCount = uniqueOtherIndents.size;
     
-    const otherTotalLoad = otherIndents.reduce((sum: number, indent: any) => sum + (indent.totalLoad || 0), 0);
-    const otherTotalCost = otherIndents.reduce((sum: number, indent: any) => sum + (indent.totalCost || 0), 0);
-    const otherProfitLoss = otherIndents.reduce((sum: number, indent: any) => sum + (indent.profitLoss || 0), 0);
+    const otherTotalLoad = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
+    const otherTotalCostAE = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE
+    const otherProfitLoss = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
     const otherPercentage = totalRows > 0 ? (otherIndentCount / totalRows) * 100 : 0;
     
     let otherBucketCount = 0;
@@ -185,15 +129,11 @@ export async function calculateRangeWiseSummary(
     otherIndents.forEach((indent: any) => {
       const count = indent.noOfBuckets || 0;
       const material = (indent.material || '').trim();
-      
-      if (material === '20L Buckets') {
-        otherBucketCount += count;
-      } else if (material === '210L Barrels') {
-        otherBarrelCount += count;
-      }
+      if (material === '20L Buckets') otherBucketCount += count;
+      else if (material === '210L Barrels') otherBarrelCount += count;
     });
     
-    const otherRow: RangeWiseData = {
+    rangeData.push({
       range: 'Other',
       indentCount: otherIndentCount,
       uniqueIndentCount,
@@ -201,131 +141,21 @@ export async function calculateRangeWiseSummary(
       percentage: parseFloat(otherPercentage.toFixed(2)),
       bucketCount: otherBucketCount,
       barrelCount: otherBarrelCount,
-      totalCost: otherTotalCost,
+      totalCostAE: otherTotalCostAE, // From Column AE
       profitLoss: otherProfitLoss
-    };
-    
-    rangeData.push(otherRow);
-    console.log(`[calculateRangeWiseSummary] Added "Other" row:`, JSON.stringify(otherRow, null, 2));
-  }
-
-  // Step 9: Find and calculate duplicate indents (indents appearing in multiple ranges)
-  // IMPORTANT: Use only validIndents (already date-filtered)
-  console.log(`[calculateRangeWiseSummary] Step 9: Finding duplicate indents (appearing in multiple ranges)...`);
-  
-  const indentRangeMap = new Map<string, Set<string>>(); // indent -> set of ranges
-  validIndents.forEach((indent: any) => {
-    if (indent.indent && indent.range) {
-      if (!indentRangeMap.has(indent.indent)) {
-        indentRangeMap.set(indent.indent, new Set());
-      }
-      indentRangeMap.get(indent.indent)!.add(indent.range);
-    }
-  });
-  
-  // Find indents that appear in 2+ different ranges
-  const duplicateIndents = new Set<string>();
-  indentRangeMap.forEach((ranges, indent) => {
-    if (ranges.size > 1) {
-      duplicateIndents.add(indent);
-    }
-  });
-  
-  console.log(`[calculateRangeWiseSummary] Found ${duplicateIndents.size} indents appearing in multiple ranges`);
-  
-  // Get all rows for these duplicate indents (from date-filtered validIndents)
-  const duplicateIndentRows = validIndents.filter((indent: any) => 
-    indent.indent && duplicateIndents.has(indent.indent)
-  );
-  
-  if (duplicateIndentRows.length > 0) {
-    console.log(`[calculateRangeWiseSummary] Duplicate indent rows: ${duplicateIndentRows.length}`);
-    
-    const duplicateIndentCount = duplicateIndentRows.length;
-    const uniqueDuplicateIndents = new Set(duplicateIndentRows.map((t: any) => t.indent).filter(Boolean));
-    const uniqueIndentCount = uniqueDuplicateIndents.size;
-    
-    const duplicateTotalLoad = duplicateIndentRows.reduce((sum: number, indent: any) => sum + (indent.totalLoad || 0), 0);
-    const duplicateTotalCost = duplicateIndentRows.reduce((sum: number, indent: any) => sum + (indent.totalCost || 0), 0);
-    const duplicateProfitLoss = duplicateIndentRows.reduce((sum: number, indent: any) => sum + (indent.profitLoss || 0), 0);
-    const duplicatePercentage = totalRows > 0 ? (duplicateIndentCount / totalRows) * 100 : 0;
-    
-    let duplicateBucketCount = 0;
-    let duplicateBarrelCount = 0;
-    
-    duplicateIndentRows.forEach((indent: any) => {
-      const count = indent.noOfBuckets || 0;
-      const material = (indent.material || '').trim();
-      
-      if (material === '20L Buckets') {
-        duplicateBucketCount += count;
-      } else if (material === '210L Barrels') {
-        duplicateBarrelCount += count;
-      }
     });
-    
-    const duplicateRow: RangeWiseData = {
-      range: 'Duplicate Indents',
-      indentCount: duplicateIndentCount,
-      uniqueIndentCount,
-      totalLoad: duplicateTotalLoad,
-      percentage: parseFloat(duplicatePercentage.toFixed(2)),
-      bucketCount: duplicateBucketCount,
-      barrelCount: duplicateBarrelCount,
-      totalCost: duplicateTotalCost,
-      profitLoss: duplicateProfitLoss
-    };
-    
-    rangeData.push(duplicateRow);
-    console.log(`[calculateRangeWiseSummary] Added "Duplicate Indents" row:`, JSON.stringify(duplicateRow, null, 2));
-  }
-
-  // Verify that rangeData totals match card calculation totals
-  const rangeDataTotalBuckets = rangeData.reduce((sum, item) => sum + item.bucketCount, 0);
-  const rangeDataTotalBarrels = rangeData.reduce((sum, item) => sum + item.barrelCount, 0);
-  const rangeDataTotalLoad = rangeData.reduce((sum, item) => sum + item.totalLoad, 0);
-  const rangeDataTotalCost = rangeData.reduce((sum, item) => sum + (item.totalCost || 0), 0);
-  const rangeDataTotalProfitLoss = rangeData.reduce((sum, item) => sum + (item.profitLoss || 0), 0);
-  
-  console.log(`[calculateRangeWiseSummary] ===== FINAL RESULTS =====`);
-  console.log(`[calculateRangeWiseSummary] Total unique indents (Card 2): ${totalUniqueIndents}`);
-  console.log(`[calculateRangeWiseSummary] Total rows: ${totalRows}`);
-  console.log(`[calculateRangeWiseSummary] Total load (Card 3): ${totalLoad} kg (${(totalLoad / 1000).toFixed(2)} tons)`);
-  console.log(`[calculateRangeWiseSummary] Total buckets (Card 4): ${totalBuckets}`);
-  console.log(`[calculateRangeWiseSummary] Total barrels (Card 4): ${totalBarrels}`);
-  console.log(`[calculateRangeWiseSummary] Total cost: ₹${totalCost.toLocaleString('en-IN')}`);
-  console.log(`[calculateRangeWiseSummary] Total profit/loss: ₹${totalProfitLoss.toLocaleString('en-IN')}`);
-  console.log(`[calculateRangeWiseSummary] Range data buckets sum: ${rangeDataTotalBuckets} (should match Card 4: ${totalBuckets})`);
-  console.log(`[calculateRangeWiseSummary] Range data barrels sum: ${rangeDataTotalBarrels} (should match Card 4: ${totalBarrels})`);
-  console.log(`[calculateRangeWiseSummary] Range data load sum: ${rangeDataTotalLoad} kg (from valid indents only, Card 3 includes cancelled: ${totalLoad} kg)`);
-  console.log(`[calculateRangeWiseSummary] Range data cost sum: ₹${rangeDataTotalCost.toLocaleString('en-IN')} (from valid indents only, Card total includes cancelled: ₹${totalCost.toLocaleString('en-IN')})`);
-  console.log(`[calculateRangeWiseSummary] Range data count: ${rangeData.length}`);
-  
-  // Verify buckets and barrels match (these should match exactly since both exclude Other/Duplicate)
-  if (rangeDataTotalBuckets !== totalBuckets || rangeDataTotalBarrels !== totalBarrels) {
-    console.warn(`[calculateRangeWiseSummary] ⚠️ WARNING: Range data totals don't match card calculation!`);
-    console.warn(`[calculateRangeWiseSummary] Buckets: rangeData=${rangeDataTotalBuckets}, card=${totalBuckets}`);
-    console.warn(`[calculateRangeWiseSummary] Barrels: rangeData=${rangeDataTotalBarrels}, card=${totalBarrels}`);
-  } else {
-    console.log(`[calculateRangeWiseSummary] ✓ Buckets and barrels match card calculations`);
   }
   
-  // Note: Total load and cost from rangeData will be LESS than card totals because:
-  // - Range data is calculated from validIndents only (excludes cancelled)
-  // - Card totals include cancelled indents
-  // This is expected and correct behavior
+  console.log(`[calculateRangeWiseSummary] Range data created: ${rangeData.length} ranges`);
   
-  console.log(`[calculateRangeWiseSummary] =========================`);
-
   return {
     rangeData,
     totalUniqueIndents,
     totalLoad,
-    totalCost,
-    totalProfitLoss,
     totalRows,
     totalBuckets,
-    totalBarrels
+    totalBarrels,
+    totalCost,
+    totalProfitLoss
   };
 }
-

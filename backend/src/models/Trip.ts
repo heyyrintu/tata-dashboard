@@ -23,7 +23,7 @@ export interface ITrip extends Document {
   range: string;
   remarks: string;
   freightTigerMonth: string;
-  totalCost: number;
+  totalCostAE: number; // From Column AE (index 30) - main total cost
   profitLoss: number;
   createdAt: Date;
   updatedAt: Date;
@@ -53,7 +53,7 @@ const TripSchema = new Schema<ITrip>(
     range: { type: String },
     remarks: { type: String },
     freightTigerMonth: { type: String },
-    totalCost: { type: Number },
+    totalCostAE: { type: Number }, // From Column AE (index 30) - main total cost
     profitLoss: { type: Number },
   },
   {

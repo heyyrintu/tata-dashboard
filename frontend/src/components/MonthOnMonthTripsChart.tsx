@@ -140,7 +140,7 @@ export default function MonthOnMonthTripsChart() {
                   boxWidth: 12,
                   font: { 
                     size: 11,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : 'normal',
                   },
                   padding: 10,
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
@@ -154,10 +154,10 @@ export default function MonthOnMonthTripsChart() {
                 borderWidth: 1,
                 cornerRadius: 8,
                 titleFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? 600 : 'normal',
                 },
                 bodyFont: {
-                  weight: theme === 'light' ? '600' : 'normal',
+                  weight: theme === 'light' ? 600 : 'normal',
                 },
               },
             },
@@ -166,7 +166,7 @@ export default function MonthOnMonthTripsChart() {
                 ticks: {
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : 'normal',
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                   maxRotation: 0,
@@ -180,7 +180,7 @@ export default function MonthOnMonthTripsChart() {
                 ticks: {
                   font: { 
                     size: 10,
-                    weight: theme === 'light' ? '600' : 'normal',
+                    weight: theme === 'light' ? 600 : 'normal',
                   },
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                 },
