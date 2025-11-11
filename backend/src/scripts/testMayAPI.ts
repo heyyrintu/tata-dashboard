@@ -27,14 +27,14 @@ const testMayAPI = async () => {
       if (range.range === '0-100Km') {
         console.log(`\n  ${range.range}:`);
         console.log(`    Rows: ${range.indentCount}`);
-        console.log(`    Total Cost: ₹${range.totalCost.toLocaleString('en-IN')}`);
+        console.log(`    Total Cost: ₹${(range.totalCostAE || 0).toLocaleString('en-IN')}`);
         console.log(`    Expected: ₹11,636 (reported as low)`);
-        console.log(`    Difference: ₹${(range.totalCost - 11636).toLocaleString('en-IN')}`);
+        console.log(`    Difference: ₹${((range.totalCostAE || 0) - 11636).toLocaleString('en-IN')}`);
       }
       if (range.range === '101-250Km') {
         console.log(`\n  ${range.range}:`);
         console.log(`    Rows: ${range.indentCount}`);
-        console.log(`    Total Cost: ₹${range.totalCost.toLocaleString('en-IN')}`);
+        console.log(`    Total Cost: ₹${(range.totalCostAE || 0).toLocaleString('en-IN')}`);
       }
     });
     
@@ -48,9 +48,9 @@ const testMayAPI = async () => {
     if (june101250) {
       console.log(`  June - 101-250Km:`);
       console.log(`    Rows: ${june101250.indentCount}`);
-      console.log(`    Total Cost: ₹${june101250.totalCost.toLocaleString('en-IN')}`);
+      console.log(`    Total Cost: ₹${(june101250.totalCostAE || 0).toLocaleString('en-IN')}`);
       console.log(`    Expected: ₹51,420 (reported as low)`);
-      console.log(`    Difference: ₹${(june101250.totalCost - 51420).toLocaleString('en-IN')}`);
+      console.log(`    Difference: ₹${((june101250.totalCostAE || 0) - 51420).toLocaleString('en-IN')}`);
     }
     
     console.log(`\n🔍 Testing July 2025:`);
@@ -62,9 +62,9 @@ const testMayAPI = async () => {
     if (july101250) {
       console.log(`  July - 101-250Km:`);
       console.log(`    Rows: ${july101250.indentCount}`);
-      console.log(`    Total Cost: ₹${july101250.totalCost.toLocaleString('en-IN')}`);
+      console.log(`    Total Cost: ₹${(july101250.totalCostAE || 0).toLocaleString('en-IN')}`);
       console.log(`    Expected: ₹82,010 (reported as low)`);
-      console.log(`    Difference: ₹${(july101250.totalCost - 82010).toLocaleString('en-IN')}`);
+      console.log(`    Difference: ₹${((july101250.totalCostAE || 0) - 82010).toLocaleString('en-IN')}`);
     }
     
     process.exit(0);

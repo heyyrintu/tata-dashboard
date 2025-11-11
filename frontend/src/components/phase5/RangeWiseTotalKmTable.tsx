@@ -85,7 +85,7 @@ export default function RangeWiseTotalKmTable() {
         <h2 className={`text-2xl font-bold mb-2 ${
           theme === 'light' ? 'text-gray-900' : 'text-white'
         }`}>
-          Range-Wise Total Km (Total Km ( TpT))
+          Range-Wise Total Km
         </h2>
         <div className="h-1 w-20 bg-gradient-to-r from-blue-600 to-purple-500 rounded-full"></div>
       </div>
@@ -101,7 +101,7 @@ export default function RangeWiseTotalKmTable() {
               }`}>Range</th>
               <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
                 theme === 'light' ? 'text-gray-700' : 'text-gray-800'
-              }`}>Total Km ( TpT)</th>
+              }`}>Total KM</th>
             </tr>
           </thead>
           <tbody>

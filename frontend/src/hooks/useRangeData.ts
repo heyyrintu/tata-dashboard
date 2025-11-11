@@ -10,7 +10,8 @@ interface RangeWiseData {
   percentage: number;
   bucketCount: number;
   barrelCount: number;
-  totalCost?: number; // Total cost for this range
+  totalCost?: number; // Total cost for this range (deprecated, use totalCostAE)
+  totalCostAE?: number; // Total cost from Column AE for this range
   profitLoss?: number; // Profit & Loss for this range
   totalKm?: number; // Total Km for this range
 }

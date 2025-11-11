@@ -13,6 +13,7 @@ interface RangeWiseData {
   barrelCount: number;
   totalCostAE: number; // From Column AE - main total cost
   profitLoss: number;
+  totalKm: number; // From Column U (21st column, index 20) - Total Km
 }
 
 interface RangeWiseCalculationResult {
@@ -45,18 +46,20 @@ export async function calculateRangeWiseSummary(
   
   console.log(`[calculateRangeWiseSummary] Valid indents after date filter: ${validIndents.length}`);
   
-  // Step 3: Calculate totals
-  const totalRows = validIndents.length;
+  // Step 3: Calculate totals - includes ALL rows including duplicates
+  const totalRows = validIndents.length; // Total row count including all duplicates
   const uniqueIndents = new Set(validIndents.map((indent: any) => indent.indent).filter(Boolean));
   const totalUniqueIndents = uniqueIndents.size;
   
+  // Sum ALL rows including duplicates - no filtering
   const totalLoad = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
-  const totalCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE
+  const totalCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
   const totalProfitLoss = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
   
   let totalBuckets = 0;
   let totalBarrels = 0;
   
+  // Count buckets and barrels from ALL rows including duplicates
   validIndents.forEach((indent: any) => {
     const count = indent.noOfBuckets || 0;
     const material = (indent.material || '').trim();
@@ -73,14 +76,17 @@ export async function calculateRangeWiseSummary(
   ];
   
   const rangeData: RangeWiseData[] = rangeMappings.map(({ label }) => {
+    // Include ALL rows for this range, including duplicates
     const rangeIndents = validIndents.filter((indent: any) => indent.range === label);
-    const indentCount = rangeIndents.length;
+    const indentCount = rangeIndents.length; // Total row count including duplicates
     const uniqueIndentsInRange = new Set(rangeIndents.filter((t: any) => t.indent).map((t: any) => t.indent));
     const uniqueIndentCount = uniqueIndentsInRange.size;
     
+    // Sum ALL rows including duplicates - no filtering
     const totalLoadInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
-    const totalCostAEInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE
+    const totalCostAEInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
     const profitLossInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
+    const totalKmInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalKm) || 0), 0); // From Column U (21st column, index 20) - includes ALL rows including duplicates
     
     const percentage = totalRows > 0 ? (indentCount / totalRows) * 100 : 0;
     
@@ -103,7 +109,8 @@ export async function calculateRangeWiseSummary(
       bucketCount,
       barrelCount,
       totalCostAE: totalCostAEInRange, // From Column AE
-      profitLoss: profitLossInRange
+      profitLoss: profitLossInRange,
+      totalKm: totalKmInRange // From Column U (21st column, index 20)
     };
   });
   
@@ -118,9 +125,11 @@ export async function calculateRangeWiseSummary(
     const otherIndentCount = otherIndents.length;
     const uniqueIndentCount = uniqueOtherIndents.size;
     
+    // Sum ALL rows including duplicates for "Other" range
     const otherTotalLoad = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
-    const otherTotalCostAE = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE
+    const otherTotalCostAE = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
     const otherProfitLoss = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
+    const otherTotalKm = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalKm) || 0), 0); // From Column U (21st column, index 20) - includes ALL rows including duplicates
     const otherPercentage = totalRows > 0 ? (otherIndentCount / totalRows) * 100 : 0;
     
     let otherBucketCount = 0;
@@ -142,7 +151,8 @@ export async function calculateRangeWiseSummary(
       bucketCount: otherBucketCount,
       barrelCount: otherBarrelCount,
       totalCostAE: otherTotalCostAE, // From Column AE
-      profitLoss: otherProfitLoss
+      profitLoss: otherProfitLoss,
+      totalKm: otherTotalKm // From Column U (21st column, index 20)
     });
   }
   

@@ -357,5 +357,49 @@ export const getMonthOnMonthAnalytics = async (): Promise<MonthOnMonthResponse> 
   return response.data;
 };
 
+export interface VehicleCostData {
+  vehicleNumber: string;
+  fixedKm: number;
+  actualKm: number;
+  remainingKm: number;
+  costForRemainingKm: number;
+  extraCost: number;
+}
+
+export interface VehicleCostResponse {
+  success: boolean;
+  data: VehicleCostData[];
+  dateRange: {
+    from: string | null;
+    to: string | null;
+  };
+}
+
+export const getVehicleCostAnalytics = async (fromDate?: Date, toDate?: Date): Promise<VehicleCostResponse> => {
+  const params = new URLSearchParams();
+  
+  if (fromDate) {
+    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+  }
+  if (toDate) {
+    params.append('toDate', toDate.toISOString().split('T')[0]);
+  }
+
+  const url = `/analytics/vehicle-cost${params.toString() ? `?${params.toString()}` : ''}`;
+  console.log('[API] getVehicleCostAnalytics called:', {
+    fromDate: fromDate ? fromDate.toISOString().split('T')[0] : 'undefined',
+    toDate: toDate ? toDate.toISOString().split('T')[0] : 'undefined',
+    url
+  });
+
+  const response = await api.get<VehicleCostResponse>(url);
+  console.log('[API] getVehicleCostAnalytics response:', {
+    success: response.data.success,
+    dataLength: response.data.data?.length || 0,
+    dateRange: response.data.dateRange
+  });
+  return response.data;
+};
+
 export default api;
 

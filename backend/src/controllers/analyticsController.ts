@@ -1900,4 +1900,39 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
   }
 };
 
+export const getVehicleCostAnalytics = async (req: Request, res: Response) => {
+  try {
+    console.log(`[getVehicleCostAnalytics] ===== START =====`);
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+    console.log(`[getVehicleCostAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+
+    // Query all trips from database
+    const allTrips = await Trip.find({});
+    console.log(`[getVehicleCostAnalytics] Total trips from DB: ${allTrips.length}`);
+
+    // Calculate vehicle costs
+    const { calculateVehicleCosts } = await import('../utils/vehicleCostCalculations');
+    const vehicleCostData = calculateVehicleCosts(allTrips, fromDate || undefined, toDate || undefined);
+
+    console.log(`[getVehicleCostAnalytics] Calculated vehicle cost data: ${vehicleCostData.length} rows`);
+    console.log(`[getVehicleCostAnalytics] ===== END =====`);
+
+    res.json({
+      success: true,
+      data: vehicleCostData,
+      dateRange: {
+        from: fromDate?.toISOString().split('T')[0] || null,
+        to: toDate?.toISOString().split('T')[0] || null
+      }
+    });
+  } catch (error) {
+    console.error(`[getVehicleCostAnalytics] ERROR:`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch vehicle cost analytics'
+    });
+  }
+};
+
 

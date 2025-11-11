@@ -11,6 +11,10 @@
     "check-email": "ts-node src/scripts/checkEmailService.ts",
     "check-september": "ts-node src/scripts/checkSeptemberIndents.ts",
     "check-october-buckets": "ts-node src/scripts/checkOctoberBuckets.ts",
+    "test-column-u-september": "ts-node src/scripts/testColumnUSeptember.ts",
+    "update-total-km": "ts-node src/scripts/updateTotalKmInDB.ts",
+    "check-db-vs-excel": "ts-node src/scripts/checkDBvsExcel.ts",
+    "quick-check-km": "ts-node src/scripts/quickCheckTotalKm.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

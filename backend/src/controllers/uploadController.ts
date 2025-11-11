@@ -72,21 +72,33 @@ export const processExcelFile = async (
     // Verify data was inserted correctly
     const totalInserted = await Trip.countDocuments({});
     const insertedWithCost = await Trip.countDocuments({ totalCostAE: { $exists: true, $ne: 0 } });
+    const insertedWithKm = await Trip.countDocuments({ totalKm: { $exists: true, $ne: 0 } });
+    
     const totalCostInserted = await Trip.aggregate([
       { $group: { _id: null, total: { $sum: { $ifNull: ['$totalCostAE', 0] } } } }
     ]);
     const totalCostValue = totalCostInserted.length > 0 ? totalCostInserted[0].total : 0;
     
+    const totalKmInserted = await Trip.aggregate([
+      { $group: { _id: null, total: { $sum: { $ifNull: ['$totalKm', 0] } } } }
+    ]);
+    const totalKmValue = totalKmInserted.length > 0 ? totalKmInserted[0].total : 0;
+    
     console.log(`[uploadController] ===== UPLOAD COMPLETE =====`);
     console.log(`[uploadController] Total indents inserted: ${totalInserted} (expected: ${indents.length})`);
     console.log(`[uploadController] Indents with totalCostAE > 0: ${insertedWithCost}`);
+    console.log(`[uploadController] Indents with totalKm > 0: ${insertedWithKm}`);
     console.log(`[uploadController] Total cost in database: ₹${totalCostValue.toLocaleString('en-IN')}`);
+    console.log(`[uploadController] Total Km in database: ${totalKmValue.toLocaleString('en-IN')} km`);
     
     console.log(`[uploadController] ============================`);
     
-    // Calculate expected total cost from parsed indents
+    // Calculate expected values from parsed indents
     const expectedTotalCost = indents.reduce((sum, indent) => sum + (indent.totalCostAE || 0), 0);
+    const expectedTotalKm = indents.reduce((sum, indent) => sum + (Number(indent.totalKm) || 0), 0);
+    
     console.log(`  Expected total cost: ₹${expectedTotalCost.toLocaleString('en-IN')}`);
+    console.log(`  Expected total Km: ${expectedTotalKm.toLocaleString('en-IN')} km`);
     
     if (totalInserted !== indents.length) {
       console.warn(`[uploadController] WARNING: Inserted count (${totalInserted}) doesn't match parsed count (${indents.length})`);
@@ -94,6 +106,12 @@ export const processExcelFile = async (
     
     if (Math.abs(totalCostValue - expectedTotalCost) > 0.01) {
       console.warn(`[uploadController] WARNING: Database total cost (₹${totalCostValue.toLocaleString('en-IN')}) doesn't match expected (₹${expectedTotalCost.toLocaleString('en-IN')})`);
+    }
+    
+    if (Math.abs(totalKmValue - expectedTotalKm) > 0.01) {
+      console.warn(`[uploadController] WARNING: Database total Km (${totalKmValue.toLocaleString('en-IN')} km) doesn't match expected (${expectedTotalKm.toLocaleString('en-IN')} km)`);
+    } else if (totalKmValue > 0) {
+      console.log(`[uploadController] ✅ Total Km verified: ${totalKmValue.toLocaleString('en-IN')} km from Column U (21st column, index 20)`);
     }
 
     return {

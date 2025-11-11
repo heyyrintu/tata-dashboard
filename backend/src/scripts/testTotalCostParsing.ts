@@ -12,17 +12,17 @@ const testTotalCostParsing = () => {
     console.log(`\n📊 Parsed ${parsedIndents.length} indents`);
     
     // Calculate total cost
-    const totalCost = parsedIndents.reduce((sum, indent) => sum + (indent.totalCost || 0), 0);
+    const totalCost = parsedIndents.reduce((sum, indent) => sum + (indent.totalCostAE || 0), 0);
     
     console.log(`\n💰 Total Cost Analysis:`);
     console.log(`  Total Cost: ₹${totalCost.toLocaleString('en-IN')}`);
-    console.log(`  Indents with totalCost > 0: ${parsedIndents.filter(i => (i.totalCost || 0) > 0).length}`);
-    console.log(`  Indents with totalCost = 0: ${parsedIndents.filter(i => (i.totalCost || 0) === 0).length}`);
+    console.log(`  Indents with totalCostAE > 0: ${parsedIndents.filter(i => (i.totalCostAE || 0) > 0).length}`);
+    console.log(`  Indents with totalCostAE = 0: ${parsedIndents.filter(i => (i.totalCostAE || 0) === 0).length}`);
     
     // Check first 10 indents
-    console.log(`\n🔍 Checking first 10 indents for totalCost:`);
+    console.log(`\n🔍 Checking first 10 indents for totalCostAE:`);
     parsedIndents.slice(0, 10).forEach((indent, index) => {
-      console.log(`  ${index + 1}. Indent: ${indent.indent}, Total Cost: ₹${indent.totalCost || 0}`);
+      console.log(`  ${index + 1}. Indent: ${indent.indent}, Total Cost: ₹${indent.totalCostAE || 0}`);
     });
     
     // Expected total from Excel (from previous debug script)

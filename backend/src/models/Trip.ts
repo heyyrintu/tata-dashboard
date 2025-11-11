@@ -25,6 +25,7 @@ export interface ITrip extends Document {
   freightTigerMonth: string;
   totalCostAE: number; // From Column AE (index 30) - main total cost
   profitLoss: number;
+  totalKm: number; // From Column U (21st column, index 20) - Total Km
   createdAt: Date;
   updatedAt: Date;
 }
@@ -55,6 +56,7 @@ const TripSchema = new Schema<ITrip>(
     freightTigerMonth: { type: String },
     totalCostAE: { type: Number }, // From Column AE (index 30) - main total cost
     profitLoss: { type: Number },
+    totalKm: { type: Number }, // From Column U (21st column, index 20) - Total Km
   },
   {
     timestamps: true,
