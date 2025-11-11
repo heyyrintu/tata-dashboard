@@ -5,9 +5,9 @@ import CostCard from '../components/phase4/CostCard';
 import ProfitLossCard from '../components/phase4/ProfitLossCard';
 import ProfitLossPercentageCard from '../components/phase4/ProfitLossPercentageCard';
 import CombinedFinanceTable from '../components/phase5/CombinedFinanceTable';
-import RangeWiseTotalKmTable from '../components/phase5/RangeWiseTotalKmTable';
-import DetailedTotalKmTable from '../components/phase5/DetailedTotalKmTable';
 import VehicleCostTable from '../components/phase5/VehicleCostTable';
+import MonthlyActualKmChart from '../components/phase5/MonthlyActualKmChart';
+import MonthlyExtraVehicleCostChart from '../components/phase5/MonthlyExtraVehicleCostChart';
 import RevenueCostOverTimeChart from '../components/phase5/RevenueCostOverTimeChart';
 import ProfitLossOverTimeChart from '../components/phase5/ProfitLossOverTimeChart';
 import ProfitLossPercentageOverTimeChart from '../components/phase5/ProfitLossPercentageOverTimeChart';
@@ -60,19 +60,15 @@ export default function PowerBIDashboard() {
           <CombinedFinanceTable />
         </div>
 
-        {/* Range-Wise Total Km Table */}
-        <div className="mb-8">
-          <RangeWiseTotalKmTable />
-        </div>
-
-        {/* Detailed Total KM Analysis Table */}
-        <div className="mb-8">
-          <DetailedTotalKmTable />
-        </div>
-
         {/* Vehicle Cost Table */}
         <div className="mb-8">
           <VehicleCostTable />
+        </div>
+
+        {/* Monthly Vehicle Cost Charts */}
+        <div className="mb-8 grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <MonthlyActualKmChart />
+          <MonthlyExtraVehicleCostChart />
         </div>
 
         {/* Profit & Loss % Over Time */}

@@ -53,6 +53,20 @@ export const processExcelFile = async (
       };
     }
 
+    // Sort indents by indentDate (time) - oldest first
+    indents.sort((a, b) => {
+      const dateA = a.indentDate instanceof Date ? a.indentDate.getTime() : new Date(a.indentDate).getTime();
+      const dateB = b.indentDate instanceof Date ? b.indentDate.getTime() : new Date(b.indentDate).getTime();
+      return dateA - dateB;
+    });
+    
+    console.log(`[uploadController] Sorted ${indents.length} indents by indentDate (oldest first)`);
+    if (indents.length > 0) {
+      const firstDate = indents[0].indentDate instanceof Date ? indents[0].indentDate : new Date(indents[0].indentDate);
+      const lastDate = indents[indents.length - 1].indentDate instanceof Date ? indents[indents.length - 1].indentDate : new Date(indents[indents.length - 1].indentDate);
+      console.log(`[uploadController] Date range: ${firstDate.toISOString().split('T')[0]} to ${lastDate.toISOString().split('T')[0]}`);
+    }
+
     // Delete all existing data before inserting new data
     // Use maxTimeMS to prevent timeout errors
     await Trip.deleteMany({}).maxTimeMS(30000);
@@ -114,11 +128,49 @@ export const processExcelFile = async (
       console.log(`[uploadController] ✅ Total Km verified: ${totalKmValue.toLocaleString('en-IN')} km from Column U (21st column, index 20)`);
     }
 
+    // Pre-calculate all dashboard endpoints after successful upload
+    console.log(`[uploadController] ===== PRE-CALCULATING DASHBOARD DATA =====`);
+    try {
+      // Import calculation functions
+      const { calculateCardValues } = await import('../utils/cardCalculations');
+      const { calculateRangeWiseSummary } = await import('../utils/rangeWiseCalculations');
+      const { calculateVehicleCosts } = await import('../utils/vehicleCostCalculations');
+      
+      // Get all trips (sorted by indentDate)
+      const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+      console.log(`[uploadController] Fetched ${allTrips.length} trips (sorted by indentDate)`);
+      
+      // Pre-calculate TML DEF Dashboard data (MainDashboard)
+      console.log(`[uploadController] Calculating TML DEF Dashboard data...`);
+      const cardResults = calculateCardValues(allTrips, null, null);
+      const rangeWiseResults = await calculateRangeWiseSummary(null, null);
+      console.log(`[uploadController] ✓ TML DEF Dashboard: ${cardResults.totalIndents} indents, ${cardResults.totalTrips} trips, ${cardResults.totalLoad} kg load`);
+      
+      // Pre-calculate Finance Dashboard data (PowerBIDashboard)
+      console.log(`[uploadController] Calculating Finance Dashboard data...`);
+      const vehicleCostResults = calculateVehicleCosts(allTrips, null, null);
+      console.log(`[uploadController] ✓ Finance Dashboard: ${vehicleCostResults.length} vehicle cost entries`);
+      
+      // Calculate revenue, cost, profit-loss summaries
+      const totalRevenue = rangeWiseResults.rangeData.reduce((sum, r) => {
+        const revenue = (r.bucketCount || 0) * 11636 + (r.barrelCount || 0) * 51420;
+        return sum + revenue;
+      }, 0);
+      const totalCost = rangeWiseResults.totalCost || 0;
+      const totalProfitLoss = rangeWiseResults.totalProfitLoss || 0;
+      console.log(`[uploadController] ✓ Finance Summary: Revenue ₹${totalRevenue.toLocaleString('en-IN')}, Cost ₹${totalCost.toLocaleString('en-IN')}, P&L ₹${totalProfitLoss.toLocaleString('en-IN')}`);
+      
+      console.log(`[uploadController] ===== DASHBOARD DATA PRE-CALCULATION COMPLETE =====`);
+    } catch (calcError) {
+      console.error(`[uploadController] ⚠️  Warning: Failed to pre-calculate dashboard data:`, calcError);
+      // Don't fail the upload if pre-calculation fails
+    }
+
     return {
       success: true,
       recordCount: indents.length,
       fileName: fileName,
-      message: `Successfully uploaded ${indents.length} records`
+      message: `Successfully uploaded ${indents.length} records (sorted by time)`
     };
   } catch (error) {
     return {

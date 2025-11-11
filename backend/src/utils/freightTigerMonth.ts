@@ -22,6 +22,21 @@ export const normalizeFreightTigerMonth = (monthValue: string): string | null =>
   // Fix common typos: "0ct" -> "Oct" (zero instead of O)
   const fixedTrimmed = trimmed.replace(/^0ct/i, 'Oct').replace(/^0ctober/i, 'October');
   
+  // Format: "Mar-25" or "May-25" (with hyphen - common from Excel)
+  const mmmYYHyphenPattern = /^([A-Za-z]{3})-(\d{2})$/i;
+  const mmmYYMatch = fixedTrimmed.match(mmmYYHyphenPattern);
+  if (mmmYYMatch) {
+    try {
+      const monthName = mmmYYMatch[1];
+      const year = parseInt(mmmYYMatch[2], 10);
+      const fullYear = year < 50 ? 2000 + year : 1900 + year;
+      const parsed = parse(`${monthName} ${fullYear}`, 'MMM yyyy', new Date());
+      if (!isNaN(parsed.getTime())) {
+        return format(parsed, 'yyyy-MM');
+      }
+    } catch (e) {}
+  }
+  
   // Format: "May'25" or "May'24" (most common from Excel parsing)
   try {
     const parsed = parse(fixedTrimmed, "MMM''yy", new Date());
@@ -33,6 +48,14 @@ export const normalizeFreightTigerMonth = (monthValue: string): string | null =>
   // Format: "May 2025" or "May 2024"
   try {
     const parsed = parse(fixedTrimmed, 'MMMM yyyy', new Date());
+    if (!isNaN(parsed.getTime())) {
+      return format(parsed, 'yyyy-MM');
+    }
+  } catch (e) {}
+  
+  // Format: "Mar 2025" (3-letter month with space)
+  try {
+    const parsed = parse(fixedTrimmed, 'MMM yyyy', new Date());
     if (!isNaN(parsed.getTime())) {
       return format(parsed, 'yyyy-MM');
     }

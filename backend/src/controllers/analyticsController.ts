@@ -10,55 +10,14 @@ import * as XLSX from 'xlsx';
 
 export const getAnalytics = async (req: Request, res: Response) => {
   try {
-    console.log(`[getAnalytics] ===== START =====`);
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
-    console.log(`[getAnalytics] Input params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
-    console.log(`[getAnalytics] Raw query params: fromDate=${req.query.fromDate || 'undefined'}, toDate=${req.query.toDate || 'undefined'}`);
 
-    // Query all trips from database
-    const allIndents = await Trip.find({});
-    console.log(`[getAnalytics] Total indents from DB: ${allIndents.length}`);
-    
-    // Debug: Check sample indent dates from DB
-    if (allIndents.length > 0) {
-      const sampleIndents = allIndents.slice(0, 3).map((indent: any) => ({
-        indent: indent.indent,
-        indentDate: indent.indentDate,
-        indentDateType: typeof indent.indentDate,
-        indentDateIsDate: indent.indentDate instanceof Date,
-        indentDateISO: indent.indentDate instanceof Date ? indent.indentDate.toISOString() : String(indent.indentDate)
-      }));
-      console.log(`[getAnalytics] Sample indents from DB (first 3):`, sampleIndents);
-    }
+    // Query all trips from database (sorted by indentDate - oldest first)
+    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
 
     // Use clean card calculation utility (single source of truth)
     const cardResults = calculateCardValues(allIndents, fromDate, toDate);
-    
-    // COMPARISON: If single month filter, compare with month-on-month logic
-    if (fromDate && toDate) {
-      const fromMonth = format(fromDate, 'yyyy-MM');
-      const toMonth = format(toDate as Date, 'yyyy-MM');
-      if (fromMonth === toMonth) {
-        console.log(`[getAnalytics] ===== COMPARISON WITH MONTH-ON-MONTH =====`);
-        console.log(`[getAnalytics] Month: ${fromMonth}`);
-        console.log(`[getAnalytics] Card 1 (Total Indents): ${cardResults.totalIndents}`);
-        console.log(`[getAnalytics] Card 2 (Total Trips): ${cardResults.totalTrips}`);
-        console.log(`[getAnalytics] NOTE: These should match month-on-month chart for ${fromMonth}`);
-        
-        // Run debug comparison
-        try {
-          const { debugCompareCalculations } = await import('../utils/debugComparison');
-          await debugCompareCalculations(fromMonth);
-        } catch (e) {
-          console.log(`[getAnalytics] Debug comparison failed:`, e);
-        }
-        
-        console.log(`[getAnalytics] ===== END COMPARISON =====`);
-      }
-    }
-    
-    console.log(`[getAnalytics] ===== END =====`);
     
     res.json({
       success: true,
@@ -90,30 +49,15 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    console.log(`[getRangeWiseAnalytics] ===== START =====`);
-    console.log(`[getRangeWiseAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+    // Check database first (sorted by indentDate - oldest first)
+    const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
 
     // Use the new utility function for all calculations
     const { calculateRangeWiseSummary } = await import('../utils/rangeWiseCalculations');
-    let result;
-    try {
-      result = await calculateRangeWiseSummary(fromDate || undefined, toDate || undefined);
-      console.log(`[getRangeWiseAnalytics] Calculation result:`, {
-        rangeDataLength: result.rangeData.length,
-        totalUniqueIndents: result.totalUniqueIndents,
-        totalLoad: result.totalLoad,
-        totalCost: result.totalCost,
-        totalProfitLoss: result.totalProfitLoss,
-        totalRows: result.totalRows
-      });
-    } catch (calcError) {
-      console.error(`[getRangeWiseAnalytics] Error in calculateRangeWiseSummary:`, calcError);
-      throw calcError;
-    }
+    const result = await calculateRangeWiseSummary(fromDate || undefined, toDate || undefined);
 
     // Calculate location-wise data using clean date filtering utility
-    const allIndents = await Trip.find({});
-    const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
+    const dateFilterResult = filterIndentsByDate(allTrips, fromDate, toDate);
     const { allIndentsFiltered, validIndents } = dateFilterResult;
 
     const locationMap = new Map<string, { indentCount: number; totalLoad: number; range: string }>();
@@ -137,10 +81,8 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     // Get all indents in date range for total load details
     // IMPORTANT: Use ONLY Indent Date column (column 'B') - same as filterIndentsByDate
     // This ensures consistency with all other analytics functions
-    const dateFilterResultForLoad = filterIndentsByDate(allIndents, fromDate, toDate);
+    const dateFilterResultForLoad = filterIndentsByDate(allTrips, fromDate, toDate);
     const allIndentsInDateRange = dateFilterResultForLoad.allIndentsFiltered;
-    
-    console.log(`[getRangeWiseAnalytics] Total Load Details: allIndentsInDateRange.length=${allIndentsInDateRange.length} (using same date filtering as calculateRangeWiseSummary)`);
 
     const indentsWithLoad = allIndentsInDateRange.filter((indent: any) => (indent.totalLoad || 0) > 0).length;
     const indentsWithoutRange = allIndentsInDateRange.filter((indent: any) => !indent.range || indent.range.trim() === '').length;
@@ -149,49 +91,6 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     // Ensure rangeData is always an array (should never be empty due to 4 predefined ranges)
     const finalRangeData = result.rangeData || [];
     
-    if (false) {
-      console.warn(`[getRangeWiseAnalytics] ⚠️ WARNING: Total Km is 0! Check database and Excel parsing.`);
-    }
-    console.log(`[getRangeWiseAnalytics] =========================`);
-    
-    console.log(`[getRangeWiseAnalytics] Final response:`, {
-      rangeDataLength: finalRangeData.length,
-      totalUniqueIndents: result.totalUniqueIndents,
-      totalLoad: result.totalLoad,
-      totalCost: result.totalCost,
-      totalProfitLoss: result.totalProfitLoss,
-      totalRows: result.totalRows
-    });
-
-    // Get card values for comparison
-    const cardResults = calculateCardValues(allIndents, fromDate, toDate);
-    
-    console.log(`[getRangeWiseAnalytics] ===== FINAL RESPONSE =====`);
-    console.log(`[getRangeWiseAnalytics] IMPORTANT: These values MUST match Card calculations:`);
-    console.log(`[getRangeWiseAnalytics] Card 1 (Total Indents): ${cardResults.totalIndents}`);
-    console.log(`[getRangeWiseAnalytics] Card 2 (Total Trip): ${cardResults.totalTrips} - should match totalUniqueIndents: ${result.totalUniqueIndents}`);
-    console.log(`[getRangeWiseAnalytics] Card 3 (Total Load): ${cardResults.totalLoad} kg = ${(cardResults.totalLoad / 1000).toFixed(2)} tons - should match: ${result.totalLoad} kg`);
-    console.log(`[getRangeWiseAnalytics] Card 4 (Buckets): ${cardResults.totalBuckets} - should match: ${result.totalBuckets}`);
-    console.log(`[getRangeWiseAnalytics] Card 4 (Barrels): ${cardResults.totalBarrels} - should match: ${result.totalBarrels}`);
-    console.log(`[getRangeWiseAnalytics] Card 5 (Avg Buckets/Trip): ${cardResults.avgBucketsPerTrip}`);
-    console.log(`[getRangeWiseAnalytics] rangeData.length: ${finalRangeData.length}`);
-    console.log(`[getRangeWiseAnalytics] totalRows: ${result.totalRows || 0}`);
-    
-    // Verify values match
-    if (result.totalUniqueIndents !== cardResults.totalTrips) {
-      console.warn(`[getRangeWiseAnalytics] WARNING: totalUniqueIndents (${result.totalUniqueIndents}) != Card 2 (${cardResults.totalTrips})`);
-    }
-    if (result.totalLoad !== cardResults.totalLoad) {
-      console.warn(`[getRangeWiseAnalytics] WARNING: totalLoad (${result.totalLoad}) != Card 3 (${cardResults.totalLoad})`);
-    }
-    if (result.totalBuckets !== cardResults.totalBuckets) {
-      console.warn(`[getRangeWiseAnalytics] WARNING: totalBuckets (${result.totalBuckets}) != Card 4 (${cardResults.totalBuckets})`);
-    }
-    if (result.totalBarrels !== cardResults.totalBarrels) {
-      console.warn(`[getRangeWiseAnalytics] WARNING: totalBarrels (${result.totalBarrels}) != Card 4 (${cardResults.totalBarrels})`);
-    }
-    
-    console.log(`[getRangeWiseAnalytics] ===== END =====`);
 
     res.json({
       success: true,
@@ -230,20 +129,15 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
 
-    // STEP 1: Fetch all indents from database
-    const allIndents = await Trip.find({});
-    console.log(`[getFulfillmentAnalytics] Step 1: Total indents from DB: ${allIndents.length}`);
+    // STEP 1: Fetch all indents from database (sorted by indentDate)
+    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
 
     // STEP 2: Use clean date filtering utility (same as all other analytics functions)
-    console.log(`[getFulfillmentAnalytics] Step 2: Applying date filter: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
     const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
     const filteredIndents = dateFilterResult.allIndentsFiltered;
-    
-    console.log(`[getFulfillmentAnalytics] Step 2: Filtered indents after date filter: ${filteredIndents.length}`);
 
     // STEP 3: Filter for non-blank range (exclude cancelled indents - same as trip count logic)
     const indents = dateFilterResult.validIndents;
-    console.log(`[getFulfillmentAnalytics] Step 3: Valid indents (with non-blank range, including duplicates): ${indents.length}`);
 
     // STEP 4: Define bucket ranges
     const bucketRanges = [
@@ -414,9 +308,9 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
     console.log(`[exportMissingIndents] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
     console.log(`[exportMissingIndents] Raw query params: fromDate=${originalFromDateStr || 'undefined'}, toDate=${originalToDateStr || 'undefined'}`);
 
-    // STEP 1: Get all indents that match Card 2 criteria (non-blank range, date filtered)
-    const allIndents = await Trip.find({});
-    console.log(`[exportMissingIndents] Total indents in database: ${allIndents.length}`);
+    // STEP 1: Get all indents that match Card 2 criteria (non-blank range, date filtered) - sorted by indentDate
+    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    console.log(`[exportMissingIndents] Total indents in database: ${allIndents.length} (sorted by indentDate)`);
     
     let filteredIndents = [...allIndents];
     
@@ -759,9 +653,9 @@ export const exportAllIndents = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
     console.log(`[exportAllIndents] Date filter: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
 
-    // Get all indents from database
-    const allIndents = await Trip.find({}).lean();
-    console.log(`[exportAllIndents] Total indents from DB: ${allIndents.length}`);
+    // Get all indents from database (sorted by indentDate)
+    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    console.log(`[exportAllIndents] Total indents from DB: ${allIndents.length} (sorted by indentDate)`);
 
     // Filter by date using the same logic as other analytics
     const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
@@ -904,11 +798,11 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
     const granularity = req.query.granularity as string || 'daily';
 
-    // Query all indents first (we'll filter in memory to match 4th card logic)
+    // Query all indents first (sorted by indentDate - we'll filter in memory to match 4th card logic)
     // This matches the same date filtering logic as calculateRangeWiseSummary
-    let allIndents = await Trip.find({});
+    let allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
     
-    console.log(`[getLoadOverTime] Total indents fetched: ${allIndents.length}`);
+    console.log(`[DEBUG getLoadOverTime] Total indents fetched: ${allIndents.length} (sorted by indentDate)`);
     console.log(`[getLoadOverTime] Granularity: ${granularity}`);
     
     // For monthly granularity, show all available months (like month-on-month graphs)
@@ -1179,8 +1073,8 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
     const granularity = req.query.granularity as string || 'daily';
 
-    // Query all indents first
-    let allIndents = await Trip.find({});
+    // Query all indents first (sorted by indentDate)
+    let allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
     
     // For monthly granularity, show all available months (like month-on-month graphs)
     // For daily/weekly, apply date filtering
@@ -1207,8 +1101,8 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
         }
       }
 
-      // Query database with date filter
-      indents = await Trip.find(dateFilter);
+      // Query database with date filter (sorted by indentDate)
+      indents = await Trip.find(dateFilter).sort({ indentDate: 1 }).lean();
     }
 
     // Bucket rates by range
@@ -1388,8 +1282,8 @@ export const getCostAnalytics = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
     const granularity = req.query.granularity as string || 'daily';
 
-    // Query all indents first
-    let allIndents = await Trip.find({});
+    // Query all indents first (sorted by indentDate)
+    let allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
     
     // For monthly granularity, show all available months (like month-on-month graphs)
     // For daily/weekly, apply date filtering
@@ -1416,8 +1310,8 @@ export const getCostAnalytics = async (req: Request, res: Response) => {
         }
       }
 
-      // Query database with date filter
-      indents = await Trip.find(dateFilter);
+      // Query database with date filter (sorted by indentDate)
+      indents = await Trip.find(dateFilter).sort({ indentDate: 1 }).lean();
     }
 
     // Range mappings - values are normalized during parsing
@@ -1549,8 +1443,8 @@ export const getProfitLossAnalytics = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
     const granularity = req.query.granularity as string || 'daily';
 
-    // Query all indents first
-    let allIndents = await Trip.find({});
+    // Query all indents first (sorted by indentDate)
+    let allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
     
     // For monthly granularity, show all available months (like month-on-month graphs)
     // For daily/weekly, apply date filtering
@@ -1577,8 +1471,8 @@ export const getProfitLossAnalytics = async (req: Request, res: Response) => {
         }
       }
 
-      // Query database with date filter
-      indents = await Trip.find(dateFilter);
+      // Query database with date filter (sorted by indentDate)
+      indents = await Trip.find(dateFilter).sort({ indentDate: 1 }).lean();
     }
 
     // Range mappings - values are normalized during parsing
@@ -1724,10 +1618,19 @@ export const getProfitLossAnalytics = async (req: Request, res: Response) => {
 
 export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
   try {
-    // Query all trips from database (no date filter - show all available months)
-    const allIndents = await Trip.find({});
+    console.log(`[DEBUG getMonthOnMonthAnalytics] ===== START =====`);
+    // Query all trips from database (sorted by indentDate - no date filter - show all available months)
+    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
 
-    console.log(`[getMonthOnMonthAnalytics] Total indents fetched: ${allIndents.length}`);
+    console.log(`[DEBUG getMonthOnMonthAnalytics] Total indents fetched: ${allIndents.length}`);
+    
+    if (allIndents.length === 0) {
+      console.log(`[DEBUG getMonthOnMonthAnalytics] ⚠️  WARNING: Database is EMPTY!`);
+      return res.json({
+        success: true,
+        data: []
+      });
+    }
 
     // For Card 1 (Indent Count): Use ALL indents (including cancelled ones with blank range)
     // For Card 2 (Trip Count): Filter to only include indents with Range value (canceled indents don't have range)
@@ -1814,35 +1717,9 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
 
       console.log(`[getMonthOnMonthAnalytics] ${monthKey}: indentCount=${indentCount}, tripCount=${tripCount}`);
 
-      // Format month label - use Freight Tiger Month format if available, otherwise format from date
-      let formattedMonth: string;
-      const sampleIndent = allIndentsForMonth.find(i => i.freightTigerMonth);
-      if (sampleIndent && sampleIndent.freightTigerMonth) {
-        // Use the original Freight Tiger Month value (e.g., "May 2025" or "May'25")
-        // Normalize to "MMM'yy" format for consistency
-        const originalValue = sampleIndent.freightTigerMonth.trim();
-        try {
-          // Try to parse and format as "MMM'yy"
-          const parsed = parse(originalValue, 'MMMM yyyy', new Date());
-          if (!isNaN(parsed.getTime())) {
-            formattedMonth = format(parsed, "MMM''yy");
-          } else {
-            const parsed2 = parse(originalValue, "MMMM''yy", new Date());
-            if (!isNaN(parsed2.getTime())) {
-              formattedMonth = format(parsed2, "MMM''yy");
-            } else {
-              // Fallback to date formatting
-              formattedMonth = format(monthStart, "MMM''yy");
-            }
-          }
-        } catch (e) {
-          // If parsing fails, use date formatting
-          formattedMonth = format(monthStart, "MMM''yy");
-        }
-      } else {
-        // Fallback to date formatting if no Freight Tiger Month available
-        formattedMonth = format(monthStart, "MMM''yy");
-      }
+      // Format month label - use monthStart date to format as "MMM'yy" (e.g., "Mar'25")
+      // This ensures consistent formatting regardless of freightTigerMonth format
+      const formattedMonth = format(monthStart, "MMM''yy");
       
       return {
         month: formattedMonth,
@@ -1851,41 +1728,16 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
       };
     });
 
-    console.log(`[getMonthOnMonthAnalytics] Month-on-month data points: ${monthOnMonthData.length}`);
-    console.log(`[getMonthOnMonthAnalytics] Sample data:`, monthOnMonthData.slice(0, 3));
+    console.log(`[DEBUG getMonthOnMonthAnalytics] Month-on-month data points: ${monthOnMonthData.length}`);
     
-    // Debug: Verify for a specific month (e.g., May 2025) by simulating getAnalytics call
-    const testMonth = '2025-05';
-    const testMonthData = monthOnMonthData.find(m => {
-      const monthKey = format(new Date(m.month.replace("'", " 20")), 'yyyy-MM');
-      return monthKey === testMonth || m.month.includes('May');
-    });
-    
-    if (testMonthData) {
-      console.log(`[getMonthOnMonthAnalytics] Test month (May 2025):`, testMonthData);
-      // Simulate getAnalytics for May 2025
-      const mayStart = new Date('2025-05-01');
-      const mayEnd = new Date(2025, 4, 31, 23, 59, 59, 999);
-      const mayFilter = { indentDate: { $gte: mayStart, $lte: mayEnd } };
-      const mayIndents = await Trip.find(mayFilter);
-      const mayValid = mayIndents.filter(i => i.range && i.range.trim() !== '');
-      const mayUnique = new Set(mayValid.filter(t => t.indent).map(t => t.indent));
-      const mayTripDocs = mayValid.map(i => ({
-        indentDate: i.indentDate,
-        vehicleNumber: i.vehicleNumber,
-        remarks: i.remarks
-      }));
-      const { totalTrips: mayTrips } = calculateTripsByVehicleDay(mayTripDocs, mayStart, mayEnd);
-      console.log(`[getMonthOnMonthAnalytics] Simulated getAnalytics for May 2025: indentCount=${mayUnique.size}, tripCount=${mayTrips}`);
-      console.log(`[getMonthOnMonthAnalytics] Month-on-month for May 2025: indentCount=${testMonthData.indentCount}, tripCount=${testMonthData.tripCount}`);
+    if (monthOnMonthData.length === 0) {
+      console.log(`[DEBUG getMonthOnMonthAnalytics] ⚠️  WARNING: No month data generated!`);
+      console.log(`[DEBUG getMonthOnMonthAnalytics] Month keys found: ${Array.from(monthKeys).join(', ')}`);
+    } else {
+      console.log(`[DEBUG getMonthOnMonthAnalytics] Sample data (first 3):`, monthOnMonthData.slice(0, 3));
     }
-    
-    // Debug: Calculate totals to verify they match card logic
-    const totalIndentsFromGraph = monthOnMonthData.reduce((sum, item) => sum + item.indentCount, 0);
-    const totalTripsFromGraph = monthOnMonthData.reduce((sum, item) => sum + item.tripCount, 0);
-    console.log(`[getMonthOnMonthAnalytics] Total indent count (sum of all months): ${totalIndentsFromGraph}`);
-    console.log(`[getMonthOnMonthAnalytics] Total trip count (sum of all months): ${totalTripsFromGraph}`);
-    console.log(`[getMonthOnMonthAnalytics] Full data:`, monthOnMonthData);
+
+    console.log(`[DEBUG getMonthOnMonthAnalytics] ===== END =====`);
 
     res.json({
       success: true,
@@ -1900,23 +1752,117 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
   }
 };
 
+export const getMonthlyVehicleCostAnalytics = async (req: Request, res: Response) => {
+  try {
+    const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    
+    const FIXED_VEHICLES = [
+      'HR38AC7854',
+      'HR38AC7243',
+      'HR38AC0599',
+      'HR38AC0263'
+    ];
+    
+    const FIXED_KM = 5000;
+    const KM_COST_RATE = 31;
+    
+    // Group trips by month (using Freight Tiger Month if available, else indentDate)
+    const monthlyData: Record<string, { actualKm: number; costForRemainingKm: number }> = {};
+    
+    // Filter trips for fixed vehicles only
+    const fixedVehicleTrips = allTrips.filter(trip => {
+      const tripVehicle = String(trip.vehicleNumber || '').trim().toUpperCase();
+      return FIXED_VEHICLES.some(fixed => fixed.toUpperCase() === tripVehicle);
+    });
+    
+    // Group by month
+    for (const trip of fixedVehicleTrips) {
+      let monthKey: string;
+      
+      // Use Freight Tiger Month if available (like month-on-month graphs)
+      if (trip.freightTigerMonth && typeof trip.freightTigerMonth === 'string' && trip.freightTigerMonth.trim() !== '') {
+        const normalizedMonth = normalizeFreightTigerMonth(trip.freightTigerMonth.trim());
+        if (normalizedMonth) {
+          monthKey = normalizedMonth;
+        } else {
+          // Fallback to indentDate if normalization fails
+          monthKey = format(new Date(trip.indentDate), 'yyyy-MM');
+        }
+      } else {
+        // Fallback to indentDate if Freight Tiger Month is not available
+        monthKey = format(new Date(trip.indentDate), 'yyyy-MM');
+      }
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { actualKm: 0, costForRemainingKm: 0 };
+      }
+      
+      const totalKm = Number(trip.totalKm) || 0;
+      monthlyData[monthKey].actualKm += totalKm;
+    }
+    
+    // Calculate costForRemainingKm for each month
+    for (const monthKey in monthlyData) {
+      const actualKm = monthlyData[monthKey].actualKm;
+      const remainingKm = (FIXED_KM * FIXED_VEHICLES.length) - actualKm; // Total fixed KM for all vehicles
+      monthlyData[monthKey].costForRemainingKm = remainingKm * KM_COST_RATE;
+    }
+    
+    // Convert to array and format labels
+    const sortedKeys = Object.keys(monthlyData).sort();
+    const result = sortedKeys.map(key => {
+      const [year, month] = key.split('-');
+      const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const monthLabel = format(monthDate, "MMM''yy");
+      
+      return {
+        month: monthLabel,
+        monthKey: key,
+        actualKm: monthlyData[key].actualKm,
+        costForRemainingKm: monthlyData[key].costForRemainingKm
+      };
+    });
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error(`[getMonthlyVehicleCostAnalytics] ERROR:`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch monthly vehicle cost analytics'
+    });
+  }
+};
+
 export const getVehicleCostAnalytics = async (req: Request, res: Response) => {
   try {
-    console.log(`[getVehicleCostAnalytics] ===== START =====`);
+    console.log(`[DEBUG getVehicleCostAnalytics] ===== START =====`);
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
-    console.log(`[getVehicleCostAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+    console.log(`[DEBUG getVehicleCostAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
 
-    // Query all trips from database
-    const allTrips = await Trip.find({});
-    console.log(`[getVehicleCostAnalytics] Total trips from DB: ${allTrips.length}`);
+    // Query all trips from database - use lean() for faster queries (sorted by indentDate - oldest first)
+    const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    console.log(`[DEBUG getVehicleCostAnalytics] Total trips from DB: ${allTrips.length} (sorted by indentDate)`);
+    
+    if (allTrips.length === 0) {
+      console.log(`[DEBUG getVehicleCostAnalytics] ⚠️  WARNING: Database is EMPTY!`);
+    }
 
     // Calculate vehicle costs
     const { calculateVehicleCosts } = await import('../utils/vehicleCostCalculations');
     const vehicleCostData = calculateVehicleCosts(allTrips, fromDate || undefined, toDate || undefined);
-
-    console.log(`[getVehicleCostAnalytics] Calculated vehicle cost data: ${vehicleCostData.length} rows`);
-    console.log(`[getVehicleCostAnalytics] ===== END =====`);
+    
+    console.log(`[DEBUG getVehicleCostAnalytics] Calculated results:`, vehicleCostData.map(v => ({
+      vehicle: v.vehicleNumber,
+      actualKm: v.actualKm,
+      remainingKm: v.remainingKm,
+      extraCost: v.extraCost
+    })));
+    
+    console.log(`[DEBUG getVehicleCostAnalytics] ===== END =====`);
 
     res.json({
       success: true,

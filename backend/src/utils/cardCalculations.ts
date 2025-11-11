@@ -45,8 +45,7 @@ export function calculateCardValues(
   fromDate: Date | null | undefined,
   toDate: Date | null | undefined
 ): CardCalculationResult {
-  console.log(`[calculateCardValues] ===== START =====`);
-  console.log(`[calculateCardValues] Input: totalIndents=${allIndents.length}, fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+  console.log(`[DEBUG calculateCardValues] Input: ${allIndents.length} trips, fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
 
   // DIAGNOSTIC: Check for duplicate rows in database (same indent + indentDate combination)
   const indentDateMap = new Map<string, number>();
@@ -169,35 +168,21 @@ export function calculateCardValues(
     }
   });
   
-  console.log(`[calculateCardValues] Card 4 (Bucket & Barrel): ${totalBuckets} buckets, ${totalBarrels} barrels`);
-  console.log(`[calculateCardValues] - From ${standardValidIndents.length} standard valid indents (excluded ${validIndents.length - standardValidIndents.length} Other/Duplicate rows)`);
-  console.log(`[calculateCardValues] - Duplicate indents found: ${duplicateIndents.size}`);
-
   // Step 6: Calculate Card 5 - Avg Buckets/Trip
   // Formula: (totalBuckets + totalBarrels * 10.5) / totalTrips
   const totalBucketsIncludingBarrels = totalBuckets + (totalBarrels * 10.5);
   const avgBucketsPerTrip = totalTrips > 0 ? totalBucketsIncludingBarrels / totalTrips : 0;
   const avgBucketsPerTripRounded = Math.round(avgBucketsPerTrip);
-  console.log(`[calculateCardValues] Card 5 (Avg Buckets/Trip): ${avgBucketsPerTripRounded} (${totalBucketsIncludingBarrels} total buckets / ${totalTrips} trips)`);
 
   // Step 7: Calculate additional metrics (Total Cost from Column AE and Total Profit/Loss from ALL indents)
   const totalCost = allIndentsFiltered.reduce((sum: number, indent: any) => {
-    return sum + (indent.totalCostAE || indent.totalCost || 0); // Use Column AE for other calculations
+    return sum + (Number(indent.totalCostAE) || 0); // Use Column AE (31st column) only
   }, 0);
   const totalProfitLoss = allIndentsFiltered.reduce((sum: number, indent: any) => {
     return sum + (indent.profitLoss || 0);
   }, 0);
-  console.log(`[calculateCardValues] Additional metrics: totalCost=₹${totalCost.toLocaleString('en-IN')}, totalProfitLoss=₹${totalProfitLoss.toLocaleString('en-IN')}`);
-
-  console.log(`[calculateCardValues] ===== FINAL RESULTS =====`);
-  console.log(`[calculateCardValues] Card 1 (Total Indents): ${totalIndents}`);
-  console.log(`[calculateCardValues] Card 2 (Total Trip): ${totalTrips}`);
-  console.log(`[calculateCardValues] Card 3 (Total Load): ${totalLoad} kg`);
-  console.log(`[calculateCardValues] Card 4 (Buckets/Barrels): ${totalBuckets} buckets, ${totalBarrels} barrels`);
-  console.log(`[calculateCardValues] Card 5 (Avg Buckets/Trip): ${avgBucketsPerTripRounded}`);
   
-  // Log all unique indents used for Card 1
-  console.log(`[calculateCardValues] ===== CARD 1 - ALL UNIQUE INDENTS (${totalIndents} total) =====`);
+  // Log all unique indents used for Card 1 (removed verbose logging)
   Array.from(uniqueIndentsAll).forEach((indentValue, index) => {
     const indentRows = allIndentsFiltered.filter((indent: any) => indent.indent === indentValue);
     console.log(`[calculateCardValues] Card 1 - Unique Indent ${index + 1}: "${indentValue}" (appears in ${indentRows.length} rows)`);

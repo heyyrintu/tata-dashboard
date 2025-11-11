@@ -104,32 +104,13 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         console.warn(`[ExcelParser] WARNING: Could not find Total Km column by name or index!`);
       }
       
-      // Try to find "Total Cost" column by name
-      const totalCostColumnNames = [
-        'Total Cost_1',
-        'Total Cost',
-        'TotalCost',
-        'TOTAL COST'
-      ];
-      
-      for (const colName of totalCostColumnNames) {
-        const foundCol = columns.find(col => 
-          normalizeColumnName(col) === normalizeColumnName(colName) ||
-          (col.toLowerCase().includes('total') && col.toLowerCase().includes('cost'))
-        );
-        if (foundCol) {
-          columnAEName = foundCol;
-          console.log(`[ExcelParser] Found Total Cost column by name: "${columnAEName}"`);
-          break;
-        }
-      }
-      
-      // If not found by name, try index 30 (Column AE)
-      if (!columnAEName && columns.length > 30) {
+      // Use Column AE (index 30) - 31st column - for Total Cost
+      // This is the ONLY source for total cost - do not use any other "Total Cost" columns
+      if (columns.length > 30) {
         columnAEName = columns[30];
-        console.log(`[ExcelParser] Using Column AE (index 30) by position: "${columnAEName}"`);
-      } else if (!columnAEName) {
-        console.warn(`[ExcelParser] WARNING: Could not find Total Cost column by name or index!`);
+        console.log(`[ExcelParser] Using Column AE (index 30) for Total Cost: "${columnAEName}"`);
+      } else {
+        console.warn(`[ExcelParser] WARNING: Column AE (index 30) not found! Only ${columns.length} columns available.`);
       }
     } else {
       console.warn(`[ExcelParser] WARNING: No data rows found in Excel file!`);
@@ -139,6 +120,26 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
     let totalKmParsed = 0;
     let rowsWithKm = 0;
     let sampleValues: Array<{ indent: string; value: number }> = [];
+    
+    // Get column names for index-based access
+    const rowKeys = jsonData.length > 0 ? Object.keys(jsonData[0]) : [];
+    let columnNIndex = -1; // No. of Buckets/Barrels
+    let columnOIndex = -1; // T. Load (Kgs)
+    
+    // Find column indices
+    for (let i = 0; i < rowKeys.length; i++) {
+      const colName = normalizeColumnName(String(rowKeys[i] || ''));
+      if (colName.includes('bucket') && colName.includes('barrel')) {
+        columnNIndex = i;
+      }
+      if (colName.includes('load') && (colName.includes('kg') || colName.includes('kgs'))) {
+        columnOIndex = i;
+      }
+    }
+    
+    // Fallback to expected indices if not found by name
+    if (columnNIndex === -1 && rowKeys.length > 13) columnNIndex = 13; // Column N
+    if (columnOIndex === -1 && rowKeys.length > 14) columnOIndex = 14; // Column O
     
     const indents: ITrip[] = jsonData.map((row: ExcelRow, index: number) => {
       // Parse Total Cost from Column AE (index 30) - main total cost for all calculations
@@ -185,9 +186,23 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         vehicleBased: String(row['Vehicle Based'] || row['VehicleBased'] || row['Vehicle  Based'] || '').trim(),
         lrNo: String(row['LR No'] || row['LRNo'] || row['LR  No'] || row['LR No.'] || '').trim(),
         material: String(row['Material'] || row['MATERIAL'] || '').trim(),
-        loadPerBucket: parseNumericValue(row['Load/Bucket'] || row['Load/Bucket'] || row['Load Per Bucket']),
-        noOfBuckets: parseNumericValue(row['No. of Buckets'] || row['No of Buckets'] || row['No.Of Buckets'] || row['No of Buckets']),
-        totalLoad: parseNumericValue(row['Total Load'] || row['TotalLoad'] || row['Total  Load']),
+        loadPerBucket: parseNumericValue(row['Load Per bucket (Kgs)'] || row['Load/Bucket'] || row['Load Per Bucket']),
+        // Column N (index 13) - No. of Buckets/Barrels
+        noOfBuckets: (() => {
+          // Try by name first
+          const byName = parseNumericValue(row['No. of Buckets/Barrels'] || row['No. of Buckets'] || row['No of Buckets'] || row['No.Of Buckets']);
+          if (byName > 0) return byName;
+          // Fallback to index
+          return columnNIndex >= 0 && rowKeys.length > columnNIndex ? parseNumericValue(row[rowKeys[columnNIndex]]) : 0;
+        })(),
+        // Column O (index 14) - T. Load (Kgs)
+        totalLoad: (() => {
+          // Try by name first
+          const byName = parseNumericValue(row['T. Load (Kgs)'] || row['T. Load'] || row['Total Load'] || row['TotalLoad'] || row['Total  Load']);
+          if (byName > 0) return byName;
+          // Fallback to index
+          return columnOIndex >= 0 && rowKeys.length > columnOIndex ? parseNumericValue(row[rowKeys[columnOIndex]]) : 0;
+        })(),
         podReceived: String(row['POD Received'] || row['PODReceived'] || row['POD  Received'] || '').trim(),
         loadingCharge: parseNumericValue(row['Loading Charge'] || row['LoadingCharge'] || row['Loading  Charge']),
         unloadingCharge: parseNumericValue(row['Unloading Charge'] || row['UnloadingCharge'] || row['Unloading  Charge']),

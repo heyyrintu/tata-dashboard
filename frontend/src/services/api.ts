@@ -375,6 +375,23 @@ export interface VehicleCostResponse {
   };
 }
 
+export interface MonthlyVehicleCostData {
+  month: string;
+  monthKey: string;
+  actualKm: number;
+  costForRemainingKm: number;
+}
+
+export interface MonthlyVehicleCostResponse {
+  success: boolean;
+  data: MonthlyVehicleCostData[];
+}
+
+export const getMonthlyVehicleCostAnalytics = async (): Promise<MonthlyVehicleCostResponse> => {
+  const response = await api.get<MonthlyVehicleCostResponse>('/analytics/vehicle-cost/monthly');
+  return response.data;
+};
+
 export const getVehicleCostAnalytics = async (fromDate?: Date, toDate?: Date): Promise<VehicleCostResponse> => {
   const params = new URLSearchParams();
   

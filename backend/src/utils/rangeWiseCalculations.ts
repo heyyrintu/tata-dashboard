@@ -31,11 +31,15 @@ export async function calculateRangeWiseSummary(
   fromDate: Date | null | undefined,
   toDate: Date | null | undefined
 ): Promise<RangeWiseCalculationResult> {
-  console.log(`[calculateRangeWiseSummary] Date range: ${fromDate?.toISOString().split('T')[0] || 'null'} to ${toDate?.toISOString().split('T')[0] || 'null'}`);
+  console.log(`[DEBUG calculateRangeWiseSummary] Date range: ${fromDate?.toISOString().split('T')[0] || 'null'} to ${toDate?.toISOString().split('T')[0] || 'null'}`);
 
-  // Step 1: Get all indents from database
-  const allIndents = await Trip.find({}).lean();
-  console.log(`[calculateRangeWiseSummary] Total indents in DB: ${allIndents.length}`);
+  // Step 1: Get all indents from database (sorted by indentDate - oldest first)
+  const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+  console.log(`[DEBUG calculateRangeWiseSummary] Total trips in DB: ${allIndents.length} (sorted by indentDate)`);
+  
+  if (allIndents.length === 0) {
+    console.log(`[DEBUG calculateRangeWiseSummary] ⚠️  WARNING: Database is EMPTY!`);
+  }
   
   // Step 2: Filter by date
   const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
@@ -44,7 +48,7 @@ export async function calculateRangeWiseSummary(
     return !remarks.includes('cancelled') && !remarks.includes('cancel');
   });
   
-  console.log(`[calculateRangeWiseSummary] Valid indents after date filter: ${validIndents.length}`);
+  console.log(`[DEBUG calculateRangeWiseSummary] After date filter: ${dateFilterResult.allIndentsFiltered.length} trips, ${validIndents.length} valid (excluding cancelled)`);
   
   // Step 3: Calculate totals - includes ALL rows including duplicates
   const totalRows = validIndents.length; // Total row count including all duplicates
