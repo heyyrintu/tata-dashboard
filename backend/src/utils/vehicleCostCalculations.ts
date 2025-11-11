@@ -33,15 +33,11 @@ export function calculateVehicleCosts(
   fromDate?: Date | null,
   toDate?: Date | null
 ): VehicleCostData[] {
-  console.log(`[calculateVehicleCosts] ===== START =====`);
-  console.log(`[calculateVehicleCosts] Total trips: ${allTrips.length}`);
-  console.log(`[calculateVehicleCosts] Date range: ${fromDate?.toISOString().split('T')[0] || 'null'} to ${toDate?.toISOString().split('T')[0] || 'null'}`);
-
-  // Apply date filtering
-  const dateFilterResult = filterIndentsByDate(allTrips, fromDate || null, toDate || null);
-  const filteredTrips = dateFilterResult.allIndentsFiltered;
-
-  console.log(`[calculateVehicleCosts] Filtered trips after date filter: ${filteredTrips.length}`);
+  // If dates are provided, filter in memory (for backward compatibility)
+  // Otherwise, assume trips are already filtered at DB level
+  const filteredTrips = (fromDate || toDate) 
+    ? filterIndentsByDate(allTrips, fromDate || null, toDate || null).allIndentsFiltered
+    : allTrips;
 
   const FIXED_KM = 5000;
   const KM_COST_RATE = 31;
@@ -66,14 +62,6 @@ export function calculateVehicleCosts(
     const remainingKm = FIXED_KM - actualKm;
     const costForRemainingKm = remainingKm * KM_COST_RATE;
     const extraCost = TOTAL_BUDGET - costForRemainingKm;
-
-    console.log(`[calculateVehicleCosts] Vehicle ${vehicleNumber}:`, {
-      trips: vehicleTrips.length,
-      actualKm,
-      remainingKm,
-      costForRemainingKm,
-      extraCost
-    });
 
     result.push({
       vehicleNumber,
@@ -103,15 +91,6 @@ export function calculateVehicleCosts(
   const otherCostForRemainingKm = otherRemainingKm * KM_COST_RATE;
   const otherExtraCost = TOTAL_BUDGET - otherCostForRemainingKm;
 
-  console.log(`[calculateVehicleCosts] Other (non-fixed vehicles):`, {
-    trips: otherTrips.length,
-    uniqueVehicles: new Set(otherTrips.map(t => String(t.vehicleNumber || '').trim())).size,
-    actualKm: otherActualKm,
-    remainingKm: otherRemainingKm,
-    costForRemainingKm: otherCostForRemainingKm,
-    extraCost: otherExtraCost
-  });
-
   // Add "Other" row at the end
   result.push({
     vehicleNumber: 'Other',
@@ -121,9 +100,6 @@ export function calculateVehicleCosts(
     costForRemainingKm: otherCostForRemainingKm,
     extraCost: otherExtraCost
   });
-
-  console.log(`[calculateVehicleCosts] Total rows: ${result.length} (${FIXED_VEHICLES.length} fixed + 1 Other)`);
-  console.log(`[calculateVehicleCosts] ===== END =====`);
 
   return result;
 }

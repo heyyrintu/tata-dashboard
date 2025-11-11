@@ -19,77 +19,11 @@ router.get('/profit-loss', getProfitLossAnalytics);
 
 // Register vehicle-cost route - MUST be before catch-all '/' route
 router.get('/vehicle-cost', getVehicleCostAnalytics);
-console.log('[ROUTES] ✓ Vehicle-cost route registered at /api/analytics/vehicle-cost');
-
+router.get('/month-on-month', getMonthOnMonthAnalytics);
 router.get('/debug/calculations', debugCalculations);
-
-// Test route to verify export-all is accessible
-router.get('/test-export', (req, res) => {
-  res.json({ 
-    message: 'Export route test', 
-    exportFunctionExists: typeof exportAllIndentsToExcel === 'function',
-    route: '/api/analytics/export-all',
-    status: 'OK'
-  });
-});
-
-// Debug: Log export route registration
-console.log('========================================');
-console.log('[ROUTES] Export route registered: /export-all');
-console.log('[ROUTES] Full path: /api/analytics/export-all');
-console.log('[ROUTES] Function exists:', typeof exportAllIndentsToExcel === 'function' ? 'YES ✓' : 'NO ✗');
-console.log('========================================');
-
-// Debug: Verify vehicle-cost route
-console.log('Checking getVehicleCostAnalytics:', {
-  exists: typeof getVehicleCostAnalytics !== 'undefined',
-  type: typeof getVehicleCostAnalytics,
-  isFunction: typeof getVehicleCostAnalytics === 'function'
-});
-if (typeof getVehicleCostAnalytics === 'function') {
-  console.log('✓ Vehicle-cost route registered successfully at /api/analytics/vehicle-cost');
-} else {
-  console.error('✗ ERROR: getVehicleCostAnalytics is not a function!', typeof getVehicleCostAnalytics);
-}
-
-// Test route first to verify routing works
-router.get('/test-month-route', (req, res) => {
-  res.json({ message: 'Test route works!', functionExists: typeof getMonthOnMonthAnalytics !== 'undefined' });
-});
-
-// Verify the function exists before registering
-console.log('Checking getMonthOnMonthAnalytics:', {
-  exists: typeof getMonthOnMonthAnalytics !== 'undefined',
-  type: typeof getMonthOnMonthAnalytics,
-  isFunction: typeof getMonthOnMonthAnalytics === 'function'
-});
-
-try {
-  if (typeof getMonthOnMonthAnalytics === 'function') {
-    router.get('/month-on-month', getMonthOnMonthAnalytics);
-    console.log('✓ Month-on-month route registered successfully at /api/analytics/month-on-month');
-  } else {
-    console.error('✗ ERROR: getMonthOnMonthAnalytics is not a function!', typeof getMonthOnMonthAnalytics);
-  }
-} catch (error) {
-  console.error('✗ ERROR registering month-on-month route:', error);
-}
 
 // Catch-all route - MUST be LAST (after all specific routes)
 router.get('/', getAnalytics);
-
-// Debug: Log registered routes
-console.log('Analytics routes registered:', {
-  '/': 'getAnalytics',
-  '/range-wise': 'getRangeWiseAnalytics',
-  '/fulfillment': 'getFulfillmentAnalytics',
-  '/load-over-time': 'getLoadOverTime',
-  '/revenue': 'getRevenueAnalytics',
-  '/cost': 'getCostAnalytics',
-  '/profit-loss': typeof getProfitLossAnalytics === 'function' ? 'getProfitLossAnalytics ✓' : 'MISSING ✗',
-  '/vehicle-cost': typeof getVehicleCostAnalytics === 'function' ? 'getVehicleCostAnalytics ✓' : 'MISSING ✗',
-  '/month-on-month': typeof getMonthOnMonthAnalytics === 'function' ? 'getMonthOnMonthAnalytics ✓' : 'MISSING ✗'
-});
 
 export default router;
 

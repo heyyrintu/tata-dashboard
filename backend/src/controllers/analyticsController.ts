@@ -1902,21 +1902,30 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
 
 export const getVehicleCostAnalytics = async (req: Request, res: Response) => {
   try {
-    console.log(`[getVehicleCostAnalytics] ===== START =====`);
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
-    console.log(`[getVehicleCostAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
 
-    // Query all trips from database
-    const allTrips = await Trip.find({});
-    console.log(`[getVehicleCostAnalytics] Total trips from DB: ${allTrips.length}`);
+    // Build MongoDB query with date filtering at database level for better performance
+    const query: any = {};
+    if (fromDate || toDate) {
+      query.indentDate = {};
+      if (fromDate) {
+        query.indentDate.$gte = fromDate;
+      }
+      if (toDate) {
+        // Set to end of day for inclusive date range
+        const endOfDay = new Date(toDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        query.indentDate.$lte = endOfDay;
+      }
+    }
 
-    // Calculate vehicle costs
+    // Query only trips in date range - much faster than fetching all and filtering
+    const trips = await Trip.find(query).lean();
+
+    // Calculate vehicle costs (no need to filter again, already filtered by DB)
     const { calculateVehicleCosts } = await import('../utils/vehicleCostCalculations');
-    const vehicleCostData = calculateVehicleCosts(allTrips, fromDate || undefined, toDate || undefined);
-
-    console.log(`[getVehicleCostAnalytics] Calculated vehicle cost data: ${vehicleCostData.length} rows`);
-    console.log(`[getVehicleCostAnalytics] ===== END =====`);
+    const vehicleCostData = calculateVehicleCosts(trips, null, null); // Pass null since already filtered
 
     res.json({
       success: true,

@@ -41,17 +41,10 @@ export function filterIndentsByDate(
   fromDate: Date | null | undefined,
   toDate: Date | null | undefined
 ): DateFilterResult {
-  console.log(`[filterIndentsByDate] ===== START =====`);
-  console.log(`[filterIndentsByDate] Using ONLY Indent Date column (column 'B')`);
-  console.log(`[filterIndentsByDate] Input: totalIndents=${allIndents.length}`);
-  console.log(`[filterIndentsByDate] fromDate: ${fromDate ? fromDate.toISOString() : 'null'}`);
-  console.log(`[filterIndentsByDate] toDate: ${toDate ? toDate.toISOString() : 'null'}`);
 
   // If no dates provided, return all indents immediately
   if (!fromDate && !toDate) {
-    console.log(`[filterIndentsByDate] No date filter - returning ALL indents`);
     const validIndents = allIndents.filter(indent => indent.range && indent.range.trim() !== '');
-    console.log(`[filterIndentsByDate] All indents: ${allIndents.length}, Valid indents: ${validIndents.length}`);
     return {
       allIndentsFiltered: allIndents,
       validIndents,

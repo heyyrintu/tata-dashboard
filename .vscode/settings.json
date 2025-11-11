@@ -1,16 +1,2 @@
-{
-  "cursor.bugBot.enabled": true,
-  "cursor.bugBot.autoReview": true,
-  "cursor.bugBot.reviewOnOpen": true,
-  "cursor.bugBot.reviewScope": "changed",
-  "cursor.bugBot.reviewDepth": "standard",
-  "cursor.bugBot.includeSuggestions": true,
-  "cursor.bugBot.focusAreas": [
-    "bugs",
-    "security",
-    "performance",
-    "type-safety",
-    "error-handling"
-  ]
-}
+{}
 
