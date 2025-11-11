@@ -72,6 +72,8 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
       console.log(`[ExcelParser] Total columns found: ${columns.length}`);
       
       // Try to find "Total Km" column by name (case-insensitive, handles variations)
+      // In actual Excel: Column U (index 20) = "Total Km ( TpT)"
+      // But XLSX maps it to index 22 in object keys due to merged cells/header structure
       const totalKmColumnNames = [
         'Total Km ( TpT)',
         'Total Km (TpT)',
@@ -86,7 +88,7 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
       for (const colName of totalKmColumnNames) {
         const foundCol = columns.find(col => 
           normalizeColumnName(col) === normalizeColumnName(colName) ||
-          col.toLowerCase().includes('total') && col.toLowerCase().includes('km')
+          (col.toLowerCase().includes('total') && col.toLowerCase().includes('km'))
         );
         if (foundCol) {
           columnUName = foundCol;
@@ -95,16 +97,25 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         }
       }
       
-      // If not found by name, try index 20 (Column U)
-      if (!columnUName && columns.length > 20) {
+      // If not found by name, try index 22 (XLSX maps Column U to index 22 in object keys)
+      // This is because XLSX uses the first row as keys, and merged cells shift the mapping
+      if (!columnUName && columns.length > 22) {
+        columnUName = columns[22];
+        console.log(`[ExcelParser] Using Column U (mapped to index 22) by position: "${columnUName}"`);
+        if (!columnUName.toLowerCase().includes('total') || !columnUName.toLowerCase().includes('km')) {
+          console.warn(`[ExcelParser] ⚠️  WARNING: Column at index 22 is "${columnUName}", may not be "Total Km"!`);
+        }
+      } else if (!columnUName && columns.length > 20) {
+        // Fallback to index 20
         columnUName = columns[20];
-        console.log(`[ExcelParser] Using Column U (index 20) by position: "${columnUName}"`);
-        console.warn(`[ExcelParser] ⚠️  WARNING: Column at index 20 is "${columnUName}", not "Total Km"!`);
+        console.log(`[ExcelParser] Using fallback index 20: "${columnUName}"`);
       } else if (!columnUName) {
         console.warn(`[ExcelParser] WARNING: Could not find Total Km column by name or index!`);
       }
       
       // Try to find "Total Cost" column by name
+      // In actual Excel: Column AE (index 30) = "Total Cost_1"
+      // But XLSX maps it to index 30 in object keys
       const totalCostColumnNames = [
         'Total Cost_1',
         'Total Cost',
@@ -115,7 +126,7 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
       for (const colName of totalCostColumnNames) {
         const foundCol = columns.find(col => 
           normalizeColumnName(col) === normalizeColumnName(colName) ||
-          (col.toLowerCase().includes('total') && col.toLowerCase().includes('cost'))
+          (col.toLowerCase().includes('total') && col.toLowerCase().includes('cost') && !col.toLowerCase().includes('loading') && !col.toLowerCase().includes('unload'))
         );
         if (foundCol) {
           columnAEName = foundCol;
@@ -124,10 +135,13 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         }
       }
       
-      // If not found by name, try index 30 (Column AE)
+      // If not found by name, try index 30 (Column AE) - this should be correct
       if (!columnAEName && columns.length > 30) {
         columnAEName = columns[30];
         console.log(`[ExcelParser] Using Column AE (index 30) by position: "${columnAEName}"`);
+        if (!columnAEName.toLowerCase().includes('total') || !columnAEName.toLowerCase().includes('cost')) {
+          console.warn(`[ExcelParser] ⚠️  WARNING: Column at index 30 is "${columnAEName}", may not be "Total Cost"!`);
+        }
       } else if (!columnAEName) {
         console.warn(`[ExcelParser] WARNING: Could not find Total Cost column by name or index!`);
       }
@@ -152,12 +166,16 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
               : 0;
           })();
       
-      // Parse Total Km from Column U (21st column, index 20)
-      // Use column name if available (exactly like September script)
+      // Parse Total Km from Column U (index 20 in Excel, but XLSX maps to index 22 in object keys)
+      // Use column name if available (this is the most reliable method)
       const totalKm = columnUName 
         ? parseNumericValue(row[columnUName])
         : (() => {
             const rowKeys = Object.keys(row);
+            // Try index 22 first (XLSX mapping), then fallback to 20
+            if (rowKeys.length > 22 && rowKeys[22]) {
+              return parseNumericValue(row[rowKeys[22]]);
+            }
             return rowKeys.length > 20 && rowKeys[20] 
               ? parseNumericValue(row[rowKeys[20]]) 
               : 0;
@@ -173,38 +191,61 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         }
       }
       
+      // Get row keys for index-based fallback
+      const rowKeys = Object.keys(row);
+      
       return {
-        sNo: parseNumericValue(row['S.No'] || row['S.No.'] || row['SNo'] || index + 1),
+        sNo: parseNumericValue(row['S.NO'] || row['S.No'] || row['S.No.'] || row['SNo'] || index + 1),
         indentDate: convertToDate(row['Indent Date'] || row['IndentDate'] || row['Indent  Date']),
         indent: String(row['Indent'] || row['INDENT'] || '').trim(),
         allocationDate: convertToDate(row['Allocation Date'] || row['AllocationDate'] || row['Allocation  Date']),
         customerName: String(row['Customer Name'] || row['CustomerName'] || row['Customer  Name'] || '').trim(),
-        location: String(row['Location'] || row['LOCATION'] || '').trim(),
-        vehicleModel: String(row['Vehicle Model'] || row['VehicleModel'] || row['Vehicle  Model'] || '').trim(),
-        vehicleNumber: String(row['Vehicle Number'] || row['VehicleNumber'] || row['Vehicle  Number'] || '').trim(),
-        vehicleBased: String(row['Vehicle Based'] || row['VehicleBased'] || row['Vehicle  Based'] || '').trim(),
-        lrNo: String(row['LR No'] || row['LRNo'] || row['LR  No'] || row['LR No.'] || '').trim(),
-        material: String(row['Material'] || row['MATERIAL'] || '').trim(),
-        loadPerBucket: parseNumericValue(row['Load/Bucket'] || row['Load/Bucket'] || row['Load Per Bucket']),
-        noOfBuckets: parseNumericValue(row['No. of Buckets'] || row['No of Buckets'] || row['No.Of Buckets'] || row['No of Buckets']),
-        totalLoad: parseNumericValue(row['Total Load'] || row['TotalLoad'] || row['Total  Load']),
-        podReceived: String(row['POD Received'] || row['PODReceived'] || row['POD  Received'] || '').trim(),
-        loadingCharge: parseNumericValue(row['Loading Charge'] || row['LoadingCharge'] || row['Loading  Charge']),
-        unloadingCharge: parseNumericValue(row['Unloading Charge'] || row['UnloadingCharge'] || row['Unloading  Charge']),
-        actualRunning: parseNumericValue(row['Actual Running'] || row['ActualRunning'] || row['Actual  Running']),
-        billableRunning: parseNumericValue(row['Billable Running'] || row['BillableRunning'] || row['Billable  Running']),
-        range: normalizeRange(row['Range'] || row['RANGE']),
-        remarks: String(row['Remarks'] || row['REMARKS'] || '').trim(),
-        freightTigerMonth: String(row['Freight Tiger Month'] || row['FreightTigerMonth'] || '').trim(),
-        totalCostAE: totalCostAE, // From Column AE (index 30) - main total cost
+        // Range is at index 5 (Column F) in actual Excel
+        range: normalizeRange(row['Range'] || row['RANGE'] || (rowKeys.length > 7 ? row[rowKeys[7]] : '')),
+        // Location is at index 6 (Column G) in actual Excel
+        location: String(row['Location'] || row['LOCATION'] || (rowKeys.length > 8 ? String(row[rowKeys[8]] || '').trim() : '')).trim(),
+        // Vehicle Number is at index 7 (Column H) in actual Excel - CORRECT
+        vehicleNumber: String(row['Vehicle Number'] || row['VehicleNumber'] || row['Vehicle  Number'] || (rowKeys.length > 9 ? String(row[rowKeys[9]] || '').trim() : '')).trim(),
+        // Vehicle Model is at index 8 (Column I) in actual Excel
+        vehicleModel: String(row['Vehicle Model'] || row['VehicleModel'] || row['Vehicle  Model'] || (rowKeys.length > 10 ? String(row[rowKeys[10]] || '').trim() : '')).trim(),
+        // Vehicle Based is at index 9 (Column J) in actual Excel
+        vehicleBased: String(row['Vehicle Based'] || row['VehicleBased'] || row['Vehicle  Based'] || (rowKeys.length > 11 ? String(row[rowKeys[11]] || '').trim() : '')).trim(),
+        // LR No is at index 10 (Column K) in actual Excel
+        lrNo: String(row['LR No.'] || row['LR No'] || row['LRNo'] || row['LR  No'] || (rowKeys.length > 12 ? String(row[rowKeys[12]] || '').trim() : '')).trim(),
+        // Material is at index 11 (Column L) in actual Excel
+        material: String(row['Material'] || row['MATERIAL'] || (rowKeys.length > 13 ? String(row[rowKeys[13]] || '').trim() : '')).trim(),
+        // Load Per bucket (Kgs) is at index 12 (Column M) in actual Excel
+        loadPerBucket: parseNumericValue(row['Load Per bucket (Kgs)'] || row['Load/Bucket'] || row['Load/Bucket'] || row['Load Per Bucket'] || (rowKeys.length > 14 ? row[rowKeys[14]] : 0)),
+        // No. of Buckets/Barrels is at index 13 (Column N) in actual Excel
+        noOfBuckets: parseNumericValue(row['No. of Buckets/Barrels'] || row['No. of Buckets'] || row['No of Buckets'] || row['No.Of Buckets'] || (rowKeys.length > 15 ? row[rowKeys[15]] : 0)),
+        // T. Load (Kgs) is at index 14 (Column O) in actual Excel
+        totalLoad: parseNumericValue(row['T. Load (Kgs)'] || row['Total Load'] || row['TotalLoad'] || row['Total  Load'] || (rowKeys.length > 16 ? row[rowKeys[16]] : 0)),
+        // POD Received is at index 15 (Column P) in actual Excel
+        podReceived: String(row['POD Received'] || row['PODReceived'] || row['POD  Received'] || (rowKeys.length > 17 ? String(row[rowKeys[17]] || '').trim() : '')).trim(),
+        // Loading Charge - not directly in Excel, may need to calculate or set to 0
+        loadingCharge: parseNumericValue(row['Loading Charge'] || row['LoadingCharge'] || row['Loading  Charge'] || row['Total Cost(Loading)'] || 0),
+        // Unloading Charge - not directly in Excel, may need to calculate or set to 0
+        unloadingCharge: parseNumericValue(row['Unloading Charge'] || row['UnloadingCharge'] || row['Unloading  Charge'] || row['Total cost Unload'] || 0),
+        // Actual Running - not in Excel, set to 0
+        actualRunning: parseNumericValue(row['Actual Running'] || row['ActualRunning'] || row['Actual  Running'] || 0),
+        // Billable Running - not in Excel, set to 0
+        billableRunning: parseNumericValue(row['Billable Running'] || row['BillableRunning'] || row['Billable  Running'] || 0),
+        // Freight Tiger Month is at index 17 (Column R) in actual Excel
+        freightTigerMonth: String(row['Freight Tiger Month'] || row['FreightTigerMonth'] || (rowKeys.length > 19 ? String(row[rowKeys[19]] || '').trim() : '')).trim(),
+        // REMARKS is at index 18 (Column S) in actual Excel
+        remarks: String(row['REMARKS'] || row['Remarks'] || (rowKeys.length > 20 ? String(row[rowKeys[20]] || '').trim() : '')).trim(),
+        // Total Km ( TpT) is at index 20 (Column U) in actual Excel
+        // XLSX maps it to index 22 in object keys due to header structure
+        totalKm: totalKm, // From Column U - Total Km - already parsed above using column name
+        // Total Cost_1 is at index 30 (Column AE) in actual Excel - main total cost
+        totalCostAE: totalCostAE, // Already parsed above
+        // P & L is at index 36 (Column AK) in actual Excel
         profitLoss: (() => {
-          const rowKeys = Object.keys(row);
           if (rowKeys.length > 36 && rowKeys[36]) {
             return parseNumericValue(row[rowKeys[36]]);
           }
           return parseNumericValue(row['P & L'] || row['P&L'] || 0);
         })(),
-        totalKm: totalKm, // From Column U (21st column, index 20) - Total Km
       } as ITrip;
     });
 

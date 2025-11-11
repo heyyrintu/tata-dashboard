@@ -19,7 +19,6 @@ export default function CombinedFinanceTable() {
     barrelCount: number;
     totalCostAE?: number; // From Column AE - main total cost
     profitLoss?: number;
-    totalKm?: number;
   }> | undefined) => {
     if (!rangeData) return [];
     
@@ -45,7 +44,6 @@ export default function CombinedFinanceTable() {
         barrelRate,
         bucketCount: item.bucketCount,
         barrelCount: item.barrelCount,
-        totalKm: Number(item.totalKm) || 0,
         revenue,
         cost,
         profitLoss,

@@ -13,7 +13,6 @@ interface RangeWiseData {
   barrelCount: number;
   totalCostAE: number; // From Column AE - main total cost
   profitLoss: number;
-  totalKm: number; // From Column U (21st column, index 20) - Total Km
 }
 
 interface RangeWiseCalculationResult {
@@ -86,7 +85,6 @@ export async function calculateRangeWiseSummary(
     const totalLoadInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
     const totalCostAEInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
     const profitLossInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
-    const totalKmInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalKm) || 0), 0); // From Column U (21st column, index 20) - includes ALL rows including duplicates
     
     const percentage = totalRows > 0 ? (indentCount / totalRows) * 100 : 0;
     
@@ -109,8 +107,7 @@ export async function calculateRangeWiseSummary(
       bucketCount,
       barrelCount,
       totalCostAE: totalCostAEInRange, // From Column AE
-      profitLoss: profitLossInRange,
-      totalKm: totalKmInRange // From Column U (21st column, index 20)
+      profitLoss: profitLossInRange
     };
   });
   
@@ -129,7 +126,6 @@ export async function calculateRangeWiseSummary(
     const otherTotalLoad = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
     const otherTotalCostAE = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
     const otherProfitLoss = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
-    const otherTotalKm = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalKm) || 0), 0); // From Column U (21st column, index 20) - includes ALL rows including duplicates
     const otherPercentage = totalRows > 0 ? (otherIndentCount / totalRows) * 100 : 0;
     
     let otherBucketCount = 0;
@@ -151,8 +147,7 @@ export async function calculateRangeWiseSummary(
       bucketCount: otherBucketCount,
       barrelCount: otherBarrelCount,
       totalCostAE: otherTotalCostAE, // From Column AE
-      profitLoss: otherProfitLoss,
-      totalKm: otherTotalKm // From Column U (21st column, index 20)
+      profitLoss: otherProfitLoss
     });
   }
   

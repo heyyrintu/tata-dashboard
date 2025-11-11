@@ -1935,4 +1935,39 @@ export const getVehicleCostAnalytics = async (req: Request, res: Response) => {
   }
 };
 
+export const getDetailedTotalKmAnalytics = async (req: Request, res: Response) => {
+  try {
+    console.log(`[getDetailedTotalKmAnalytics] ===== START =====`);
+    const fromDate = parseDateParam(req.query.fromDate as string);
+    const toDate = parseDateParam(req.query.toDate as string);
+    console.log(`[getDetailedTotalKmAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+
+    // Query all trips from database
+    const allTrips = await Trip.find({});
+    console.log(`[getDetailedTotalKmAnalytics] Total trips from DB: ${allTrips.length}`);
+
+    // Calculate detailed total km analysis
+    const { calculateDetailedTotalKmAnalysis } = await import('../utils/detailedTotalKmAnalysis');
+    const analysis = calculateDetailedTotalKmAnalysis(allTrips, fromDate || undefined, toDate || undefined);
+
+    console.log(`[getDetailedTotalKmAnalytics] Analysis complete`);
+    console.log(`[getDetailedTotalKmAnalytics] ===== END =====`);
+
+    res.json({
+      success: true,
+      data: analysis,
+      dateRange: {
+        from: fromDate?.toISOString().split('T')[0] || null,
+        to: toDate?.toISOString().split('T')[0] || null
+      }
+    });
+  } catch (error) {
+    console.error(`[getDetailedTotalKmAnalytics] ERROR:`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch detailed total km analytics'
+    });
+  }
+};
+
 

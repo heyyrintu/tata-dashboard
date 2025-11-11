@@ -49,6 +49,7 @@ app.get('/api', (req, res) => {
           'GET /api/analytics/revenue - Get revenue analytics',
           'GET /api/analytics/cost - Get cost analytics',
           'GET /api/analytics/profit-loss - Get profit/loss analytics',
+          'GET /api/analytics/vehicle-cost - Get vehicle cost analytics',
           'GET /api/analytics/month-on-month - Get month-on-month data',
           'GET /api/analytics/debug/calculations - Debug all calculations',
           'GET /api/analytics/export-all - Export all indents to Excel (with date filter)',

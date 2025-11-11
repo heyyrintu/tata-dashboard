@@ -18,44 +18,8 @@ router.get('/cost', getCostAnalytics);
 router.get('/profit-loss', getProfitLossAnalytics);
 
 // Register vehicle-cost route - MUST be before catch-all '/' route
-console.log('[ROUTES] ========================================');
-console.log('[ROUTES] Registering vehicle-cost route...');
-console.log('[ROUTES] getVehicleCostAnalytics type:', typeof getVehicleCostAnalytics);
-console.log('[ROUTES] getVehicleCostAnalytics exists:', typeof getVehicleCostAnalytics !== 'undefined');
-console.log('[ROUTES] getVehicleCostAnalytics is function:', typeof getVehicleCostAnalytics === 'function');
-
-// Always register the route, even if function check fails (for debugging)
-router.get('/vehicle-cost', async (req, res) => {
-  console.log('[ROUTES] Vehicle-cost route handler called');
-  console.log('[ROUTES] getVehicleCostAnalytics type in handler:', typeof getVehicleCostAnalytics);
-  
-  if (typeof getVehicleCostAnalytics === 'function') {
-    try {
-      await getVehicleCostAnalytics(req, res);
-    } catch (error) {
-      console.error('[ROUTES] Error in getVehicleCostAnalytics:', error);
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-    }
-  } else {
-    console.error('[ROUTES] ✗ CRITICAL: getVehicleCostAnalytics is not a function in handler!');
-    res.status(500).json({
-      success: false,
-      error: 'getVehicleCostAnalytics function not found',
-      debug: {
-        type: typeof getVehicleCostAnalytics,
-        exists: typeof getVehicleCostAnalytics !== 'undefined',
-        importCheck: 'Check backend console for import errors',
-        timestamp: new Date().toISOString()
-      }
-    });
-  }
-});
-
+router.get('/vehicle-cost', getVehicleCostAnalytics);
 console.log('[ROUTES] ✓ Vehicle-cost route registered at /api/analytics/vehicle-cost');
-console.log('[ROUTES] ========================================');
 
 router.get('/debug/calculations', debugCalculations);
 

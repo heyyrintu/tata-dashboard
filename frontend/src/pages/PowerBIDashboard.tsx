@@ -5,8 +5,6 @@ import CostCard from '../components/phase4/CostCard';
 import ProfitLossCard from '../components/phase4/ProfitLossCard';
 import ProfitLossPercentageCard from '../components/phase4/ProfitLossPercentageCard';
 import CombinedFinanceTable from '../components/phase5/CombinedFinanceTable';
-import RangeWiseTotalKmTable from '../components/phase5/RangeWiseTotalKmTable';
-import DetailedTotalKmTable from '../components/phase5/DetailedTotalKmTable';
 import VehicleCostTable from '../components/phase5/VehicleCostTable';
 import RevenueCostOverTimeChart from '../components/phase5/RevenueCostOverTimeChart';
 import ProfitLossOverTimeChart from '../components/phase5/ProfitLossOverTimeChart';
@@ -58,16 +56,6 @@ export default function PowerBIDashboard() {
         {/* Range-Wise Financial Summary - Right after cards */}
         <div className="mb-8">
           <CombinedFinanceTable />
-        </div>
-
-        {/* Range-Wise Total Km Table */}
-        <div className="mb-8">
-          <RangeWiseTotalKmTable />
-        </div>
-
-        {/* Detailed Total KM Analysis Table */}
-        <div className="mb-8">
-          <DetailedTotalKmTable />
         </div>
 
         {/* Vehicle Cost Table */}

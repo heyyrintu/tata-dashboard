@@ -13,7 +13,6 @@ interface RangeWiseData {
   totalCost?: number; // Total cost for this range (deprecated, use totalCostAE)
   totalCostAE?: number; // Total cost from Column AE for this range
   profitLoss?: number; // Profit & Loss for this range
-  totalKm?: number; // Total Km for this range
 }
 
 interface LocationData {
@@ -67,8 +66,6 @@ export const useRangeData = () => {
 
     try {
       const response = await getRangeWiseAnalytics(dateRange.from || undefined, dateRange.to || undefined);
-      // Calculate totalKm from rangeData for debugging
-      const totalKmFromRanges = response.rangeData?.reduce((sum, r) => sum + (r.totalKm || 0), 0) || 0;
       
       console.log('[useRangeData] API Response received:', {
         success: response.success,
@@ -83,16 +80,15 @@ export const useRangeData = () => {
         totalBuckets: response.totalBuckets,
         totalBarrels: response.totalBarrels,
         totalRows: response.totalRows,
-        totalKmFromRanges,
         dateRange: response.dateRange
       });
       
-      // Log sample rangeData with totalKm
+      // Log sample rangeData
       if (response.rangeData && response.rangeData.length > 0) {
-        console.log('[useRangeData] Sample rangeData with totalKm:', response.rangeData.slice(0, 3).map(r => ({
+        console.log('[useRangeData] Sample rangeData:', response.rangeData.slice(0, 3).map(r => ({
           range: r.range,
-          totalKm: r.totalKm,
-          indentCount: r.indentCount
+          indentCount: r.indentCount,
+          totalLoad: r.totalLoad
         })));
       }
       
