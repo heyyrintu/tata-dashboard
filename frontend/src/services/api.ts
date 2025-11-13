@@ -127,20 +127,28 @@ export const uploadExcel = async (file: File): Promise<UploadResponse> => {
   return response.data;
 };
 
+// Helper function to format date as YYYY-MM-DD using local timezone
+const formatDateLocal = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const getAnalytics = async (fromDate?: Date, toDate?: Date): Promise<Analytics> => {
   const params = new URLSearchParams();
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const url = `/analytics${params.toString() ? `?${params.toString()}` : ''}`;
   console.log('[API] getAnalytics called:', {
-    fromDate: fromDate ? fromDate.toISOString().split('T')[0] : 'undefined',
-    toDate: toDate ? toDate.toISOString().split('T')[0] : 'undefined',
+    fromDate: fromDate ? formatDateLocal(fromDate) : 'undefined',
+    toDate: toDate ? formatDateLocal(toDate) : 'undefined',
     url
   });
 
@@ -158,16 +166,16 @@ export const getRangeWiseAnalytics = async (fromDate?: Date, toDate?: Date): Pro
   const params = new URLSearchParams();
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const url = `/analytics/range-wise${params.toString() ? `?${params.toString()}` : ''}`;
   console.log('[API] getRangeWiseAnalytics called:', {
-    fromDate: fromDate ? fromDate.toISOString().split('T')[0] : 'undefined',
-    toDate: toDate ? toDate.toISOString().split('T')[0] : 'undefined',
+    fromDate: fromDate ? formatDateLocal(fromDate) : 'undefined',
+    toDate: toDate ? formatDateLocal(toDate) : 'undefined',
     url
   });
 
@@ -185,10 +193,10 @@ export const getFulfillmentAnalytics = async (fromDate?: Date, toDate?: Date): P
   const params = new URLSearchParams();
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const response = await api.get<FulfillmentResponse>(`/analytics/fulfillment?${params.toString()}`);
@@ -199,10 +207,10 @@ export const exportMissingIndents = async (fromDate?: Date, toDate?: Date): Prom
   const params = new URLSearchParams();
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const response = await api.get(`/analytics/fulfillment/export-missing?${params.toString()}`, {
@@ -216,10 +224,10 @@ export const getLoadOverTime = async (granularity: 'daily' | 'weekly' | 'monthly
   params.append('granularity', granularity);
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const response = await api.get<LoadOverTimeResponse>(`/analytics/load-over-time?${params.toString()}`);
@@ -255,10 +263,10 @@ export const getRevenueAnalytics = async (granularity: 'daily' | 'weekly' | 'mon
   params.append('granularity', granularity);
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const response = await api.get<RevenueAnalyticsResponse>(`/analytics/revenue?${params.toString()}`);
@@ -292,10 +300,10 @@ export const getCostAnalytics = async (granularity: 'daily' | 'weekly' | 'monthl
   params.append('granularity', granularity);
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const response = await api.get<CostAnalyticsResponse>(`/analytics/cost?${params.toString()}`);
@@ -329,10 +337,10 @@ export const getProfitLossAnalytics = async (granularity: 'daily' | 'weekly' | '
   params.append('granularity', granularity);
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const response = await api.get<ProfitLossAnalyticsResponse>(`/analytics/profit-loss?${params.toString()}`);
@@ -392,20 +400,37 @@ export const getMonthlyVehicleCostAnalytics = async (): Promise<MonthlyVehicleCo
   return response.data;
 };
 
+export interface MonthlyMarketVehicleRevenueData {
+  month: string;
+  monthKey: string;
+  revenue: number;
+  cost: number;
+}
+
+export interface MonthlyMarketVehicleRevenueResponse {
+  success: boolean;
+  data: MonthlyMarketVehicleRevenueData[];
+}
+
+export const getMonthlyMarketVehicleRevenue = async (): Promise<MonthlyMarketVehicleRevenueResponse> => {
+  const response = await api.get<MonthlyMarketVehicleRevenueResponse>('/analytics/market-vehicle/revenue/monthly');
+  return response.data;
+};
+
 export const getVehicleCostAnalytics = async (fromDate?: Date, toDate?: Date): Promise<VehicleCostResponse> => {
   const params = new URLSearchParams();
   
   if (fromDate) {
-    params.append('fromDate', fromDate.toISOString().split('T')[0]);
+    params.append('fromDate', formatDateLocal(fromDate));
   }
   if (toDate) {
-    params.append('toDate', toDate.toISOString().split('T')[0]);
+    params.append('toDate', formatDateLocal(toDate));
   }
 
   const url = `/analytics/vehicle-cost${params.toString() ? `?${params.toString()}` : ''}`;
   console.log('[API] getVehicleCostAnalytics called:', {
-    fromDate: fromDate ? fromDate.toISOString().split('T')[0] : 'undefined',
-    toDate: toDate ? toDate.toISOString().split('T')[0] : 'undefined',
+    fromDate: fromDate ? formatDateLocal(fromDate) : 'undefined',
+    toDate: toDate ? formatDateLocal(toDate) : 'undefined',
     url
   });
 

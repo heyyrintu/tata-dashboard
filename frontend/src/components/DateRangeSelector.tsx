@@ -7,7 +7,11 @@ import { cn } from '../lib/utils';
 import { format } from 'date-fns';
 import './DateRangeSelector.css';
 
-export default function DateRangeSelector() {
+interface DateRangeSelectorProps {
+  compact?: boolean;
+}
+
+export default function DateRangeSelector({ compact = false }: DateRangeSelectorProps) {
   const { dateRange, setDateRange } = useDashboard();
   const { theme } = useTheme();
   // Initialize with current month if no date range is set
@@ -34,7 +38,7 @@ export default function DateRangeSelector() {
   const handleMonthChange = (date: Date | null) => {
     if (date) {
       setPendingMonth(date);
-      const startDate = new Date(date.getFullYear(), date.getMonth(), 2); // Start from day 2
+      const startDate = new Date(date.getFullYear(), date.getMonth(), 1); // Start from day 1
       startDate.setHours(0, 0, 0, 0); // Ensure start of day
       const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0); // Last day of month
       endDate.setHours(23, 59, 59, 999); // Set to end of day to include entire last day
@@ -50,25 +54,41 @@ export default function DateRangeSelector() {
       to: pendingTo ? format(pendingTo, 'yyyy-MM-dd') : 'null'
     });
     
-    // Normalize dates to ensure correct boundaries
+    // Validate that both dates are selected
+    if (!pendingFrom || !pendingTo) {
+      console.warn('[DateRangeSelector] Both dates must be selected');
+      return;
+    }
+    
+    // Normalize dates to ensure correct boundaries using local timezone
     let normalizedFrom = pendingFrom;
     let normalizedTo = pendingTo;
     
-    if (normalizedFrom) {
-      normalizedFrom = new Date(normalizedFrom);
-      normalizedFrom.setHours(0, 0, 0, 0); // Start of day
-    }
+    // Create date using local date components to avoid timezone issues
+    const fromYear = normalizedFrom.getFullYear();
+    const fromMonth = normalizedFrom.getMonth();
+    const fromDay = normalizedFrom.getDate();
+    normalizedFrom = new Date(fromYear, fromMonth, fromDay, 0, 0, 0, 0); // Start of day in local time
     
-    if (normalizedTo) {
-      normalizedTo = new Date(normalizedTo);
-      normalizedTo.setHours(23, 59, 59, 999); // End of day
+    const toYear = normalizedTo.getFullYear();
+    const toMonth = normalizedTo.getMonth();
+    const toDay = normalizedTo.getDate();
+    normalizedTo = new Date(toYear, toMonth, toDay, 23, 59, 59, 999); // End of day in local time
+    
+    // Handle same-day selection: if from and to are the same calendar day,
+    // ensure to is after from (even though they're the same day, to should be end of day)
+    if (fromYear === toYear && fromMonth === toMonth && fromDay === toDay) {
+      // Same day selection - from is start of day, to is end of day
+      // This is already handled correctly above
+      console.log('[DateRangeSelector] Same day selected - filtering for single day');
     }
     
     console.log('[DateRangeSelector] Normalized dates:', {
       from: normalizedFrom ? format(normalizedFrom, 'yyyy-MM-dd HH:mm:ss') : 'null',
       to: normalizedTo ? format(normalizedTo, 'yyyy-MM-dd HH:mm:ss') : 'null',
       fromISO: normalizedFrom?.toISOString(),
-      toISO: normalizedTo?.toISOString()
+      toISO: normalizedTo?.toISOString(),
+      isSameDay: fromYear === toYear && fromMonth === toMonth && fromDay === toDay
     });
     
     console.log('[DateRangeSelector] Setting date range in context...');
@@ -82,6 +102,87 @@ export default function DateRangeSelector() {
   };
 
 
+  // Compact version - returns just the inner content (no wrapper)
+  if (compact) {
+    return (
+      <>
+        <div className="relative">
+          <DatePicker
+            selected={pendingFrom}
+            onChange={(date: Date | null) => {
+              setPendingFrom(date);
+              if (date && !pendingTo) {
+                setPendingTo(date);
+              }
+            }}
+            selectsStart
+            startDate={pendingFrom || undefined}
+            endDate={pendingTo || undefined}
+            maxDate={pendingTo || new Date()}
+            className={`px-3 py-1.5 pr-6 rounded-md text-xs font-semibold transition-all duration-300 ${
+              theme === 'light'
+                ? 'bg-white/90 text-gray-900 border-2 border-red-300/50 focus:ring-2 focus:ring-red-500 focus:border-red-500 hover:border-red-400'
+                : 'bg-gray-900/90 border-2 border-yellow-500/30 text-white focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 hover:border-yellow-400'
+            }`}
+            dateFormat="MMM dd"
+            placeholderText="From"
+            portalId="date-picker-portal"
+          />
+        </div>
+        <span className={`text-xs font-semibold ${
+          theme === 'light' ? 'text-red-600' : 'text-yellow-400'
+        }`}>-</span>
+        <div className="relative">
+          <DatePicker
+            selected={pendingTo}
+            onChange={(date: Date | null) => setPendingTo(date)}
+            selectsEnd
+            startDate={pendingFrom || undefined}
+            endDate={pendingTo || undefined}
+            minDate={pendingFrom || undefined}
+            maxDate={new Date()}
+            className={`px-3 py-1.5 pr-6 rounded-md text-xs font-semibold transition-all duration-300 ${
+              theme === 'light'
+                ? 'bg-white/90 text-gray-900 border-2 border-red-300/50 focus:ring-2 focus:ring-red-500 focus:border-red-500 hover:border-red-400'
+                : 'bg-gray-900/90 border-2 border-yellow-500/30 text-white focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 hover:border-yellow-400'
+            }`}
+            dateFormat="MMM dd"
+            placeholderText="To"
+            portalId="date-picker-portal"
+          />
+        </div>
+        <Button
+          onClick={handleApplyFilter}
+          borderRadius="0.5rem"
+          containerClassName="h-auto w-auto transition-all duration-300 hover:scale-105 active:scale-95"
+          className={cn(
+            'px-3 py-1.5 text-xs font-bold whitespace-nowrap transition-all duration-300',
+            isFilterActive
+              ? theme === 'light'
+                ? '!bg-orange-100 !text-[#E01E1F] !border-orange-300 hover:!bg-orange-200'
+                : 'bg-blue-900 text-white border-blue-700 hover:bg-blue-800'
+              : theme === 'light'
+                ? '!bg-white !text-[#FEA519] !border-neutral-200 hover:!bg-orange-50 hover:!text-[#E01E1F]'
+                : 'bg-slate-900 text-white border-slate-800 hover:bg-slate-800'
+          )}
+          borderClassName={cn(
+            'transition-all duration-300',
+            isFilterActive
+              ? theme === 'light'
+                ? 'bg-[radial-gradient(#E01E1F_60%,transparent_40%)]'
+                : 'bg-[radial-gradient(#0ea5e9_60%,transparent_40%)]'
+              : theme === 'light'
+                ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)]'
+                : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)]'
+          )}
+        >
+          Apply
+        </Button>
+      </>
+    );
+  }
+
+  // Full version (original design)
   return (
     <div 
       className={`rounded-2xl mb-6 transition-all duration-300 ${

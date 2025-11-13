@@ -91,7 +91,6 @@ export default function VehicleCostTable() {
   const totalActualKm = fixedVehicles.reduce((sum, item) => sum + (item.actualKm || 0), 0);
   const totalRemainingKm = fixedVehicles.reduce((sum, item) => sum + (item.remainingKm || 0), 0);
   const totalCostForRemainingKm = fixedVehicles.reduce((sum, item) => sum + (item.costForRemainingKm || 0), 0);
-  const totalExtraCost = fixedVehicles.reduce((sum, item) => sum + (item.extraCost || 0), 0);
 
   return gradientWrapper(
     <>
@@ -131,12 +130,6 @@ export default function VehicleCostTable() {
                 Cost for Remaining KM<br />
                 <span className="text-xs font-normal normal-case text-gray-500">(Remaining KM × 31)</span>
               </th>
-              <th className={`text-right py-4 px-6 text-sm font-bold uppercase tracking-wider ${
-                theme === 'light' ? 'text-gray-700' : 'text-gray-800'
-              }`}>
-                Extra Cost<br />
-                <span className="text-xs font-normal normal-case text-gray-500">(155000 - Cost for Remaining KM)</span>
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -175,11 +168,6 @@ export default function VehicleCostTable() {
                   <td className="py-4 px-6 text-right font-semibold text-base text-gray-600">
                     ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(item.costForRemainingKm)}
                   </td>
-                  <td className={`py-4 px-6 text-right font-semibold text-base ${
-                    item.extraCost >= 0 ? 'text-green-600' : 'text-red-600'
-                  }`}>
-                    ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(item.extraCost)}
-                  </td>
                 </tr>
               );
             })}
@@ -208,11 +196,6 @@ export default function VehicleCostTable() {
               </td>
               <td className="py-5 px-6 text-right font-bold text-lg text-gray-600">
                 ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(totalCostForRemainingKm)}
-              </td>
-              <td className={`py-5 px-6 text-right font-bold text-lg ${
-                totalExtraCost >= 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                ₹{new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(totalExtraCost)}
               </td>
             </tr>
           </tbody>

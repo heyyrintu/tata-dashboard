@@ -33,16 +33,16 @@ export default function MonthOnMonthTripsChart() {
   }, [refetch]);
 
   const gradientWrapper = (content: React.ReactNode) => (
-    <div className={`rounded-2xl h-80 ${
+    <div className={`rounded-xl overflow-hidden ${
       theme === 'light' 
-        ? 'p-[2px] shadow-lg' 
-        : 'shadow-xl border border-blue-900/30'
+        ? 'p-[3px] shadow-2xl' 
+        : 'shadow-2xl border border-orange-900/20'
     }`} style={theme === 'light' ? {
-      background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
+      background: 'linear-gradient(135deg, rgba(251, 146, 60, 0.15), rgba(249, 115, 22, 0.15), rgba(234, 88, 12, 0.15))',
+      boxShadow: '0 25px 50px -12px rgba(251, 146, 60, 0.25), 0 0 0 1px rgba(251, 146, 60, 0.05)'
     } : {}}>
-      <div className={`rounded-2xl p-6 h-full flex flex-col ${
-        theme === 'light' ? 'bg-white border-0' : 'bg-white'
+      <div className={`rounded-xl p-8 flex flex-col backdrop-blur-sm transition-all duration-300 ${
+        theme === 'light' ? 'bg-gradient-to-br from-white via-orange-50/30 to-white border-0' : 'bg-white/95'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
       </div>
@@ -115,10 +115,21 @@ export default function MonthOnMonthTripsChart() {
 
   return gradientWrapper(
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-lg font-semibold text-left ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Month on Month Trips</h3>
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="relative">
+            <div className="w-2 h-10 bg-gradient-to-b from-orange-500 via-orange-600 to-orange-700 rounded-full shadow-lg"></div>
+            <div className="absolute inset-0 w-2 h-10 bg-gradient-to-b from-orange-400 to-orange-600 rounded-full opacity-50 blur-sm"></div>
+          </div>
+          <div>
+            <h3 className={`text-2xl font-bold tracking-tight ${
+              theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+            }`}>
+              Month on Month Trips
+            </h3>
+          </div>
+        </div>
+        <div className="h-1.5 w-20 bg-gradient-to-r from-orange-500 via-orange-600 to-orange-700 rounded-full ml-5 shadow-sm"></div>
       </div>
       <div className="flex-1">
         <Bar
@@ -150,7 +161,7 @@ export default function MonthOnMonthTripsChart() {
                 backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                 titleColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                 bodyColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-                borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : '#374151',
+                borderColor: theme === 'light' ? 'rgba(249, 115, 22, 0.4)' : 'rgba(249, 115, 22, 0.4)',
                 borderWidth: 1,
                 cornerRadius: 8,
                 titleFont: {
@@ -185,7 +196,7 @@ export default function MonthOnMonthTripsChart() {
                   color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                 },
                 grid: {
-                  color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(75, 85, 99, 0.3)',
+                  color: theme === 'light' ? 'rgba(249, 115, 22, 0.08)' : 'rgba(249, 115, 22, 0.08)',
                 },
                 beginAtZero: true,
               },

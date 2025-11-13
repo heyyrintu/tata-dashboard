@@ -39,16 +39,16 @@ export default function ProfitLossPercentageOverTimeChart() {
   const error = profitLossError || revenueError;
 
   const gradientWrapper = (content: React.ReactNode) => (
-    <div className={`rounded-2xl h-[368px] ${
+    <div className={`rounded-xl overflow-hidden ${
       theme === 'light' 
-        ? 'p-[2px] shadow-lg' 
-        : 'shadow-xl border border-blue-900/30'
+        ? 'p-[3px] shadow-2xl' 
+        : 'shadow-2xl border border-green-900/20'
     }`} style={theme === 'light' ? {
-      background: 'linear-gradient(to right, rgba(16, 185, 129, 0.35), rgba(239, 68, 68, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2), 0 4px 6px -2px rgba(239, 68, 68, 0.2)'
+      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.15), rgba(239, 68, 68, 0.15))',
+      boxShadow: '0 25px 50px -12px rgba(34, 197, 94, 0.25), 0 0 0 1px rgba(34, 197, 94, 0.05)'
     } : {}}>
-      <div className={`rounded-2xl p-6 h-full flex flex-col ${
-        theme === 'light' ? 'bg-white border-0' : 'bg-white'
+      <div className={`rounded-xl p-8 h-[420px] flex flex-col backdrop-blur-sm transition-all duration-300 ${
+        theme === 'light' ? 'bg-gradient-to-br from-white via-green-50/30 to-white border-0' : 'bg-white/95'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
       </div>
@@ -127,7 +127,8 @@ export default function ProfitLossPercentageOverTimeChart() {
   const allData = profitLossPercentageOverTime.map(item => item.profitLossPercentage);
   const pointColors = allData.map(value => {
     if (value === null || isNaN(value)) return '#9CA3AF'; // Gray for null
-    return value > 0 ? '#10B981' : value < 0 ? '#EF4444' : '#9CA3AF'; // Green for positive, Red for negative, Gray for zero
+    // Green for values >= 0, Red for values < 0
+    return value >= 0 ? '#22C55E' : '#EF4444';
   });
 
   // Create segments for the line - split into profit (green) and loss (red) segments
@@ -138,32 +139,93 @@ export default function ProfitLossPercentageOverTimeChart() {
       {
         label: 'Profit & Loss %',
         data: allData,
-        borderWidth: 2,
-        fill: true,
+        borderWidth: 3,
+        fill: 'origin', // Fill to zero baseline
         tension: 0.4,
         pointBackgroundColor: pointColors,
         pointBorderColor: '#ffffff',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
+        pointBorderWidth: 3,
+        pointRadius: 5,
+        pointHoverRadius: 7,
+        pointHoverBorderWidth: 3,
         segment: {
           borderColor: (ctx: any) => {
-            // Get the value of the current segment's end point
-            const value = ctx.p1?.parsed?.y;
-            if (value === null || value === undefined || isNaN(value)) return '#9CA3AF';
-            // Green for values above 0, red for values below 0
-            return value > 0 ? '#10B981' : value < 0 ? '#EF4444' : '#9CA3AF';
+            // Get both start and end point values
+            const startValue = ctx.p0?.parsed?.y;
+            const endValue = ctx.p1?.parsed?.y;
+            
+            // If either value is invalid, return gray
+            if (startValue === null || startValue === undefined || isNaN(startValue) ||
+                endValue === null || endValue === undefined || isNaN(endValue)) {
+              return '#9CA3AF';
+            }
+            
+            // If both points are above or equal to zero, use green
+            // If both points are below zero, use red
+            // If segment crosses zero, use the end point value
+            if (startValue >= 0 && endValue >= 0) {
+              return '#22C55E'; // Green for entirely above zero
+            } else if (startValue < 0 && endValue < 0) {
+              return '#EF4444'; // Red for entirely below zero
+            } else {
+              // Segment crosses zero - use end point color
+              return endValue >= 0 ? '#22C55E' : '#EF4444';
+            }
           },
           backgroundColor: (ctx: any) => {
-            // Get the value of the current segment's end point for fill color
-            const value = ctx.p1?.parsed?.y;
-            if (value === null || value === undefined || isNaN(value)) return 'rgba(156, 163, 175, 0.2)';
-            // Green fill for positive values, red fill for negative values
-            return value > 0 ? 'rgba(16, 185, 129, 0.3)' : value < 0 ? 'rgba(239, 68, 68, 0.3)' : 'rgba(156, 163, 175, 0.2)';
+            // Get both start and end point values
+            const startValue = ctx.p0?.parsed?.y;
+            const endValue = ctx.p1?.parsed?.y;
+            
+            // If either value is invalid, return gray
+            if (startValue === null || startValue === undefined || isNaN(startValue) ||
+                endValue === null || endValue === undefined || isNaN(endValue)) {
+              return 'rgba(156, 163, 175, 0.2)';
+            }
+            
+            // If both points are above or equal to zero, use green fill
+            // If both points are below zero, use red fill
+            // If segment crosses zero, use the end point value
+            if (startValue >= 0 && endValue >= 0) {
+              return 'rgba(34, 197, 94, 0.3)'; // Green fill for entirely above zero
+            } else if (startValue < 0 && endValue < 0) {
+              return 'rgba(239, 68, 68, 0.3)'; // Red fill for entirely below zero
+            } else {
+              // Segment crosses zero - use end point color
+              return endValue >= 0 ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)';
+            }
           }
         }
       },
     ],
+  };
+
+  // Plugin to draw zero baseline
+  const zeroLinePlugin = {
+    id: 'zeroLine',
+    afterDatasetsDraw: (chart: any) => {
+      const ctx = chart.ctx;
+      const chartArea = chart.chartArea;
+      const yScale = chart.scales.y;
+      
+      if (!chartArea || !yScale) return;
+      
+      // Find the y position of zero
+      const zeroY = yScale.getPixelForValue(0);
+      
+      // Only draw if zero is within the chart area
+      if (zeroY >= chartArea.top && zeroY <= chartArea.bottom) {
+        ctx.save();
+        ctx.strokeStyle = '#9CA3AF'; // Gray color for baseline
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([]); // Solid line for baseline
+        ctx.beginPath();
+        ctx.moveTo(chartArea.left, zeroY);
+        ctx.lineTo(chartArea.right, zeroY);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
   };
 
   // Plugin to display values above points
@@ -178,14 +240,20 @@ export default function ProfitLossPercentageOverTimeChart() {
           // Show value if it's not null and not zero
           if (value !== null && !isNaN(value) && Math.abs(value) > 0) {
             ctx.save();
-            // Green for values above 0, red for values below 0
-            const isProfit = value > 0;
-            ctx.fillStyle = isProfit ? 'rgba(16, 185, 129, 0.8)' : 'rgba(239, 68, 68, 0.8)';
-            ctx.font = 'bold 14px sans-serif';
+            
+            // Text with shadow for better visibility
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            ctx.fillStyle = '#6B7280';
+            ctx.font = 'bold 13px Inter, system-ui, sans-serif';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
             const formattedValue = formatProfitLossPercentage(value);
             ctx.fillText(formattedValue, point.x, point.y - 8);
+            
             ctx.restore();
           }
         });
@@ -193,106 +261,168 @@ export default function ProfitLossPercentageOverTimeChart() {
     }
   };
 
+  // Determine overall trend for header color
+  const totalPL = profitLossPercentageOverTime.reduce((sum, item) => sum + (item.profitLossPercentage || 0), 0);
+  const isOverallProfit = totalPL >= 0;
+
   const chartOptions = {
     responsive: true,
     maintainAspectRatio: false,
+    animation: {
+      duration: 1200,
+      easing: 'easeOutQuart' as any,
+    },
     interaction: {
       mode: 'index' as const,
       intersect: false,
     },
     plugins: {
       legend: {
-        display: true,
-        position: 'top' as const,
-        labels: {
-          boxWidth: 8,
-          font: { 
-            size: 14,
-            weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
-          },
-          padding: 5,
-          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
-        }
+        display: false,
       },
       tooltip: {
-        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-        titleColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-        bodyColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-        borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : '#374151',
-        borderWidth: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        titleColor: '#111827',
+        bodyColor: '#374151',
+        borderColor: isOverallProfit ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)',
+        borderWidth: 2,
         cornerRadius: 8,
+        padding: 16,
         titleFont: {
-          size: 14,
-          weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
+          size: 15,
+          weight: 'bold',
+          family: 'Inter, system-ui, sans-serif',
         },
         bodyFont: {
           size: 14,
-          weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
+          weight: '600',
+          family: 'Inter, system-ui, sans-serif',
         },
         callbacks: {
+          title: (context: any) => {
+            return `📅 ${context[0].label}`;
+          },
           label: function(context: any) {
             const value = context.parsed.y;
             if (value === null || isNaN(value)) {
-              return 'Profit & Loss %: N/A';
+              return 'P & L %: N/A';
             }
             const formatted = formatProfitLossPercentage(value);
-            // Green for values above 0, red for values below 0
             const isProfit = value > 0;
-            return `Profit & Loss %: ${formatted} ${isProfit ? '(Profit)' : value < 0 ? '(Loss)' : '(Neutral)'}`;
+            const icon = isProfit ? '📈' : '📉';
+            return `${icon} P & L %: ${formatted} ${isProfit ? '(Profit)' : value < 0 ? '(Loss)' : '(Neutral)'}`;
           }
-        }
+        },
+        displayColors: false,
+        boxPadding: 8,
       },
     },
     scales: {
       x: {
         ticks: {
-          font: { 
-            size: 14,
-            weight: theme === 'light' ? ('bold' as const) : ('normal' as const),
+          font: {
+            size: 12,
+            weight: '600',
+            family: 'Inter, system-ui, sans-serif',
           },
-          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-          maxRotation: 0
+          color: '#6B7280',
+          maxRotation: 0,
+          minRotation: 0,
+          padding: 12,
         },
         grid: {
-          display: false
+          display: false,
+        },
+        border: {
+          display: true,
+          color: '#E5E7EB',
+          width: 1.5,
+          dash: [5, 5],
         }
       },
       y: {
+        beginAtZero: false, // Allow negative values
         ticks: {
-          font: { 
-            size: 14,
-            weight: theme === 'light' ? (600 as const) : ('normal' as const),
+          font: {
+            size: 11,
+            weight: '600',
+            family: 'Inter, system-ui, sans-serif',
           },
-          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
+          color: '#6B7280',
           callback: function(value: any) {
             const numValue = Number(value);
             if (isNaN(numValue)) {
               return 'N/A';
             }
             return formatProfitLossPercentage(numValue);
-          }
+          },
+          padding: 10,
         },
         grid: {
-          color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
+          color: (context: any) => {
+            // Draw gray line at zero, colored lines elsewhere
+            if (context.tick && context.tick.value === 0) {
+              return '#9CA3AF'; // Gray for zero line
+            }
+            return isOverallProfit ? 'rgba(34, 197, 94, 0.08)' : 'rgba(239, 68, 68, 0.08)';
+          },
+          lineWidth: (context: any) => {
+            // Thicker line at zero
+            if (context.tick && context.tick.value === 0) {
+              return 1.5;
+            }
+            return 1.5;
+          },
+          drawBorder: false,
+          drawTicks: false,
         },
-        beginAtZero: false, // Allow negative values
+        border: {
+          display: true,
+          color: '#E5E7EB',
+          width: 1.5,
+        }
       },
     },
   };
 
   return gradientWrapper(
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-xl font-semibold text-left ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Monthly P & L ( In percentage )</h3>
-        <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className={`w-2 h-10 bg-gradient-to-b rounded-full shadow-lg ${
+                isOverallProfit 
+                  ? 'from-green-500 via-green-600 to-green-700' 
+                  : 'from-red-500 via-red-600 to-red-700'
+              }`}></div>
+              <div className={`absolute inset-0 w-2 h-10 bg-gradient-to-b rounded-full opacity-50 blur-sm ${
+                isOverallProfit 
+                  ? 'from-green-400 to-green-600' 
+                  : 'from-red-400 to-red-600'
+              }`}></div>
+            </div>
+            <div>
+              <h3 className={`text-2xl font-bold tracking-tight ${
+                theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+              }`}>
+                Monthly P & L ( In percentage )
+              </h3>
+            </div>
+          </div>
+          <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
+        </div>
+        <div className={`h-1.5 w-20 bg-gradient-to-r rounded-full ml-5 shadow-sm ${
+          isOverallProfit 
+            ? 'from-green-500 via-green-600 to-green-700' 
+            : 'from-red-500 via-red-600 to-red-700'
+        }`}></div>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         <Line
           data={chartData}
           options={chartOptions}
-          plugins={[valuePlugin]}
+          plugins={[zeroLinePlugin, valuePlugin]}
         />
       </div>
     </>

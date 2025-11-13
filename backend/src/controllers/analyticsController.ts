@@ -1763,19 +1763,24 @@ export const getMonthlyVehicleCostAnalytics = async (req: Request, res: Response
       'HR38AC0263'
     ];
     
-    const FIXED_KM = 5000;
-    const KM_COST_RATE = 31;
-    
-    // Group trips by month (using Freight Tiger Month if available, else indentDate)
-    const monthlyData: Record<string, { actualKm: number; costForRemainingKm: number }> = {};
-    
-    // Filter trips for fixed vehicles only
+    // Filter trips for fixed vehicles (for Monthly Actual KM chart)
     const fixedVehicleTrips = allTrips.filter(trip => {
       const tripVehicle = String(trip.vehicleNumber || '').trim().toUpperCase();
       return FIXED_VEHICLES.some(fixed => fixed.toUpperCase() === tripVehicle);
     });
     
-    // Group by month
+    // Filter trips where Vehicle Based = 'Market' (for Monthly Extra Vehicle Cost chart)
+    const marketTrips = allTrips.filter(trip => {
+      const vehicleBased = String(trip.vehicleBased || '').trim();
+      return vehicleBased.toUpperCase() === 'MARKET';
+    });
+    
+    console.log(`[getMonthlyVehicleCostAnalytics] Total trips: ${allTrips.length}, Fixed vehicle trips: ${fixedVehicleTrips.length}, Market trips: ${marketTrips.length}`);
+    
+    // Group trips by month (using Freight Tiger Month if available, else indentDate)
+    const monthlyData: Record<string, { actualKm: number; totalCost: number }> = {};
+    
+    // Process fixed vehicle trips for actualKm (Monthly Actual KM chart)
     for (const trip of fixedVehicleTrips) {
       let monthKey: string;
       
@@ -1794,18 +1799,36 @@ export const getMonthlyVehicleCostAnalytics = async (req: Request, res: Response
       }
       
       if (!monthlyData[monthKey]) {
-        monthlyData[monthKey] = { actualKm: 0, costForRemainingKm: 0 };
+        monthlyData[monthKey] = { actualKm: 0, totalCost: 0 };
       }
       
+      // Sum totalKm for this month (for Monthly Actual KM chart)
       const totalKm = Number(trip.totalKm) || 0;
       monthlyData[monthKey].actualKm += totalKm;
     }
     
-    // Calculate costForRemainingKm for each month
-    for (const monthKey in monthlyData) {
-      const actualKm = monthlyData[monthKey].actualKm;
-      const remainingKm = (FIXED_KM * FIXED_VEHICLES.length) - actualKm; // Total fixed KM for all vehicles
-      monthlyData[monthKey].costForRemainingKm = remainingKm * KM_COST_RATE;
+    // Process market trips for totalCost (Monthly Extra Vehicle Cost chart)
+    // Use Allocation Date (column D) for grouping Market trips
+    for (const trip of marketTrips) {
+      // Use allocationDate for Monthly Market Vehicle Cost chart
+      const allocationDate = trip.allocationDate ? new Date(trip.allocationDate) : null;
+      let monthKey: string;
+      
+      if (allocationDate && !isNaN(allocationDate.getTime())) {
+        // Group by month from allocationDate
+        monthKey = format(allocationDate, 'yyyy-MM');
+      } else {
+        // Fallback to indentDate if allocationDate is not available
+        monthKey = format(new Date(trip.indentDate), 'yyyy-MM');
+      }
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { actualKm: 0, totalCost: 0 };
+      }
+      
+      // Sum totalCostAE for this month (for Monthly Extra Vehicle Cost chart)
+      const totalCost = Number(trip.totalCostAE) || 0;
+      monthlyData[monthKey].totalCost += totalCost;
     }
     
     // Convert to array and format labels
@@ -1818,10 +1841,15 @@ export const getMonthlyVehicleCostAnalytics = async (req: Request, res: Response
       return {
         month: monthLabel,
         monthKey: key,
-        actualKm: monthlyData[key].actualKm,
-        costForRemainingKm: monthlyData[key].costForRemainingKm
+        actualKm: monthlyData[key].actualKm, // For Monthly Actual KM chart (fixed vehicles)
+        costForRemainingKm: monthlyData[key].totalCost // For Monthly Extra Vehicle Cost chart (Market trips)
       };
     });
+    
+    console.log(`[getMonthlyVehicleCostAnalytics] Monthly data points: ${result.length}`);
+    if (result.length > 0) {
+      console.log(`[getMonthlyVehicleCostAnalytics] Sample: ${result[0].month} - Actual KM: ${result[0].actualKm.toLocaleString('en-IN')} km, Total Cost: ₹${result[0].costForRemainingKm.toLocaleString('en-IN')}`);
+    }
     
     res.json({
       success: true,
@@ -1832,6 +1860,108 @@ export const getMonthlyVehicleCostAnalytics = async (req: Request, res: Response
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch monthly vehicle cost analytics'
+    });
+  }
+};
+
+export const getMonthlyMarketVehicleRevenue = async (req: Request, res: Response) => {
+  try {
+    const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    
+    // Bucket rates by range
+    const BUCKET_RATES: Record<string, number> = {
+      '0-100Km': 21,
+      '101-250Km': 40,
+      '251-400Km': 68,
+      '401-600Km': 105
+    };
+    
+    // Barrel rates by range
+    const BARREL_RATES: Record<string, number> = {
+      '0-100Km': 220.5,
+      '101-250Km': 420,
+      '251-400Km': 714,
+      '401-600Km': 1081.5
+    };
+    
+    // Filter trips where Vehicle Based = 'Market'
+    const marketTrips = allTrips.filter(trip => {
+      const vehicleBased = String(trip.vehicleBased || '').trim();
+      return vehicleBased.toUpperCase() === 'MARKET';
+    });
+    
+    console.log(`[getMonthlyMarketVehicleRevenue] Total trips: ${allTrips.length}, Market trips: ${marketTrips.length}`);
+    
+    // Group trips by month using Allocation Date (column D)
+    // Include both cost and revenue in the same data structure
+    const monthlyData: Record<string, { revenue: number; cost: number }> = {};
+    
+    // Process market trips for both revenue and cost calculation
+    for (const trip of marketTrips) {
+      // Use allocationDate for Monthly Market Vehicle Revenue chart
+      const allocationDate = trip.allocationDate ? new Date(trip.allocationDate) : null;
+      let monthKey: string;
+      
+      if (allocationDate && !isNaN(allocationDate.getTime())) {
+        // Group by month from allocationDate
+        monthKey = format(allocationDate, 'yyyy-MM');
+      } else {
+        // Fallback to indentDate if allocationDate is not available
+        monthKey = format(new Date(trip.indentDate), 'yyyy-MM');
+      }
+      
+      if (!monthlyData[monthKey]) {
+        monthlyData[monthKey] = { revenue: 0, cost: 0 };
+      }
+      
+      // Calculate revenue: (Bucket Count × Bucket Rate) + (Barrel Count × Barrel Rate)
+      const indentRange = trip.range || '';
+      const count = Number(trip.noOfBuckets) || 0;
+      const material = String(trip.material || '').trim();
+      
+      let revenue = 0;
+      if (material === '20L Buckets') {
+        revenue = count * (BUCKET_RATES[indentRange] || 0);
+      } else if (material === '210L Barrels') {
+        revenue = count * (BARREL_RATES[indentRange] || 0);
+      }
+      
+      // Calculate cost: totalCostAE
+      const cost = Number(trip.totalCostAE) || 0;
+      
+      monthlyData[monthKey].revenue += revenue;
+      monthlyData[monthKey].cost += cost;
+    }
+    
+    // Convert to array and format labels
+    const sortedKeys = Object.keys(monthlyData).sort();
+    const result = sortedKeys.map(key => {
+      const [year, month] = key.split('-');
+      const monthDate = new Date(parseInt(year), parseInt(month) - 1, 1);
+      const monthLabel = format(monthDate, "MMM''yy");
+      
+      return {
+        month: monthLabel,
+        monthKey: key,
+        revenue: monthlyData[key].revenue,
+        cost: monthlyData[key].cost
+      };
+    });
+    
+    console.log(`[getMonthlyMarketVehicleRevenue] Monthly data points: ${result.length}`);
+    if (result.length > 0) {
+      console.log(`[getMonthlyMarketVehicleRevenue] Sample: ${result[0].month} - Revenue: ₹${result[0].revenue.toLocaleString('en-IN')}, Cost: ₹${result[0].cost.toLocaleString('en-IN')}`);
+    }
+    
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error(`[getMonthlyMarketVehicleRevenue] ERROR:`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch monthly market vehicle revenue'
     });
   }
 };

@@ -35,16 +35,16 @@ export default function RevenueCostOverTimeChart() {
   const error = revenueError || costError;
 
   const gradientWrapper = (content: React.ReactNode) => (
-    <div className={`rounded-2xl h-[368px] ${
+    <div className={`rounded-xl overflow-hidden ${
       theme === 'light' 
-        ? 'p-[2px] shadow-lg' 
-        : 'shadow-xl border border-blue-900/30'
+        ? 'p-[3px] shadow-2xl' 
+        : 'shadow-2xl border border-green-900/20'
     }`} style={theme === 'light' ? {
-      background: 'linear-gradient(to right, rgba(16, 185, 129, 0.35), rgba(239, 68, 68, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(16, 185, 129, 0.2), 0 4px 6px -2px rgba(239, 68, 68, 0.2)'
+      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15), rgba(5, 150, 105, 0.15), rgba(239, 68, 68, 0.15))',
+      boxShadow: '0 25px 50px -12px rgba(16, 185, 129, 0.25), 0 0 0 1px rgba(16, 185, 129, 0.05)'
     } : {}}>
-      <div className={`rounded-2xl p-6 h-full flex flex-col ${
-        theme === 'light' ? 'bg-white border-0' : 'bg-white'
+      <div className={`rounded-xl p-8 h-[420px] flex flex-col backdrop-blur-sm transition-all duration-300 ${
+        theme === 'light' ? 'bg-gradient-to-br from-white via-green-50/30 to-white border-0' : 'bg-white/95'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
       </div>
@@ -135,15 +135,23 @@ export default function RevenueCostOverTimeChart() {
     return dateA.getTime() - dateB.getTime();
   });
 
-  // Create gradient colors function
-  const createGradient = (ctx: CanvasRenderingContext2D, chartArea: any, colorStops: string[]) => {
-    if (!chartArea) {
-      return colorStops[0];
-    }
+  // Create beautiful gradient for Revenue bars
+  const createRevenueGradient = (ctx: CanvasRenderingContext2D, chartArea: any) => {
+    if (!chartArea) return 'rgba(16, 185, 129, 0.8)';
     const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-    colorStops.forEach((color, index) => {
-      gradient.addColorStop(index / (colorStops.length - 1), color);
-    });
+    gradient.addColorStop(0, 'rgba(5, 150, 105, 0.8)'); // Darker green at bottom
+    gradient.addColorStop(0.5, 'rgba(16, 185, 129, 0.85)'); // Mid green
+    gradient.addColorStop(1, 'rgba(34, 197, 94, 0.9)'); // Lighter green at top
+    return gradient;
+  };
+
+  // Create beautiful gradient for Cost bars
+  const createCostGradient = (ctx: CanvasRenderingContext2D, chartArea: any) => {
+    if (!chartArea) return 'rgba(239, 68, 68, 0.8)';
+    const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+    gradient.addColorStop(0, 'rgba(220, 38, 38, 0.8)'); // Darker red at bottom
+    gradient.addColorStop(0.5, 'rgba(239, 68, 68, 0.85)'); // Mid red
+    gradient.addColorStop(1, 'rgba(248, 113, 113, 0.9)'); // Lighter red at top
     return gradient;
   };
 
@@ -156,17 +164,19 @@ export default function RevenueCostOverTimeChart() {
         backgroundColor: (context: any) => {
           const chart = context.chart;
           const { ctx, chartArea } = chart;
-          if (!chartArea) {
-            return 'rgba(16, 185, 129, 0.5)';
-          }
-          return createGradient(ctx, chartArea, [
-            'rgba(16, 185, 129, 0.5)', // Light green - 50% opacity
-            'rgba(5, 150, 105, 0.5)', // Medium green - 50% opacity
-            'rgba(4, 120, 87, 0.5)'  // Dark green - 50% opacity
-          ]);
+          if (!chartArea) return 'rgba(16, 185, 129, 0.8)';
+          return createRevenueGradient(ctx, chartArea);
         },
-        borderColor: 'rgba(4, 120, 87, 0.7)', // Dark green - 70% opacity
-        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderWidth: 0,
+        borderRadius: {
+          topLeft: 6,
+          topRight: 6,
+          bottomLeft: 0,
+          bottomRight: 0,
+        },
+        borderSkipped: false,
+        maxBarThickness: 60,
       },
       {
         label: 'Cost',
@@ -174,19 +184,29 @@ export default function RevenueCostOverTimeChart() {
         backgroundColor: (context: any) => {
           const chart = context.chart;
           const { ctx, chartArea } = chart;
-          if (!chartArea) {
-            return 'rgba(239, 68, 68, 0.5)';
-          }
-          return createGradient(ctx, chartArea, [
-            'rgba(248, 113, 113, 0.5)', // Light red - 50% opacity
-            'rgba(239, 68, 68, 0.5)', // Medium red - 50% opacity
-            'rgba(220, 38, 38, 0.5)'  // Dark red - 50% opacity
-          ]);
+          if (!chartArea) return 'rgba(239, 68, 68, 0.8)';
+          return createCostGradient(ctx, chartArea);
         },
-        borderColor: 'rgba(220, 38, 38, 0.7)', // Dark red - 70% opacity
-        borderWidth: 2,
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderWidth: 0,
+        borderRadius: {
+          topLeft: 6,
+          topRight: 6,
+          bottomLeft: 0,
+          bottomRight: 0,
+        },
+        borderSkipped: false,
+        maxBarThickness: 60,
       },
     ],
+  };
+
+  const formatLakh = (value: number): string => {
+    if (value >= 100000) {
+      const lakhs = value / 100000;
+      return lakhs.toFixed(2).replace(/\.00$/, '').replace(/\.(\d)0$/, '.$1') + ' L';
+    }
+    return new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(value);
   };
 
   // Plugin to display values above bars
@@ -201,18 +221,19 @@ export default function RevenueCostOverTimeChart() {
           // Only show value if it's greater than 0
           if (value > 0) {
             ctx.save();
-            ctx.fillStyle = datasetIndex === 0 
-              ? 'rgba(5, 150, 105, 0.9)' // Green for Revenue
-              : 'rgba(220, 38, 38, 0.9)'; // Red for Cost
-            ctx.font = 'bold 14px sans-serif';
-            ctx.textAlign = 'center';
-            const lakhs = value / 100000;
-            const formattedValue = `${lakhs.toFixed(1)} L`;
             
-            // Position label at the top of the bar
-            const yPosition = bar.y < 0 ? bar.y - 8 : bar.y - 8;
+            // Text with shadow for better visibility
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            ctx.fillStyle = '#6B7280';
+            ctx.font = 'bold 13px Inter, system-ui, sans-serif';
+            ctx.textAlign = 'center';
             ctx.textBaseline = 'bottom';
-            ctx.fillText(`₹${formattedValue}`, bar.x, yPosition);
+            ctx.fillText(formatLakh(value), bar.x, bar.y - 8);
+            
             ctx.restore();
           }
         });
@@ -227,92 +248,121 @@ export default function RevenueCostOverTimeChart() {
       mode: 'index' as const,
       intersect: false,
     },
+    animation: {
+      duration: 1200,
+      easing: 'easeOutQuart' as any,
+    },
     plugins: {
       legend: {
-        display: true,
-        position: 'top' as const,
-        align: 'end' as const,
-        labels: {
-          boxWidth: 8,
-          font: { 
-            size: 14,
-            weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
-          },
-          padding: 5,
-          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a'
-        }
+        display: false,
       },
       tooltip: {
-        backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-        titleColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-        bodyColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-        borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : '#374151',
-        borderWidth: 1,
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
+        titleColor: '#111827',
+        bodyColor: '#374151',
+        borderColor: 'rgba(16, 185, 129, 0.4)',
+        borderWidth: 2,
         cornerRadius: 8,
+        padding: 16,
         titleFont: {
-          size: 14,
-          weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
+          size: 15,
+          weight: 'bold',
+          family: 'Inter, system-ui, sans-serif',
         },
         bodyFont: {
           size: 14,
-          weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
+          weight: '600',
+          family: 'Inter, system-ui, sans-serif',
         },
         callbacks: {
-          label: function(context: any) {
+          title: (context: any) => {
+            return `📅 ${context[0].label}`;
+          },
+          label: (context: any) => {
             const label = context.dataset.label || '';
             const value = context.parsed.y || 0;
-            const lakhs = value / 100000;
-            return `${label}: ₹${lakhs.toFixed(1)} L`;
+            const icon = label === 'Revenue' ? '💰' : '💸';
+            return `${icon} ${label}: ₹${formatLakh(value)}`;
           }
-        }
+        },
+        displayColors: true,
+        boxPadding: 8,
       },
     },
     scales: {
       x: {
         ticks: {
-          font: { 
-            size: 14,
-            weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
+          font: {
+            size: 12,
+            weight: '600',
+            family: 'Inter, system-ui, sans-serif',
           },
-          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-          maxRotation: 0
+          color: '#6B7280',
+          maxRotation: 0,
+          minRotation: 0,
+          padding: 12,
         },
         grid: {
-          display: false
+          display: false,
         },
-        stacked: false,
+        border: {
+          display: true,
+          color: '#E5E7EB',
+          width: 1.5,
+          dash: [5, 5],
+        }
       },
       y: {
+        beginAtZero: true,
         ticks: {
-          font: { 
-            size: 14,
-            weight: (theme === 'light' ? 600 : 'normal') as number | 'normal',
+          font: {
+            size: 11,
+            weight: '600',
+            family: 'Inter, system-ui, sans-serif',
           },
-          color: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-          callback: function(value: any) {
-            const numValue = Number(value);
-            const lakhs = numValue / 100000;
-            return `${lakhs.toFixed(1)} L`;
-          }
+          color: '#6B7280',
+          callback: (value: any) => {
+            return formatLakh(value);
+          },
+          padding: 10,
         },
         grid: {
-          color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
+          color: 'rgba(16, 185, 129, 0.08)',
+          lineWidth: 1.5,
+          drawBorder: false,
+          drawTicks: false,
         },
-        beginAtZero: true,
-        stacked: false,
+        border: {
+          display: true,
+          color: '#E5E7EB',
+          width: 1.5,
+        }
       },
     },
   };
 
   return gradientWrapper(
     <>
-      <div className="flex justify-between items-center mb-4">
-        <h3 className={`text-xl font-semibold text-left ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Revenue & Cost Over Time</h3>
-        <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <div className="w-2 h-10 bg-gradient-to-b from-green-500 via-green-600 to-green-700 rounded-full shadow-lg"></div>
+              <div className="absolute inset-0 w-2 h-10 bg-gradient-to-b from-green-400 to-green-600 rounded-full opacity-50 blur-sm"></div>
+            </div>
+            <div>
+              <h3 className={`text-2xl font-bold tracking-tight ${
+                theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+              }`}>
+                Revenue & Cost Over Time
+              </h3>
+            </div>
+          </div>
+          <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
+        </div>
+        <div className="h-1.5 w-20 bg-gradient-to-r from-green-500 via-green-600 to-green-700 rounded-full ml-5 shadow-sm"></div>
       </div>
-      <div className="flex-1">
+      <div className="flex-1 min-h-0">
         <Bar
           data={chartData}
           options={chartOptions}

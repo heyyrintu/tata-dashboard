@@ -11,7 +11,7 @@ import {
 import { Bar } from 'react-chartjs-2';
 import { useTheme } from '../../context/ThemeContext';
 import { LoadingSpinner } from '../LoadingSpinner';
-import { getMonthlyVehicleCostAnalytics, type MonthlyVehicleCostResponse } from '../../services/api';
+import { getMonthlyMarketVehicleRevenue, type MonthlyMarketVehicleRevenueResponse } from '../../services/api';
 
 ChartJS.register(
   CategoryScale,
@@ -22,9 +22,9 @@ ChartJS.register(
   Legend
 );
 
-export default function MonthlyExtraVehicleCostChart() {
+export default function MonthlyMarketVehicleRevenueChart() {
   const { theme } = useTheme();
-  const [data, setData] = React.useState<MonthlyVehicleCostResponse | null>(null);
+  const [data, setData] = React.useState<MonthlyMarketVehicleRevenueResponse | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
 
@@ -33,7 +33,7 @@ export default function MonthlyExtraVehicleCostChart() {
       setLoading(true);
       setError(null);
       try {
-        const response = await getMonthlyVehicleCostAnalytics();
+        const response = await getMonthlyMarketVehicleRevenue();
         setData(response);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to fetch data');
@@ -90,13 +90,23 @@ export default function MonthlyExtraVehicleCostChart() {
     );
   }
 
-  // Create beautiful gradient for bars
+  // Create beautiful gradient for revenue bars (green)
   const createGradient = (ctx: CanvasRenderingContext2D, chartArea: any) => {
+    if (!chartArea) return 'rgba(34, 197, 94, 0.8)';
     const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
-    gradient.addColorStop(0, 'rgba(234, 88, 12, 1)');
-    gradient.addColorStop(0.3, 'rgba(220, 38, 38, 0.95)');
-    gradient.addColorStop(0.7, 'rgba(185, 28, 28, 0.9)');
-    gradient.addColorStop(1, 'rgba(153, 27, 27, 0.85)');
+    gradient.addColorStop(0, 'rgba(22, 163, 74, 0.8)'); // Darker green at bottom
+    gradient.addColorStop(0.5, 'rgba(34, 197, 94, 0.85)'); // Mid green
+    gradient.addColorStop(1, 'rgba(74, 222, 128, 0.9)'); // Lighter green at top
+    return gradient;
+  };
+
+  // Create gradient for cost bars (red)
+  const createCostGradient = (ctx: CanvasRenderingContext2D, chartArea: any) => {
+    if (!chartArea) return 'rgba(220, 38, 38, 0.8)';
+    const gradient = ctx.createLinearGradient(0, chartArea.bottom, 0, chartArea.top);
+    gradient.addColorStop(0, 'rgba(185, 28, 28, 0.8)'); // Darker red at bottom
+    gradient.addColorStop(0.5, 'rgba(220, 38, 38, 0.85)'); // Mid red
+    gradient.addColorStop(1, 'rgba(239, 68, 68, 0.9)'); // Lighter red at top
     return gradient;
   };
 
@@ -104,13 +114,33 @@ export default function MonthlyExtraVehicleCostChart() {
     labels: data.data.map(item => item.month),
     datasets: [
       {
-        label: 'Cost for Remaining KM',
-        data: data.data.map(item => item.costForRemainingKm),
+        label: 'Revenue',
+        data: data.data.map(item => item.revenue),
         backgroundColor: (context: any) => {
           const chart = context.chart;
           const { ctx, chartArea } = chart;
-          if (!chartArea) return 'rgba(234, 88, 12, 0.8)';
+          if (!chartArea) return 'rgba(34, 197, 94, 0.8)';
           return createGradient(ctx, chartArea);
+        },
+        borderColor: 'rgba(255, 255, 255, 0.3)',
+        borderWidth: 0,
+        borderRadius: {
+          topLeft: 6,
+          topRight: 6,
+          bottomLeft: 0,
+          bottomRight: 0,
+        },
+        borderSkipped: false,
+        maxBarThickness: 60,
+      },
+      {
+        label: 'Cost',
+        data: data.data.map(item => item.cost),
+        backgroundColor: (context: any) => {
+          const chart = context.chart;
+          const { ctx, chartArea } = chart;
+          if (!chartArea) return 'rgba(220, 38, 38, 0.8)';
+          return createCostGradient(ctx, chartArea);
         },
         borderColor: 'rgba(255, 255, 255, 0.3)',
         borderWidth: 0,
@@ -146,25 +176,27 @@ export default function MonthlyExtraVehicleCostChart() {
     id: 'valueLabels',
     afterDatasetsDraw: (chart: any) => {
       const ctx = chart.ctx;
-      chart.data.datasets.forEach((dataset: any) => {
-        const meta = chart.getDatasetMeta(0);
+      chart.data.datasets.forEach((dataset: any, datasetIndex: number) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
         meta.data.forEach((bar: any, index: number) => {
           const value = dataset.data[index];
-          ctx.save();
-          
-          // Text with shadow for better visibility
-          ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
-          ctx.shadowBlur = 8;
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 0;
-          
-          ctx.fillStyle = '#6B7280';
-          ctx.font = 'bold 13px Inter, system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          ctx.fillText(formatLakh(value), bar.x, bar.y - 8);
-          
-          ctx.restore();
+          if (value > 0) {
+            ctx.save();
+            
+            // Text with shadow for better visibility
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+            
+            ctx.fillStyle = '#6B7280';
+            ctx.font = 'bold 13px Inter, system-ui, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(formatLakh(value), bar.x, bar.y - 8);
+            
+            ctx.restore();
+          }
         });
       });
     }
@@ -182,7 +214,7 @@ export default function MonthlyExtraVehicleCostChart() {
             <h3 className={`text-2xl font-bold tracking-tight ${
               theme === 'light' ? 'text-gray-900' : 'text-gray-900'
             }`}>
-              Monthly Market Vehicle Cost
+              Monthly Market Vehicle Revenue & Cost
             </h3>
           </div>
         </div>
@@ -196,7 +228,7 @@ export default function MonthlyExtraVehicleCostChart() {
             maintainAspectRatio: false,
             animation: {
               duration: 1200,
-              easing: 'easeOutQuart' as any,
+              easing: 'easeOutQuart',
             },
             interaction: {
               mode: 'index' as const,
@@ -204,10 +236,41 @@ export default function MonthlyExtraVehicleCostChart() {
             },
             plugins: {
               legend: {
-                display: false,
+                display: true,
+                position: 'top' as const,
+                align: 'end' as const,
+                labels: {
+                  usePointStyle: true,
+                  padding: 15,
+                  font: {
+                    size: 12,
+                    weight: '600',
+                    family: 'Inter, system-ui, sans-serif',
+                  },
+                  color: '#374151',
+                  generateLabels: (chart: any) => {
+                    return [
+                      {
+                        text: 'Revenue',
+                        fillStyle: 'rgba(34, 197, 94, 0.8)',
+                        strokeStyle: 'rgba(34, 197, 94, 0.8)',
+                        lineWidth: 0,
+                        hidden: false,
+                        index: 0,
+                      },
+                      {
+                        text: 'Cost',
+                        fillStyle: 'rgba(220, 38, 38, 0.8)',
+                        strokeStyle: 'rgba(220, 38, 38, 0.8)',
+                        lineWidth: 0,
+                        hidden: false,
+                        index: 1,
+                      },
+                    ];
+                  },
+                },
               },
               tooltip: {
-                enabled: true,
                 backgroundColor: 'rgba(255, 255, 255, 0.98)',
                 titleColor: '#111827',
                 bodyColor: '#374151',
@@ -230,7 +293,9 @@ export default function MonthlyExtraVehicleCostChart() {
                     return `📅 ${context[0].label}`;
                   },
                   label: (context: any) => {
-                    return `💰 Cost: ${formatLakhWithRupee(context.parsed.y)}`;
+                    const label = context.dataset.label || '';
+                    const icon = label === 'Revenue' ? '💰' : '💸';
+                    return `${icon} ${label}: ₹${formatLakh(context.parsed.y)}`;
                   }
                 },
                 displayColors: false,
@@ -296,3 +361,4 @@ export default function MonthlyExtraVehicleCostChart() {
     </>
   );
 }
+

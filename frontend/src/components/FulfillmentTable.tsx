@@ -26,8 +26,16 @@ export default function FulfillmentTable() {
       link.href = url;
       
       // Generate filename
+      // Helper function to format date as YYYY-MM-DD using local timezone
+      const formatDateLocal = (date: Date): string => {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      
       const dateRangeStr = fromDate && toDate 
-        ? `${fromDate.toISOString().split('T')[0]}_to_${toDate.toISOString().split('T')[0]}`
+        ? `${formatDateLocal(fromDate)}_to_${formatDateLocal(toDate)}`
         : 'all_dates';
       link.download = `Missing_Indents_${dateRangeStr}.xlsx`;
       
@@ -44,32 +52,37 @@ export default function FulfillmentTable() {
   };
 
   return (
-    <div className={`rounded-2xl ${
+    <div className={`rounded-3xl ${
       theme === 'light' 
-        ? 'p-[2px] shadow-lg' 
-        : 'shadow-xl border border-blue-900/30'
+        ? 'p-[3px] shadow-2xl' 
+        : 'shadow-2xl border border-red-900/30'
     }`} style={theme === 'light' ? {
-      background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
+      background: 'linear-gradient(135deg, rgba(224, 30, 31, 0.2), rgba(254, 165, 25, 0.2))',
+      boxShadow: '0 20px 25px -5px rgba(224, 30, 31, 0.15), 0 10px 10px -5px rgba(254, 165, 25, 0.1)'
     } : {}}>
-      <div className={`rounded-2xl p-6 h-full ${
-        theme === 'light' ? 'bg-white border-0' : 'bg-white'
+      <div className={`rounded-3xl p-8 flex flex-col backdrop-blur-sm ${
+        theme === 'light' ? 'bg-white/95 border-0' : 'bg-white/95'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className={`text-lg font-semibold ${
-            theme === 'light' ? 'text-black' : 'text-black'
-          }`}>Fulfillment Trends</h2>
-          <button
-            onClick={handleDownloadMissingIndents}
-            disabled={loading || downloading || !data || !data.fulfillmentData || data.fulfillmentData.length === 0}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-              theme === 'light'
-                ? 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed'
-                : 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed'
-            }`}
-          >
-            {downloading ? 'Downloading...' : 'Download Missing Indents'}
-          </button>
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-2">
+            <h2 className={`text-2xl font-bold ${
+              theme === 'light' ? 'text-gray-900' : 'text-white'
+            }`}>
+              Fulfillment Trends
+            </h2>
+            <button
+              onClick={handleDownloadMissingIndents}
+              disabled={loading || downloading || !data || !data.fulfillmentData || data.fulfillmentData.length === 0}
+              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+                theme === 'light'
+                  ? 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed'
+                  : 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed'
+              }`}
+            >
+              {downloading ? 'Downloading...' : 'Download Missing Indents'}
+            </button>
+          </div>
+          <div className="h-1 w-20 bg-gradient-to-r from-red-600 to-yellow-500 rounded-full"></div>
         </div>
 
       {loading ? (
@@ -83,15 +96,17 @@ export default function FulfillmentTable() {
           Error: {error}
         </div>
       ) : data && data.fulfillmentData && data.fulfillmentData.length > 0 ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-visible rounded-xl">
           <table className="w-full">
             <thead>
-              <tr className={theme === 'light' ? 'border-b border-gray-200' : 'border-b border-gray-300'}>
-                <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-black'
+              <tr className={`bg-gradient-to-r from-red-50 to-yellow-50 ${
+                theme === 'light' ? 'border-b-2 border-red-200' : 'border-b-2 border-yellow-300'
+              }`}>
+                <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-800'
                 }`}>Bucket Range</th>
-                <th className={`text-center py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-gray-700' : 'text-black'
+                <th className={`text-center py-4 px-6 text-sm font-bold uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-800'
                 }`}>Trip Count</th>
               </tr>
             </thead>
@@ -116,15 +131,23 @@ export default function FulfillmentTable() {
                 return (
                   <tr
                     key={index}
-                    className={`border-b transition-colors duration-200 ${
+                    className={`border-b transition-all duration-300 ${
+                      index % 2 === 0 
+                        ? (theme === 'light' ? 'bg-white' : 'bg-white')
+                        : (theme === 'light' ? 'bg-gray-50/50' : 'bg-gray-50/30')
+                    } ${
                       theme === 'light'
-                        ? 'border-gray-100 hover:bg-gray-50'
-                        : 'border-gray-200 hover:bg-gray-50'
+                        ? 'border-gray-100 hover:bg-red-50/30 hover:shadow-sm'
+                        : 'border-gray-200 hover:bg-yellow-50/20 hover:shadow-sm'
                     }`}
                   >
-                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{bucketRange}</td>
-                    <td className={`py-3 px-4 font-medium text-center ${
-                      theme === 'light' ? 'text-black' : 'text-black'
+                    <td className={`py-4 px-6 ${
+                      theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+                    }`}>
+                      <div className="font-semibold text-base" style={{ color: rangeColor }}>{bucketRange}</div>
+                    </td>
+                    <td className={`py-4 px-6 font-semibold text-base text-center text-gray-600 ${
+                      theme === 'light' ? 'text-gray-600' : 'text-gray-600'
                     }`}>{formatIndentCount(item.tripCount || item.indentCount || 0)}</td>
                   </tr>
                 );

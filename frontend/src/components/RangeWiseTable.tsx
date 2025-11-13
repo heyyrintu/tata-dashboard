@@ -23,44 +23,51 @@ export default function RangeWiseTable() {
   });
 
   return (
-    <div className={`rounded-2xl ${
+    <div className={`rounded-3xl ${
       theme === 'light' 
-        ? 'p-[2px] shadow-lg' 
-        : 'shadow-xl border border-blue-900/30'
+        ? 'p-[3px] shadow-2xl' 
+        : 'shadow-2xl border border-red-900/30'
     }`} style={theme === 'light' ? {
-      background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
+      background: 'linear-gradient(135deg, rgba(224, 30, 31, 0.2), rgba(254, 165, 25, 0.2))',
+      boxShadow: '0 20px 25px -5px rgba(224, 30, 31, 0.15), 0 10px 10px -5px rgba(254, 165, 25, 0.1)'
     } : {}}>
-      <div className={`rounded-2xl p-6 h-full ${
-        theme === 'light' ? 'bg-white border-0' : 'bg-white'
+      <div className={`rounded-3xl p-8 flex flex-col backdrop-blur-sm ${
+        theme === 'light' ? 'bg-white/95 border-0' : 'bg-white/95'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
-        <h2 className={`text-lg font-semibold mb-4 ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Range-Wise Summary</h2>
+        <div className="mb-6">
+          <h2 className={`text-2xl font-bold mb-2 ${
+            theme === 'light' ? 'text-gray-900' : 'text-white'
+          }`}>
+            Range-Wise Summary
+          </h2>
+          <div className="h-1 w-20 bg-gradient-to-r from-red-600 to-yellow-500 rounded-full"></div>
+        </div>
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
           <LoadingSpinner />
         </div>
       ) : data && data.rangeData ? (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-visible rounded-xl">
           <table className="w-full">
             <thead>
-              <tr className={theme === 'light' ? 'border-b border-gray-200' : 'border-b border-gray-300'}>
-                <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-black'
+              <tr className={`bg-gradient-to-r from-red-50 to-yellow-50 ${
+                theme === 'light' ? 'border-b-2 border-red-200' : 'border-b-2 border-yellow-300'
+              }`}>
+                <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-800'
                 }`}>Radius</th>
-                <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-black'
+                <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-800'
                 }`}>Indent Count</th>
-                <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-black'
+                <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-800'
                 }`}>Percentage</th>
-                <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-black'
+                <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-800'
                 }`}>Load</th>
-                <th className={`text-left py-3 px-4 text-sm font-medium ${
-                  theme === 'light' ? 'text-black' : 'text-black'
+                <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
+                  theme === 'light' ? 'text-gray-700' : 'text-gray-800'
                 }`}>Bucket+Barrel Count</th>
               </tr>
             </thead>
@@ -76,25 +83,31 @@ export default function RangeWiseTable() {
                   return (
                   <tr
                     key={`${item.range}-${index}`}
-                    className={`border-b transition-colors duration-200 ${
+                    className={`border-b transition-all duration-300 ${
+                      index % 2 === 0 
+                        ? (theme === 'light' ? 'bg-white' : 'bg-white')
+                        : (theme === 'light' ? 'bg-gray-50/50' : 'bg-gray-50/30')
+                    } ${
                       theme === 'light'
-                        ? 'border-gray-100 hover:bg-gray-50'
-                        : 'border-gray-200 hover:bg-gray-50'
+                        ? 'border-gray-100 hover:bg-red-50/30 hover:shadow-sm'
+                        : 'border-gray-200 hover:bg-yellow-50/20 hover:shadow-sm'
                     }`}
                   >
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{item.range}</td>
-                    <td className={`py-3 px-4 font-medium ${
-                      theme === 'light' ? 'text-black' : 'text-black'
+                    <td className={`py-4 px-6 ${
+                      theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+                    }`}>
+                      <div className="font-semibold text-base">{item.range}</div>
+                    </td>
+                    <td className={`py-4 px-6 font-semibold text-base text-gray-600 ${
+                      theme === 'light' ? 'text-gray-600' : 'text-gray-600'
                     }`}>{item.uniqueIndentCount ?? item.indentCount}</td>
-                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatPercentage(item.percentage)}</td>
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
+                    <td className="py-4 px-6 font-semibold text-base" style={{ color: rangeColor }}>{formatPercentage(item.percentage)}</td>
+                    <td className={`py-4 px-6 font-semibold text-base text-gray-600 ${
+                      theme === 'light' ? 'text-gray-600' : 'text-gray-600'
                     }`}>
                       {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(item.totalLoad / 1000)} <span className="text-[18px]">Ton</span>
                     </td>
-                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatBucketBarrelCount(item.bucketCount, item.barrelCount)}</td>
+                    <td className="py-4 px-6 font-semibold text-base text-gray-600" style={{ color: rangeColor }}>{formatBucketBarrelCount(item.bucketCount, item.barrelCount)}</td>
                   </tr>
                 );
               })}
@@ -106,25 +119,27 @@ export default function RangeWiseTable() {
                 const rangeColor = RANGE_COLORS['Duplicate Indents'] || '#9CA3AF';
                 return (
                   <tr
-                    className={`border-b transition-colors duration-200 ${
+                    className={`border-b transition-all duration-300 ${
                       theme === 'light'
-                        ? 'border-gray-100 hover:bg-gray-50'
-                        : 'border-gray-200 hover:bg-gray-50'
+                        ? 'bg-white border-gray-100 hover:bg-red-50/30 hover:shadow-sm'
+                        : 'bg-white border-gray-200 hover:bg-yellow-50/20 hover:shadow-sm'
                     }`}
                   >
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>Multiple Points</td>
-                    <td className={`py-3 px-4 font-medium ${
-                      theme === 'light' ? 'text-black' : 'text-black'
+                    <td className={`py-4 px-6 ${
+                      theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+                    }`}>
+                      <div className="font-semibold text-base">Multiple Points</div>
+                    </td>
+                    <td className={`py-4 px-6 font-semibold text-base text-gray-600 ${
+                      theme === 'light' ? 'text-gray-600' : 'text-gray-600'
                     }`}>{duplicateRow.uniqueIndentCount ?? duplicateRow.indentCount}</td>
-                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatPercentage(duplicateRow.percentage)}</td>
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
+                    <td className="py-4 px-6 font-semibold text-base" style={{ color: rangeColor }}>{formatPercentage(duplicateRow.percentage)}</td>
+                    <td className={`py-4 px-6 font-semibold text-base text-gray-600 ${
+                      theme === 'light' ? 'text-gray-600' : 'text-gray-600'
                     }`}>
                       {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(duplicateRow.totalLoad / 1000)} <span className="text-[18px]">Ton</span>
                     </td>
-                    <td className="py-3 px-4 font-medium" style={{ color: rangeColor }}>{formatBucketBarrelCount(duplicateRow.bucketCount, duplicateRow.barrelCount)}</td>
+                    <td className="py-4 px-6 font-semibold text-base text-gray-600" style={{ color: rangeColor }}>{formatBucketBarrelCount(duplicateRow.bucketCount, duplicateRow.barrelCount)}</td>
                   </tr>
                 );
               })()}
@@ -164,28 +179,29 @@ export default function RangeWiseTable() {
                 console.log('[RangeWiseTable] ===== END RENDER =====');
                 
                 return (
-                  <tr className={`border-t-2 font-bold ${
-                    theme === 'light'
-                      ? 'border-gray-300 bg-gray-50'
-                      : 'border-gray-400 bg-gray-100'
+                  <tr className={`border-t-4 border-red-500 bg-gradient-to-r from-red-100 to-yellow-100 ${
+                    theme === 'light' ? 'shadow-lg' : 'shadow-lg'
                   }`}>
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>Total</td>
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{totalIndents}</td>
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{formatPercentage(totalPercentage)}</td>
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
+                    <td className={`py-5 px-6 font-bold text-lg uppercase tracking-wide ${
+                      theme === 'light' ? 'text-gray-900' : 'text-gray-900'
                     }`}>
+                      <span className="inline-flex items-center gap-2">
+                        <span className="w-1 h-6 bg-gradient-to-b from-red-600 to-yellow-500 rounded"></span>
+                        TOTAL
+                      </span>
+                    </td>
+                    <td className="py-5 px-6 font-bold text-lg text-gray-600">
+                      {totalIndents}
+                    </td>
+                    <td className="py-5 px-6 font-bold text-lg text-gray-600">
+                      {formatPercentage(totalPercentage)}
+                    </td>
+                    <td className="py-5 px-6 font-bold text-lg text-gray-600">
                       {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 2 }).format(totalLoad / 1000)} <span className="text-[18px]">Ton</span>
                     </td>
-                    <td className={`py-3 px-4 ${
-                      theme === 'light' ? 'text-black' : 'text-black'
-                    }`}>{formatBucketBarrelCount(totalBuckets, totalBarrels)}</td>
+                    <td className="py-5 px-6 font-bold text-lg text-gray-600">
+                      {formatBucketBarrelCount(totalBuckets, totalBarrels)}
+                    </td>
                   </tr>
                 );
               })()}

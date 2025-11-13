@@ -1,63 +1,11 @@
-import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../context/ThemeContext';
-import { useDashboard } from '../../context/DashboardContext';
 import { Button } from '../ui/moving-border';
 import { cn } from '../../lib/utils';
-import { format } from 'date-fns';
 
 export default function CompactHeader() {
   const navigate = useNavigate();
   const { theme } = useTheme();
-  const { dateRange, setDateRange } = useDashboard();
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
-
-  // Initialize selectedMonth from dateRange
-  useEffect(() => {
-    if (dateRange.from && dateRange.to) {
-      const fromMonth = format(dateRange.from, 'yyyy-MM');
-      const toMonth = format(dateRange.to, 'yyyy-MM');
-      if (fromMonth === toMonth) {
-        setSelectedMonth(fromMonth);
-      }
-    }
-  }, [dateRange.from, dateRange.to]);
-
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const monthValue = e.target.value;
-    setSelectedMonth(monthValue);
-    
-    if (monthValue) {
-      const [year, month] = monthValue.split('-');
-      const startDate = new Date(parseInt(year), parseInt(month) - 1, 2); // Start from day 2
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(parseInt(year), parseInt(month), 0); // Last day of month
-      endDate.setHours(23, 59, 59, 999);
-      setDateRange(startDate, endDate);
-    }
-  };
-
-  // Generate month options (last 12 months + current month)
-  const generateMonthOptions = () => {
-    const options = [];
-    const today = new Date();
-    
-    for (let i = 12; i >= 0; i--) {
-      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthKey = format(date, 'yyyy-MM');
-      const monthLabel = format(date, 'MMMM'); // Only month name
-      options.push({ value: monthKey, label: monthLabel });
-    }
-    
-    return options;
-  };
-
-  const monthOptions = generateMonthOptions();
-  
-  // Get current month display text (only month name)
-  // const currentMonthDisplay = selectedMonth 
-  //   ? format(new Date(selectedMonth + '-01'), 'MMMM')
-  //   : 'All Months';
 
   return (
     <header className={`sticky top-0 z-50 backdrop-blur-lg shadow-xl ${
@@ -105,46 +53,6 @@ export default function CompactHeader() {
                   : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent'
               }`}>
                 Finance Dashboard
-              </div>
-            </div>
-          </div>
-
-          {/* Month Selector */}
-          <div className="flex items-center mx-4">
-            <div className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 ${
-              theme === 'light'
-                ? 'bg-gradient-to-r from-red-50 to-yellow-50 border-2 border-red-200/50'
-                : 'bg-gradient-to-r from-red-900/30 to-yellow-900/30 border-2 border-red-500/30'
-            }`}>
-              <div className="flex items-center gap-1.5">
-                <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${
-                  theme === 'light' ? 'text-red-600' : 'text-yellow-400'
-                }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <div className="relative">
-                  <select
-                    value={selectedMonth}
-                    onChange={handleMonthChange}
-                    className={`px-3 py-1.5 pr-6 rounded-md text-xs font-semibold transition-all duration-300 appearance-none cursor-pointer ${
-                      theme === 'light'
-                        ? 'bg-white/90 text-gray-900 border-2 border-red-300/50 focus:ring-2 focus:ring-red-500 focus:border-red-500 hover:border-red-400'
-                        : 'bg-gray-900/90 border-2 border-yellow-500/30 text-white focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 hover:border-yellow-400'
-                    }`}
-                  >
-                    <option value="">All Months</option>
-                    {monthOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  <div className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-sm font-bold ${
-                    theme === 'light' ? 'text-red-600' : 'text-yellow-400'
-                  }`}>
-                    ↓
-                  </div>
-                </div>
               </div>
             </div>
           </div>

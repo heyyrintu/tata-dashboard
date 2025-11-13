@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAnalytics, getRangeWiseAnalytics, getFulfillmentAnalytics, getLoadOverTime, getRevenueAnalytics, getCostAnalytics, getProfitLossAnalytics, getMonthOnMonthAnalytics, getVehicleCostAnalytics, getMonthlyVehicleCostAnalytics, exportMissingIndents } from '../controllers/analyticsController';
+import { getAnalytics, getRangeWiseAnalytics, getFulfillmentAnalytics, getLoadOverTime, getRevenueAnalytics, getCostAnalytics, getProfitLossAnalytics, getMonthOnMonthAnalytics, getVehicleCostAnalytics, getMonthlyVehicleCostAnalytics, getMonthlyMarketVehicleRevenue, exportMissingIndents } from '../controllers/analyticsController';
 import { exportAllIndentsToExcel } from '../controllers/exportController';
 import { debugCalculations } from '../controllers/debugController';
 
@@ -55,6 +55,7 @@ router.get('/vehicle-cost', async (req, res) => {
 });
 
 router.get('/vehicle-cost/monthly', getMonthlyVehicleCostAnalytics);
+router.get('/market-vehicle/revenue/monthly', getMonthlyMarketVehicleRevenue);
 
 console.log('[ROUTES] ✓ Vehicle-cost route registered at /api/analytics/vehicle-cost');
 console.log('[ROUTES] ========================================');
