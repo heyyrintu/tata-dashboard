@@ -1729,12 +1729,9 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
 
     console.log(`[getMonthOnMonthAnalytics] Total indents fetched: ${allIndents.length}`);
 
-    // For Card 1 (Indent Count): Use ALL indents (including cancelled ones with blank range)
-    // For Card 2 (Trip Count): Filter to only include indents with Range value (canceled indents don't have range)
-    const validIndents = allIndents.filter(indent => indent.range && indent.range.trim() !== '');
-
-    console.log(`[getMonthOnMonthAnalytics] All indents (including cancelled): ${allIndents.length}`);
-    console.log(`[getMonthOnMonthAnalytics] Valid indents (with range, excluding cancelled): ${validIndents.length}`);
+    // For Card 1 (Indent Count), we will use ALL indents.
+    // For Card 2 (Trip Count), we will use VALID indents (those with a non-blank range).
+    // The filtering will be done for each month individually to ensure accuracy.
 
     // Find all unique months using 'Freight Tiger Month' column from Excel
     // Use ALL indents (including cancelled) to find all available months - matches Card 1 logic
@@ -1805,9 +1802,7 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
       const indentCount = uniqueIndents.size;
       console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Indent count (Card 1 logic): ${indentCount}`);
 
-      // Calculate Trip Count (Card 2 logic): Use validIndents (excluding cancelled)
-      // Apply OLD Card 1 logic - count unique indent values from validIndents (excluded cancelled)
-      // This matches Card 2 logic exactly
+      // Calculate Trip Count (Card 2 logic): count unique indents from VALID indents (excluding cancelled)
       const uniqueIndentsForTrips = new Set(validIndentsForMonth.filter(t => t.indent).map(t => t.indent));
       const tripCount = uniqueIndentsForTrips.size;
       console.log(`[getMonthOnMonthAnalytics] ${monthKey}: Trip count (Card 2 logic): ${tripCount}`);
