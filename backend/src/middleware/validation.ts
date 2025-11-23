@@ -22,7 +22,7 @@ export const validate = (validations: ValidationChain[]) => {
       });
 
       return next(createError(
-        `Validation failed: ${errors.array().map(e => e.msg).join(', ')}`,
+        `Validation failed: ${errors.array().map((e: any) => e.msg).join(', ')}`,
         400
       ));
     }
@@ -47,7 +47,7 @@ export const validateAnalyticsQuery = [
   
   query('fromDate')
     .optional()
-    .custom((value, { req }) => {
+    .custom((value: any, { req }: any) => {
       if (req.query?.toDate && value && new Date(value) > new Date(req.query.toDate as string)) {
         throw new Error('fromDate must be before or equal to toDate');
       }
