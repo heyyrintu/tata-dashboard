@@ -53,6 +53,8 @@ interface RangeWiseResponse {
   totalLoad?: number;
   totalCost?: number;
   totalProfitLoss?: number;
+  totalRemainingCost?: number; // Total remaining cost (sum of loading + unload + other)
+  totalVehicleCost?: number; // Total vehicle cost (totalCost - remainingCost)
   totalBuckets?: number;
   totalBarrels?: number;
   totalRows?: number;
@@ -118,13 +120,54 @@ export const uploadExcel = async (file: File): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await api.post<UploadResponse>('/upload', formData, {
-    headers: {
-      'Content-Type': 'multipart/form-data',
-    },
-  });
+  try {
+    console.log('[API] Uploading file:', {
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: file.type,
+      apiUrl: API_URL
+    });
 
-  return response.data;
+    // Use axios directly (not the api instance) to avoid default JSON headers
+    // This prevents Content-Type: application/json from interfering with FormData
+    const response = await axios.post<UploadResponse>(
+      `${API_URL}/upload`,
+      formData,
+      {
+        timeout: 120000, // 120 second timeout for large files
+        maxContentLength: 50 * 1024 * 1024, // 50MB
+        maxBodyLength: 50 * 1024 * 1024, // 50MB
+        // Don't set headers - axios will automatically detect FormData and set
+        // Content-Type: multipart/form-data with boundary
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            console.log('[API] Upload progress:', `${percentCompleted}%`);
+          }
+        },
+      }
+    );
+
+    console.log('[API] Upload successful:', response.data);
+    return response.data;
+  } catch (error: any) {
+    console.error('[API] Upload error:', error);
+    
+    if (error.code === 'ECONNABORTED') {
+      throw new Error('Upload timeout. The file might be too large. Please try again.');
+    } else if (error.code === 'ERR_NETWORK' || error.message?.includes('Network Error')) {
+      throw new Error(`Network error: Cannot connect to server at ${API_URL}. Please make sure the backend server is running on port 5000.`);
+    } else if (error.response) {
+      // Server responded with error status
+      const message = error.response.data?.message || error.response.data?.error || 'Upload failed';
+      throw new Error(message);
+    } else if (error.request) {
+      // Request made but no response received
+      throw new Error(`No response from server. Please check if the backend is running at ${API_URL}`);
+    } else {
+      throw new Error(error.message || 'Failed to upload file. Please try again.');
+    }
+  }
 };
 
 // Helper function to format date as YYYY-MM-DD using local timezone
@@ -441,6 +484,28 @@ export const getVehicleCostAnalytics = async (fromDate?: Date, toDate?: Date): P
     dateRange: response.data.dateRange
   });
   return response.data;
+};
+
+export interface LatestIndentDateResponse {
+  success: boolean;
+  latestIndentDate: string | null;
+  message?: string;
+}
+
+export const getLatestIndentDate = async (): Promise<string | null> => {
+  try {
+    console.log('[API] Calling /analytics/latest-indent-date');
+    const response = await api.get<LatestIndentDateResponse>('/analytics/latest-indent-date');
+    console.log('[API] Response received:', response.data);
+    return response.data.latestIndentDate;
+  } catch (error) {
+    console.error('[API] Error fetching latest indent date:', error);
+    if (error instanceof Error) {
+      console.error('[API] Error message:', error.message);
+      console.error('[API] Error stack:', error.stack);
+    }
+    return null;
+  }
 };
 
 export default api;

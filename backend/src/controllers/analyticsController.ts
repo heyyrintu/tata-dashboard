@@ -100,6 +100,8 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
       totalLoad: result.totalLoad || 0, // Total load in kg
       totalCost: result.totalCost || 0, // Total cost
       totalProfitLoss: result.totalProfitLoss || 0, // Total profit & loss
+      totalRemainingCost: result.totalRemainingCost || 0, // Total remaining cost (sum of loading + unload + other)
+      totalVehicleCost: result.totalVehicleCost || 0, // Total vehicle cost (totalCost - remainingCost)
       totalBuckets: result.totalBuckets || 0,
       totalBarrels: result.totalBarrels || 0,
       totalRows: result.totalRows || 0,
@@ -2007,6 +2009,49 @@ export const getVehicleCostAnalytics = async (req: Request, res: Response) => {
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch vehicle cost analytics'
+    });
+  }
+};
+
+export const getLatestIndentDate = async (req: Request, res: Response) => {
+  try {
+    // Find the trip with the latest indentDate
+    const latestTrip = await Trip.findOne({})
+      .sort({ indentDate: -1 }) // Sort descending to get latest date
+      .select('indentDate')
+      .lean();
+
+    if (!latestTrip || !latestTrip.indentDate) {
+      return res.json({
+        success: true,
+        latestIndentDate: null,
+        message: 'No data available'
+      });
+    }
+
+    // Convert to Date object
+    const indentDate = latestTrip.indentDate instanceof Date 
+      ? latestTrip.indentDate 
+      : new Date(latestTrip.indentDate);
+
+    // Format date as YYYY-MM-DD in local timezone (not UTC)
+    // This prevents timezone conversion issues that can shift the date
+    const year = indentDate.getFullYear();
+    const month = String(indentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(indentDate.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+
+    console.log(`[getLatestIndentDate] Latest indent date found: ${dateString} (original: ${indentDate.toISOString()})`);
+
+    res.json({
+      success: true,
+      latestIndentDate: dateString
+    });
+  } catch (error) {
+    console.error(`[getLatestIndentDate] ERROR:`, error);
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch latest indent date'
     });
   }
 };

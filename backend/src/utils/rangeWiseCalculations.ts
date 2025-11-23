@@ -25,6 +25,8 @@ interface RangeWiseCalculationResult {
   totalBarrels: number;
   totalCost: number;
   totalProfitLoss: number;
+  totalRemainingCost: number; // Sum of remainingCost from all indents
+  totalVehicleCost: number; // Sum of vehicleCost from all indents
 }
 
 export async function calculateRangeWiseSummary(
@@ -59,6 +61,8 @@ export async function calculateRangeWiseSummary(
   const totalLoad = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
   const totalCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
   const totalProfitLoss = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
+  const totalRemainingCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.remainingCost) || 0), 0); // Sum of remainingCost
+  const totalVehicleCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.vehicleCost) || 0), 0); // Sum of vehicleCost
   
   let totalBuckets = 0;
   let totalBarrels = 0;
@@ -170,6 +174,8 @@ export async function calculateRangeWiseSummary(
     totalBuckets,
     totalBarrels,
     totalCost,
-    totalProfitLoss
+    totalProfitLoss,
+    totalRemainingCost,
+    totalVehicleCost
   };
 }

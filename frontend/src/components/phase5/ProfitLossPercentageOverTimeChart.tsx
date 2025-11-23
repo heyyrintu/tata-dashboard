@@ -17,6 +17,7 @@ import { LoadingSpinner } from '../LoadingSpinner';
 import TimeGranularityToggle from '../TimeGranularityToggle';
 import { formatProfitLossPercentage } from '../../utils/profitLossCalculations';
 import { useTheme } from '../../context/ThemeContext';
+import { format, parseISO } from 'date-fns';
 
 ChartJS.register(
   CategoryScale,
@@ -74,20 +75,33 @@ export default function ProfitLossPercentageOverTimeChart() {
     );
   }
 
-  if (!profitLossData || !profitLossData.profitLossOverTime || profitLossData.profitLossOverTime.length === 0 ||
-      !revenueData || !revenueData.revenueOverTime || revenueData.revenueOverTime.length === 0) {
+  // Check if we have the required data
+  if (!profitLossData || !profitLossData.profitLossOverTime || profitLossData.profitLossOverTime.length === 0) {
     return gradientWrapper(
       <div className="flex items-center justify-center h-full">
-        <div className="text-sm text-gray-400">No profit & loss percentage data available</div>
+        <div className="text-sm text-gray-400">No profit & loss data available</div>
+      </div>
+    );
+  }
+
+  if (!revenueData || !revenueData.revenueOverTime || revenueData.revenueOverTime.length === 0) {
+    return gradientWrapper(
+      <div className="flex items-center justify-center h-full">
+        <div className="text-sm text-gray-400">No revenue data available</div>
       </div>
     );
   }
 
   // Create a map of revenue by date for quick lookup
+  // Normalize dates to ensure matching (handle different date formats)
   const revenueMap = new Map<string, number>();
   if (revenueData?.revenueOverTime) {
     revenueData.revenueOverTime.forEach(item => {
       if (item && item.date) {
+        // Normalize date format - remove time portion if present
+        const normalizedDate = item.date.split('T')[0];
+        revenueMap.set(normalizedDate, item.revenue || 0);
+        // Also store with full date string in case backend returns different format
         revenueMap.set(item.date, item.revenue || 0);
       }
     });
@@ -104,13 +118,16 @@ export default function ProfitLossPercentageOverTimeChart() {
       };
     }
     
-    const revenue = revenueMap.get(item.date) || 0;
+    // Normalize date format for matching
+    const normalizedDate = item.date.split('T')[0];
+    // Try both normalized and original date formats
+    const revenue = revenueMap.get(normalizedDate) || revenueMap.get(item.date) || 0;
     const profitLoss = item.profitLoss || 0;
     const cost = revenue - profitLoss; // Cost = Revenue - Profit/Loss
     
     // Calculate percentage: (Profit/Loss / Cost) × 100
-    // Handle edge case: if cost is 0, return null
-    if (cost === 0) {
+    // Handle edge case: if cost is 0 or negative, return null
+    if (cost <= 0) {
       return {
         date: item.date,
         profitLossPercentage: null as number | null
@@ -121,7 +138,32 @@ export default function ProfitLossPercentageOverTimeChart() {
       date: item.date,
       profitLossPercentage: (profitLoss / cost) * 100
     };
-  }).filter(item => item.date); // Filter out items with empty dates
+  }).filter(item => item.date && item.profitLossPercentage !== null); // Filter out items with empty dates or null percentages
+
+  // Check if we have any valid data after calculation
+  if (profitLossPercentageOverTime.length === 0) {
+    console.warn('[ProfitLossPercentageOverTimeChart] No valid data after calculation:', {
+      granularity,
+      profitLossDataLength: profitLossData?.profitLossOverTime?.length || 0,
+      revenueDataLength: revenueData?.revenueOverTime?.length || 0,
+      profitLossDates: profitLossData?.profitLossOverTime?.map(i => i.date).slice(0, 5),
+      revenueDates: revenueData?.revenueOverTime?.map(i => i.date).slice(0, 5)
+    });
+    return gradientWrapper(
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="text-sm text-gray-400 mb-2">No valid profit & loss percentage data available for {granularity} view</div>
+          <div className="text-xs text-gray-500">Check console for details</div>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('[ProfitLossPercentageOverTimeChart] Data prepared:', {
+    granularity,
+    dataPoints: profitLossPercentageOverTime.length,
+    sampleDates: profitLossPercentageOverTime.slice(0, 3).map(i => i.date)
+  });
 
   // Prepare data with point colors based on positive/negative values
   const allData = profitLossPercentageOverTime.map(item => item.profitLossPercentage);
@@ -131,10 +173,30 @@ export default function ProfitLossPercentageOverTimeChart() {
     return value >= 0 ? '#22C55E' : '#EF4444';
   });
 
+  // Format dates for chart labels based on granularity
+  const formatDateLabel = (dateStr: string): string => {
+    try {
+      // Try parsing as ISO date
+      const date = parseISO(dateStr);
+      if (!isNaN(date.getTime())) {
+        if (granularity === 'daily') {
+          return format(date, 'MMM dd'); // "Nov 17"
+        } else if (granularity === 'weekly') {
+          return format(date, 'MMM dd'); // "Nov 17"
+        } else {
+          return format(date, 'MMM yyyy'); // "November 2024"
+        }
+      }
+    } catch (e) {
+      // If parsing fails, return original string
+    }
+    return dateStr;
+  };
+
   // Create segments for the line - split into profit (green) and loss (red) segments
   // Chart.js v3+ supports segment colors
   const chartData = {
-    labels: profitLossPercentageOverTime.map(item => item.date),
+    labels: profitLossPercentageOverTime.map(item => formatDateLabel(item.date)),
     datasets: [
       {
         label: 'Profit & Loss %',

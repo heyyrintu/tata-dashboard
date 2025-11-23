@@ -1,5 +1,5 @@
 import express from 'express';
-import { getAnalytics, getRangeWiseAnalytics, getFulfillmentAnalytics, getLoadOverTime, getRevenueAnalytics, getCostAnalytics, getProfitLossAnalytics, getMonthOnMonthAnalytics, getVehicleCostAnalytics, getMonthlyVehicleCostAnalytics, getMonthlyMarketVehicleRevenue, exportMissingIndents } from '../controllers/analyticsController';
+import { getAnalytics, getRangeWiseAnalytics, getFulfillmentAnalytics, getLoadOverTime, getRevenueAnalytics, getCostAnalytics, getProfitLossAnalytics, getMonthOnMonthAnalytics, getVehicleCostAnalytics, getMonthlyVehicleCostAnalytics, getMonthlyMarketVehicleRevenue, exportMissingIndents, getLatestIndentDate } from '../controllers/analyticsController';
 import { exportAllIndentsToExcel } from '../controllers/exportController';
 import { debugCalculations } from '../controllers/debugController';
 
@@ -114,6 +114,12 @@ try {
   console.error('✗ ERROR registering month-on-month route:', error);
 }
 
+// Latest indent date route
+console.log('[ROUTES] Registering /latest-indent-date route...');
+console.log('[ROUTES] getLatestIndentDate function exists:', typeof getLatestIndentDate === 'function');
+router.get('/latest-indent-date', getLatestIndentDate);
+console.log('[ROUTES] ✓ /latest-indent-date route registered successfully!');
+
 // Catch-all route - MUST be LAST (after all specific routes)
 router.get('/', getAnalytics);
 
@@ -127,7 +133,8 @@ console.log('Analytics routes registered:', {
   '/cost': 'getCostAnalytics',
   '/profit-loss': typeof getProfitLossAnalytics === 'function' ? 'getProfitLossAnalytics ✓' : 'MISSING ✗',
   '/vehicle-cost': typeof getVehicleCostAnalytics === 'function' ? 'getVehicleCostAnalytics ✓' : 'MISSING ✗',
-  '/month-on-month': typeof getMonthOnMonthAnalytics === 'function' ? 'getMonthOnMonthAnalytics ✓' : 'MISSING ✗'
+  '/month-on-month': typeof getMonthOnMonthAnalytics === 'function' ? 'getMonthOnMonthAnalytics ✓' : 'MISSING ✗',
+  '/latest-indent-date': typeof getLatestIndentDate === 'function' ? 'getLatestIndentDate ✓' : 'MISSING ✗'
 });
 
 export default router;

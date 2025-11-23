@@ -66,6 +66,9 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
     // Try to find by name first, then fall back to index
     let columnUName: string | null = null;
     let columnAEName: string | null = null;
+    let columnYName: string | null = null; // Column Y (index 24) - Total Cost(Loading)
+    let columnABName: string | null = null; // Column AB (index 27) - Total cost Unload
+    let columnADName: string | null = null; // Column AD (index 29) - Any Other Cost
     if (jsonData.length > 0) {
       const firstRow = jsonData[0];
       const columns = Object.keys(firstRow);
@@ -102,6 +105,30 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         console.warn(`[ExcelParser] ⚠️  WARNING: Column at index 20 is "${columnUName}", not "Total Km"!`);
       } else if (!columnUName) {
         console.warn(`[ExcelParser] WARNING: Could not find Total Km column by name or index!`);
+      }
+      
+      // Use Column Y (index 24) - Total Cost(Loading)
+      if (columns.length > 24) {
+        columnYName = columns[24];
+        console.log(`[ExcelParser] Using Column Y (index 24) for Total Cost(Loading): "${columnYName}"`);
+      } else {
+        console.warn(`[ExcelParser] WARNING: Column Y (index 24) not found! Only ${columns.length} columns available.`);
+      }
+      
+      // Use Column AB (index 27) - Total cost Unload
+      if (columns.length > 27) {
+        columnABName = columns[27];
+        console.log(`[ExcelParser] Using Column AB (index 27) for Total cost Unload: "${columnABName}"`);
+      } else {
+        console.warn(`[ExcelParser] WARNING: Column AB (index 27) not found! Only ${columns.length} columns available.`);
+      }
+      
+      // Use Column AD (index 29) - Any Other Cost
+      if (columns.length > 29) {
+        columnADName = columns[29];
+        console.log(`[ExcelParser] Using Column AD (index 29) for Any Other Cost: "${columnADName}"`);
+      } else {
+        console.warn(`[ExcelParser] WARNING: Column AD (index 29) not found! Only ${columns.length} columns available.`);
       }
       
       // Use Column AE (index 30) - 31st column - for Total Cost
@@ -164,6 +191,42 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
               : 0;
           })();
       
+      // Parse Total Cost(Loading) from Column Y (index 24)
+      const totalCostLoading = columnYName 
+        ? parseNumericValue(row[columnYName])
+        : (() => {
+            const rowKeys = Object.keys(row);
+            return rowKeys.length > 24 && rowKeys[24] 
+              ? parseNumericValue(row[rowKeys[24]]) 
+              : 0;
+          })();
+      
+      // Parse Total cost Unload from Column AB (index 27)
+      const totalCostUnload = columnABName 
+        ? parseNumericValue(row[columnABName])
+        : (() => {
+            const rowKeys = Object.keys(row);
+            return rowKeys.length > 27 && rowKeys[27] 
+              ? parseNumericValue(row[rowKeys[27]]) 
+              : 0;
+          })();
+      
+      // Parse Any Other Cost from Column AD (index 29)
+      const anyOtherCost = columnADName 
+        ? parseNumericValue(row[columnADName])
+        : (() => {
+            const rowKeys = Object.keys(row);
+            return rowKeys.length > 29 && rowKeys[29] 
+              ? parseNumericValue(row[rowKeys[29]]) 
+              : 0;
+          })();
+      
+      // Calculate remaining cost (sum of the 3 columns)
+      const remainingCost = totalCostLoading + totalCostUnload + anyOtherCost;
+      
+      // Calculate vehicle cost (Total Cost - Remaining Cost)
+      const vehicleCost = totalCostAE - remainingCost;
+      
       // Track statistics
       if (totalKm > 0) {
         totalKmParsed += totalKm;
@@ -212,6 +275,11 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
         remarks: String(row['Remarks'] || row['REMARKS'] || '').trim(),
         freightTigerMonth: String(row['Freight Tiger Month'] || row['FreightTigerMonth'] || '').trim(),
         totalCostAE: totalCostAE, // From Column AE (index 30) - main total cost
+        totalCostLoading: totalCostLoading, // From Column Y (index 24) - Total Cost(Loading)
+        totalCostUnload: totalCostUnload, // From Column AB (index 27) - Total cost Unload
+        anyOtherCost: anyOtherCost, // From Column AD (index 29) - Any Other Cost
+        remainingCost: remainingCost, // Calculated: totalCostLoading + totalCostUnload + anyOtherCost
+        vehicleCost: vehicleCost, // Calculated: totalCostAE - remainingCost
         profitLoss: (() => {
           const rowKeys = Object.keys(row);
           if (rowKeys.length > 36 && rowKeys[36]) {

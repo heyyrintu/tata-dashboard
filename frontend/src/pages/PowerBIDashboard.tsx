@@ -5,6 +5,8 @@ import RevenueCard from '../components/phase4/RevenueCard';
 import CostCard from '../components/phase4/CostCard';
 import ProfitLossCard from '../components/phase4/ProfitLossCard';
 import ProfitLossPercentageCard from '../components/phase4/ProfitLossPercentageCard';
+import VehicleCostCard from '../components/phase4/VehicleCostCard';
+import RemainingCostCard from '../components/phase4/RemainingCostCard';
 import CombinedFinanceTable from '../components/phase5/CombinedFinanceTable';
 import VehicleCostTable from '../components/phase5/VehicleCostTable';
 import MonthlyActualKmChart from '../components/phase5/MonthlyActualKmChart';
@@ -42,12 +44,16 @@ export default function PowerBIDashboard() {
     setSelectedMonth(monthValue);
     
     if (monthValue) {
+      // Specific month selected - set date range to that month
       const [year, month] = monthValue.split('-');
       const startDate = new Date(parseInt(year), parseInt(month) - 1, 1); // Start from day 1
       startDate.setHours(0, 0, 0, 0);
       const endDate = new Date(parseInt(year), parseInt(month), 0); // Last day of month
       endDate.setHours(23, 59, 59, 999);
       setDateRange(startDate, endDate);
+    } else {
+      // "All Months" selected - clear date range to show all data
+      setDateRange(null, null);
     }
   };
 
@@ -59,7 +65,7 @@ export default function PowerBIDashboard() {
     for (let i = 12; i >= 0; i--) {
       const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
       const monthKey = format(date, 'yyyy-MM');
-      const monthLabel = format(date, 'MMMM'); // Only month name
+      const monthLabel = format(date, 'MMMM yyyy'); // Month name with year
       options.push({ value: monthKey, label: monthLabel });
     }
     
@@ -146,11 +152,17 @@ export default function PowerBIDashboard() {
           </div>
         </div>
         {/* Revenue, Cost, Profit & Loss, Profit & Loss % Cards - Four in a row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 max-w-7xl mx-auto">
           <RevenueCard />
           <CostCard />
           <ProfitLossCard />
           <ProfitLossPercentageCard />
+        </div>
+
+        {/* Vehicle Cost and Remaining Cost Cards - Two in a row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-6 mb-8 max-w-7xl mx-auto">
+          <VehicleCostCard />
+          <RemainingCostCard />
         </div>
 
         {/* Range-Wise Financial Summary - Right after cards */}
