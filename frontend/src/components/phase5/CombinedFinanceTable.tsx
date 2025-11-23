@@ -33,8 +33,8 @@ export default function CombinedFinanceTable() {
       const bucketRevenue = item.bucketCount * bucketRate;
       const barrelRevenue = item.barrelCount * barrelRate;
       const revenue = bucketRevenue + barrelRevenue;
-      // Use totalCostAE (from Column AE) with fallback to totalCost
-      const cost = (item.totalCostAE ?? item.totalCost) || 0;
+      // Use totalCostAE (from Column AE)
+      const cost = item.totalCostAE || 0;
       const profitLoss = item.profitLoss || 0;
       const profitLossPercentage = cost !== 0 ? (profitLoss / cost) * 100 : null;
       
@@ -47,7 +47,8 @@ export default function CombinedFinanceTable() {
         revenue,
         cost,
         profitLoss,
-        profitLossPercentage
+        profitLossPercentage,
+        totalKm: 0 // TODO: Add totalKm to range data if available
       };
     });
   };

@@ -222,7 +222,7 @@ export default function MonthlyExtraVehicleCostChart() {
                 },
                 bodyFont: {
                   size: 14,
-                  weight: '600',
+                  weight: 600,
                   family: 'Inter, system-ui, sans-serif',
                 },
                 callbacks: {
@@ -242,7 +242,7 @@ export default function MonthlyExtraVehicleCostChart() {
                 ticks: {
                   font: {
                     size: 12,
-                    weight: '600',
+                    weight: 600,
                     family: 'Inter, system-ui, sans-serif',
                   },
                   color: '#6B7280',
@@ -266,7 +266,7 @@ export default function MonthlyExtraVehicleCostChart() {
                 ticks: {
                   font: {
                     size: 11,
-                    weight: '600',
+                    weight: 600,
                     family: 'Inter, system-ui, sans-serif',
                   },
                   color: '#6B7280',
@@ -279,7 +279,6 @@ export default function MonthlyExtraVehicleCostChart() {
                 grid: {
                   color: 'rgba(220, 38, 38, 0.08)',
                   lineWidth: 1.5,
-                  drawBorder: false,
                   drawTicks: false,
                 },
                 border: {

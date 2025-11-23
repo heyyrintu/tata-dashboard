@@ -243,7 +243,7 @@ export default function MonthlyActualKmChart() {
                 },
                 bodyFont: {
                   size: 14,
-                  weight: '600',
+                  weight: 600,
                   family: 'Inter, system-ui, sans-serif',
                 },
                 callbacks: {
@@ -263,7 +263,7 @@ export default function MonthlyActualKmChart() {
                 ticks: {
                   font: {
                     size: 12,
-                    weight: '600',
+                    weight: 600,
                     family: 'Inter, system-ui, sans-serif',
                   },
                   color: '#6B7280',
@@ -286,7 +286,7 @@ export default function MonthlyActualKmChart() {
                 ticks: {
                   font: {
                     size: 11,
-                    weight: '600',
+                    weight: 600,
                     family: 'Inter, system-ui, sans-serif',
                   },
                   color: '#6B7280',
@@ -298,7 +298,6 @@ export default function MonthlyActualKmChart() {
                 grid: {
                   color: 'rgba(251, 146, 60, 0.08)',
                   lineWidth: 1.5,
-                  drawBorder: false,
                   drawTicks: false,
                 },
                 border: {

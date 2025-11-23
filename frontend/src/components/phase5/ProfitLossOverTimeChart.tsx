@@ -14,7 +14,6 @@ import { Line } from 'react-chartjs-2';
 import { useProfitLossData } from '../../hooks/useProfitLossData';
 import { LoadingSpinner } from '../LoadingSpinner';
 import TimeGranularityToggle from '../TimeGranularityToggle';
-import { formatIndianNumber } from '../../utils/profitLossCalculations';
 import { useTheme } from '../../context/ThemeContext';
 
 ChartJS.register(
@@ -251,12 +250,12 @@ export default function ProfitLossOverTimeChart() {
         padding: 16,
         titleFont: {
           size: 15,
-          weight: 'bold',
+          weight: 'bold' as const,
           family: 'Inter, system-ui, sans-serif',
         },
         bodyFont: {
           size: 14,
-          weight: '600',
+          weight: 600,
           family: 'Inter, system-ui, sans-serif',
         },
         callbacks: {
@@ -280,7 +279,7 @@ export default function ProfitLossOverTimeChart() {
         ticks: {
           font: {
             size: 12,
-            weight: '600',
+            weight: 600,
             family: 'Inter, system-ui, sans-serif',
           },
           color: '#6B7280',
@@ -303,7 +302,7 @@ export default function ProfitLossOverTimeChart() {
         ticks: {
           font: {
             size: 11,
-            weight: '600',
+            weight: 600,
             family: 'Inter, system-ui, sans-serif',
           },
           color: '#6B7280',
@@ -329,7 +328,6 @@ export default function ProfitLossOverTimeChart() {
             }
             return 1.5;
           },
-          drawBorder: false,
           drawTicks: false,
         },
         border: {

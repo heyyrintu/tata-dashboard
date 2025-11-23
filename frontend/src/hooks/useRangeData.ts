@@ -32,6 +32,8 @@ interface RangeWiseResponse {
   totalLoad?: number; // Total load from all indents in date range (in kg)
   totalCost?: number; // Total cost from all indents in date range
   totalProfitLoss?: number; // Total profit & loss from all indents in date range
+  totalRemainingCost?: number; // Total remaining cost (sum of loading + unload + other)
+  totalVehicleCost?: number; // Total vehicle cost (totalCost - remainingCost)
   totalBuckets?: number;
   totalBarrels?: number;
   totalRows?: number;

@@ -244,11 +244,11 @@ export default function MonthlyMarketVehicleRevenueChart() {
                   padding: 15,
                   font: {
                     size: 12,
-                    weight: '600',
+                    weight: 600,
                     family: 'Inter, system-ui, sans-serif',
                   },
                   color: '#374151',
-                  generateLabels: (chart: any) => {
+                  generateLabels: () => {
                     return [
                       {
                         text: 'Revenue',
@@ -285,7 +285,7 @@ export default function MonthlyMarketVehicleRevenueChart() {
                 },
                 bodyFont: {
                   size: 14,
-                  weight: '600',
+                  weight: 600,
                   family: 'Inter, system-ui, sans-serif',
                 },
                 callbacks: {
@@ -307,7 +307,7 @@ export default function MonthlyMarketVehicleRevenueChart() {
                 ticks: {
                   font: {
                     size: 12,
-                    weight: '600',
+                    weight: 600,
                     family: 'Inter, system-ui, sans-serif',
                   },
                   color: '#6B7280',
@@ -331,7 +331,7 @@ export default function MonthlyMarketVehicleRevenueChart() {
                 ticks: {
                   font: {
                     size: 11,
-                    weight: '600',
+                    weight: 600,
                     family: 'Inter, system-ui, sans-serif',
                   },
                   color: '#6B7280',
@@ -344,7 +344,6 @@ export default function MonthlyMarketVehicleRevenueChart() {
                 grid: {
                   color: 'rgba(220, 38, 38, 0.08)',
                   lineWidth: 1.5,
-                  drawBorder: false,
                   drawTicks: false,
                 },
                 border: {
