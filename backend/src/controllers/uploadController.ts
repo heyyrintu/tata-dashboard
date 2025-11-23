@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import path from 'path';
 import { parseExcelFile } from '../utils/excelParser';
 import Trip from '../models/Trip';
+import mongoose from 'mongoose';
 import fs from 'fs';
 
 interface UploadResult {
@@ -68,8 +69,60 @@ export const processExcelFile = async (
     }
 
     // Delete all existing data before inserting new data
-    // Use maxTimeMS to prevent timeout errors
-    await Trip.deleteMany({}).maxTimeMS(30000);
+    // Use maxTimeMS and ensure connection is ready
+    console.log('[uploadController] Checking MongoDB connection...');
+    const connectionState = mongoose.connection.readyState;
+    console.log(`[uploadController] Connection state: ${connectionState} (0=disconnected, 1=connected, 2=connecting, 3=disconnecting)`);
+    
+    // Wait for connection if it's connecting (state 2)
+    if (connectionState === 2) {
+      console.log('[uploadController] Connection in progress, waiting...');
+      await new Promise<void>((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('MongoDB connection timeout. Please check your connection string and ensure MongoDB is running.'));
+        }, 30000); // 30 second timeout
+        
+        const checkConnection = () => {
+          if (mongoose.connection.readyState === 1) {
+            clearTimeout(timeout);
+            mongoose.connection.removeListener('connected', checkConnection);
+            mongoose.connection.removeListener('error', onError);
+            resolve();
+          }
+        };
+        
+        const onError = (err: Error) => {
+          clearTimeout(timeout);
+          mongoose.connection.removeListener('connected', checkConnection);
+          mongoose.connection.removeListener('error', onError);
+          reject(new Error(`MongoDB connection failed: ${err.message}`));
+        };
+        
+        mongoose.connection.once('connected', checkConnection);
+        mongoose.connection.once('error', onError);
+      });
+    } else if (connectionState !== 1) {
+      // If disconnected (0) or disconnecting (3), try to reconnect
+      if (connectionState === 0 || connectionState === 3) {
+        console.log('[uploadController] Connection not ready, attempting to reconnect...');
+        try {
+          await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tata-dashboard');
+          console.log('[uploadController] Reconnected successfully');
+        } catch (reconnectError) {
+          throw new Error(`MongoDB connection failed. Please check your connection string and ensure MongoDB is running. Error: ${reconnectError instanceof Error ? reconnectError.message : 'Unknown error'}`);
+        }
+      } else {
+        throw new Error(`MongoDB connection is not ready (state: ${connectionState}). Please wait and try again.`);
+      }
+    }
+    
+    console.log('[uploadController] MongoDB connection verified');
+    
+    console.log('[uploadController] Deleting existing trips...');
+    const deleteResult = await Trip.deleteMany({})
+      .maxTimeMS(120000) // 2 minutes timeout
+      .lean();
+    console.log(`[uploadController] Deleted ${deleteResult.deletedCount} existing trips`);
 
     // Insert new data in batches to avoid timeout
     const batchSize = 100;
