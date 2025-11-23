@@ -122,6 +122,7 @@ export default function CombinedFinanceTable() {
   const totalProfitLossPercentage = totalCost !== 0 ? (totalProfitLoss / totalCost) * 100 : null;
   const totalBuckets = combinedData.reduce((sum, item) => sum + item.bucketCount, 0);
   const totalBarrels = combinedData.reduce((sum, item) => sum + item.barrelCount, 0);
+  const totalKm = combinedData.reduce((sum, item) => sum + item.totalKm, 0);
 
   return gradientWrapper(
     <>
@@ -143,6 +144,9 @@ export default function CombinedFinanceTable() {
               <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
                 theme === 'light' ? 'text-gray-700' : 'text-gray-800'
               }`}>Range (Rates)</th>
+              <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
+                theme === 'light' ? 'text-gray-700' : 'text-gray-800'
+              }`}>Total KM</th>
               <th className={`text-left py-4 px-6 text-sm font-bold uppercase tracking-wider ${
                 theme === 'light' ? 'text-gray-700' : 'text-gray-800'
               }`}>Bucket+Barrel Count</th>
@@ -202,6 +206,9 @@ export default function CombinedFinanceTable() {
                     </div>
                   </td>
                   <td className="py-4 px-6 font-semibold text-base text-gray-600">
+                    {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(item.totalKm)} km
+                  </td>
+                  <td className="py-4 px-6 font-semibold text-base text-gray-600">
                     {formatBucketBarrelCount(item.bucketCount, item.barrelCount)}
                   </td>
                   <td className="py-4 px-6 font-semibold text-base text-gray-600">
@@ -234,6 +241,9 @@ export default function CombinedFinanceTable() {
                   <span className="w-1 h-6 bg-gradient-to-b from-red-600 to-yellow-500 rounded"></span>
                   TOTAL
                 </span>
+              </td>
+              <td className="py-5 px-6 font-bold text-lg text-gray-600">
+                {new Intl.NumberFormat('en-IN', { maximumFractionDigits: 0 }).format(totalKm)} km
               </td>
               <td className="py-5 px-6 font-bold text-lg text-gray-600">
                 {formatBucketBarrelCount(totalBuckets, totalBarrels)} <span className="text-sm font-normal">Units</span>

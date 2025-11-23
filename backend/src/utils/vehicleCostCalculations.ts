@@ -7,8 +7,7 @@ const FIXED_VEHICLES = [
   'HR38AC7854',
   'HR38AC7243',
   'HR38AC0599',
-  'HR38AC0263',
-  'HR38X6465'
+  'HR38AC0263'
 ];
 
 export interface VehicleCostData {
@@ -33,11 +32,18 @@ export function calculateVehicleCosts(
   fromDate?: Date | null,
   toDate?: Date | null
 ): VehicleCostData[] {
-  // If dates are provided, filter in memory (for backward compatibility)
-  // Otherwise, assume trips are already filtered at DB level
-  const filteredTrips = (fromDate || toDate) 
-    ? filterIndentsByDate(allTrips, fromDate || null, toDate || null).allIndentsFiltered
-    : allTrips;
+  // Apply date filtering only if dates are actually provided
+  // If both are null/undefined, use all trips
+  let filteredTrips = allTrips;
+  console.log(`[DEBUG calculateVehicleCosts] Input: ${allTrips.length} trips, fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
+  
+  if ((fromDate !== null && fromDate !== undefined) || (toDate !== null && toDate !== undefined)) {
+    const dateFilterResult = filterIndentsByDate(allTrips, fromDate || null, toDate || null);
+    filteredTrips = dateFilterResult.allIndentsFiltered;
+    console.log(`[DEBUG calculateVehicleCosts] After date filter: ${filteredTrips.length} trips`);
+  } else {
+    console.log(`[DEBUG calculateVehicleCosts] No date filter - using all ${filteredTrips.length} trips`);
+  }
 
   const FIXED_KM = 5000;
   const KM_COST_RATE = 31;
@@ -57,6 +63,8 @@ export function calculateVehicleCosts(
     const actualKm = vehicleTrips.reduce((sum, trip) => {
       return sum + (Number(trip.totalKm) || 0);
     }, 0);
+    
+    console.log(`[DEBUG calculateVehicleCosts] Vehicle ${vehicleNumber}: ${vehicleTrips.length} trips, ${actualKm} km`);
 
     // Calculate metrics
     const remainingKm = FIXED_KM - actualKm;
@@ -72,34 +80,6 @@ export function calculateVehicleCosts(
       extraCost
     });
   }
-
-  // Process "Other" row - aggregate all non-fixed vehicles
-  const otherTrips = filteredTrips.filter(trip => {
-    const tripVehicle = String(trip.vehicleNumber || '').trim().toUpperCase();
-    if (!tripVehicle) return false;
-    // Check if vehicle is not in fixed list (case-insensitive)
-    return !FIXED_VEHICLES.some(fixed => fixed.toUpperCase() === tripVehicle);
-  });
-
-  // Sum totalKm for all non-fixed vehicles
-  const otherActualKm = otherTrips.reduce((sum, trip) => {
-    return sum + (Number(trip.totalKm) || 0);
-  }, 0);
-
-  // Calculate metrics for "Other"
-  const otherRemainingKm = FIXED_KM - otherActualKm;
-  const otherCostForRemainingKm = otherRemainingKm * KM_COST_RATE;
-  const otherExtraCost = TOTAL_BUDGET - otherCostForRemainingKm;
-
-  // Add "Other" row at the end
-  result.push({
-    vehicleNumber: 'Other',
-    fixedKm: FIXED_KM,
-    actualKm: otherActualKm,
-    remainingKm: otherRemainingKm,
-    costForRemainingKm: otherCostForRemainingKm,
-    extraCost: otherExtraCost
-  });
 
   return result;
 }

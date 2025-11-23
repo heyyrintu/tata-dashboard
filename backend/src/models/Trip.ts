@@ -24,6 +24,11 @@ export interface ITrip extends Document {
   remarks: string;
   freightTigerMonth: string;
   totalCostAE: number; // From Column AE (index 30) - main total cost
+  totalCostLoading: number; // From Column Y (index 24) - Total Cost(Loading)
+  totalCostUnload: number; // From Column AB (index 27) - Total cost Unload
+  anyOtherCost: number; // From Column AD (index 29) - Any Other Cost
+  remainingCost: number; // Calculated: totalCostLoading + totalCostUnload + anyOtherCost
+  vehicleCost: number; // Calculated: totalCostAE - remainingCost
   profitLoss: number;
   totalKm: number; // From Column U (21st column, index 20) - Total Km
   createdAt: Date;
@@ -55,6 +60,11 @@ const TripSchema = new Schema<ITrip>(
     remarks: { type: String },
     freightTigerMonth: { type: String },
     totalCostAE: { type: Number }, // From Column AE (index 30) - main total cost
+    totalCostLoading: { type: Number }, // From Column Y (index 24) - Total Cost(Loading)
+    totalCostUnload: { type: Number }, // From Column AB (index 27) - Total cost Unload
+    anyOtherCost: { type: Number }, // From Column AD (index 29) - Any Other Cost
+    remainingCost: { type: Number }, // Calculated: totalCostLoading + totalCostUnload + anyOtherCost
+    vehicleCost: { type: Number }, // Calculated: totalCostAE - remainingCost
     profitLoss: { type: Number },
     totalKm: { type: Number }, // From Column U (21st column, index 20) - Total Km
   },

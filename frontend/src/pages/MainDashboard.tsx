@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import DateRangeSelector from '../components/DateRangeSelector';
@@ -16,11 +16,63 @@ import { useDashboard } from '../context/DashboardContext';
 import { useTheme } from '../context/ThemeContext';
 import { getAnalytics } from '../services/api';
 import { BackgroundBeams } from '../components/ui/background-beams';
+import { format } from 'date-fns';
 
 function MainDashboard() {
-  const { uploadedFileName, dateRange, setMetrics, setIsLoading, setError, setUploadedFileName } = useDashboard();
+  const { uploadedFileName, dateRange, setMetrics, setIsLoading, setError, setUploadedFileName, setDateRange } = useDashboard();
   const { theme } = useTheme();
   const navigate = useNavigate();
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
+
+  // Initialize selectedMonth from dateRange
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      const fromMonth = format(dateRange.from, 'yyyy-MM');
+      const toMonth = format(dateRange.to, 'yyyy-MM');
+      if (fromMonth === toMonth) {
+        setSelectedMonth(fromMonth);
+      } else {
+        setSelectedMonth('');
+      }
+    } else {
+      setSelectedMonth('');
+    }
+  }, [dateRange.from, dateRange.to]);
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const monthValue = e.target.value;
+    setSelectedMonth(monthValue);
+    
+    if (monthValue) {
+      // Specific month selected - set date range to that month
+      const [year, month] = monthValue.split('-');
+      const startDate = new Date(parseInt(year), parseInt(month) - 1, 1); // Start from day 1
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(parseInt(year), parseInt(month), 0); // Last day of month
+      endDate.setHours(23, 59, 59, 999);
+      setDateRange(startDate, endDate);
+    } else {
+      // "All Months" selected - clear date range to show all data
+      setDateRange(null, null);
+    }
+  };
+
+  // Generate month options (last 12 months + current month)
+  const generateMonthOptions = () => {
+    const options = [];
+    const today = new Date();
+    
+    for (let i = 12; i >= 0; i--) {
+      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const monthKey = format(date, 'yyyy-MM');
+      const monthLabel = format(date, 'MMMM yyyy'); // Month name with year
+      options.push({ value: monthKey, label: monthLabel });
+    }
+    
+    return options;
+  };
+
+  const monthOptions = generateMonthOptions();
 
   const fetchInitialData = useCallback(async () => {
     console.log('[MainDashboard] fetchInitialData called with dateRange:', {
@@ -129,28 +181,74 @@ function MainDashboard() {
           </div>
         ) : (
           <>
-            <DateRangeSelector />
+            {/* Date Range Selector and Month Selector - Combined as one */}
+            <div className="mb-6 flex justify-center">
+              <div className={`relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg shadow-md transition-all duration-300 hover:shadow-lg hover:scale-105 ${
+                theme === 'light'
+                  ? 'bg-gradient-to-r from-red-50 to-yellow-50 border-2 border-red-200/50'
+                  : 'bg-gradient-to-r from-red-900/30 to-yellow-900/30 border-2 border-red-500/30'
+              }`}>
+                <div className="flex items-center gap-1.5">
+                  {/* Date Range Selector Content */}
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${
+                    theme === 'light' ? 'text-red-600' : 'text-yellow-400'
+                  }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <DateRangeSelector compact={true} />
+                  {/* Month Selector */}
+                  <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${
+                    theme === 'light' ? 'text-red-600' : 'text-yellow-400'
+                  }`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <div className="relative">
+                    <select
+                      value={selectedMonth}
+                      onChange={handleMonthChange}
+                      className={`px-3 py-1.5 pr-6 rounded-md text-xs font-semibold transition-all duration-300 appearance-none cursor-pointer ${
+                        theme === 'light'
+                          ? 'bg-white/90 text-gray-900 border-2 border-red-300/50 focus:ring-2 focus:ring-red-500 focus:border-red-500 hover:border-red-400'
+                          : 'bg-gray-900/90 border-2 border-yellow-500/30 text-white focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 hover:border-yellow-400'
+                      }`}
+                    >
+                      <option value="">All Months</option>
+                      {monthOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className={`absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-sm font-bold ${
+                      theme === 'light' ? 'text-red-600' : 'text-yellow-400'
+                    }`}>
+                      ↓
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <SummaryCards />
             
             {/* Phase 2: Range Analytics */}
             <div className="space-y-6 mt-6">
-              {/* Second Row: Range-Wise Trips and Range-Wise Load Graph */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <RangeWiseTable />
-                <RangeWiseLoadGraph />
+              {/* Range-Wise Summary and Fulfillment Trends */}
+              <div className="grid grid-cols-1 lg:grid-cols-20 gap-6">
+                <div className="lg:col-span-13">
+                  <RangeWiseTable />
+                </div>
+                <div className="lg:col-span-7">
+                  <FulfillmentTable />
+                </div>
               </div>
             </div>
 
             {/* Phase 3: Fulfillment Analytics */}
             <div className="space-y-6 mt-6">
-              {/* Fulfillment Trends Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-                <div className="lg:col-span-2">
-                  <FulfillmentTable />
-                </div>
-                <div className="lg:col-span-3">
-                  <FulfillmentGraph />
-                </div>
+              {/* Range-Wise Bucket Count Graph Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <RangeWiseLoadGraph />
+                <FulfillmentGraph />
               </div>
               
               {/* Load and Fulfillment Trends - Two Separate Charts */}

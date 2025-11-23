@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Circle, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useRangeData } from '../hooks/useRangeData';
@@ -27,6 +27,22 @@ L.Icon.Default.mergeOptions({
 });
 
 const SONIPAT_CENTER: [number, number] = [28.9931, 77.0151];
+
+// Component to handle map resize
+function MapResizeHandler() {
+  const map = useMap();
+  
+  useEffect(() => {
+    // Trigger resize after a short delay to ensure container is rendered
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [map]);
+  
+  return null;
+}
 
 export default function IndiaMap() {
   const { data, loading } = useRangeData();
@@ -75,45 +91,53 @@ export default function IndiaMap() {
   ];
 
   return (
-    <div className={`rounded-2xl mb-12 ${
+    <div className={`rounded-xl overflow-hidden mb-12 ${
       theme === 'light' 
-        ? 'p-[2px] shadow-lg' 
-        : 'shadow-xl border border-blue-900/30'
+        ? 'p-[3px] shadow-2xl' 
+        : 'shadow-2xl border border-red-900/20'
     }`} style={theme === 'light' ? {
-      height: '581px',
-      background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
-    } : { height: '581px' }}>
-      <div className={`rounded-2xl p-6 flex flex-col ${
-        theme === 'light' ? 'bg-white border-0' : 'bg-white'
-      }`} style={theme === 'light' ? { border: 'none', height: '100%' } : { height: '100%' }}>
-        <div className="flex justify-between items-center mb-4 flex-shrink-0">
-        <h2 className={`text-lg font-semibold ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Delivery Locations Map</h2>
-        
-        {/* Distance Legend */}
-        <div className="flex gap-4 text-xs">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['0-100Km'] || '#E01E1F' }}></div>
-            <span className={theme === 'light' ? 'text-black' : 'text-black'}>0-100 Km</span>
+      background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(220, 38, 38, 0.15), rgba(185, 28, 28, 0.15))',
+      boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.25), 0 0 0 1px rgba(220, 38, 38, 0.05)'
+    } : {}}>
+      <div className={`rounded-xl p-8 flex flex-col backdrop-blur-sm transition-all duration-300 ${
+        theme === 'light' ? 'bg-gradient-to-br from-white via-red-50/30 to-white border-0' : 'bg-white/95'
+      }`} style={theme === 'light' ? { border: 'none' } : {}}>
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="relative">
+              <div className="w-2 h-10 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-lg"></div>
+              <div className="absolute inset-0 w-2 h-10 bg-gradient-to-b from-red-400 to-red-600 rounded-full opacity-50 blur-sm"></div>
+            </div>
+            <div className="flex-1 flex justify-between items-center">
+              <h3 className={`text-2xl font-bold tracking-tight ${
+                theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+              }`}>
+                Delivery Locations Map
+              </h3>
+              {/* Distance Legend */}
+              <div className="flex gap-4 text-xs">
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['0-100Km'] || '#E01E1F' }}></div>
+                  <span className={theme === 'light' ? 'text-black' : 'text-black'}>0-100 Km</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['101-250Km'] || '#FEA519' }}></div>
+                  <span className={theme === 'light' ? 'text-black' : 'text-white'}>101-250 Km</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['251-400Km'] || '#FF6B35' }}></div>
+                  <span className={theme === 'light' ? 'text-black' : 'text-white'}>251-400 Km</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['401-600Km'] || '#FF8C42' }}></div>
+                  <span className={theme === 'light' ? 'text-black' : 'text-white'}>401-600 Km</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['101-250Km'] || '#FEA519' }}></div>
-            <span className={theme === 'light' ? 'text-black' : 'text-white'}>101-250 Km</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['251-400Km'] || '#FF6B35' }}></div>
-            <span className={theme === 'light' ? 'text-black' : 'text-white'}>251-400 Km</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: RANGE_COLORS['401-600Km'] || '#FF8C42' }}></div>
-            <span className={theme === 'light' ? 'text-black' : 'text-white'}>401-600 Km</span>
-          </div>
+          <div className="h-1.5 w-20 bg-gradient-to-r from-red-500 via-red-600 to-red-700 rounded-full ml-5 shadow-sm"></div>
         </div>
-      </div>
-      
-      <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0" style={{ minHeight: '500px', height: '500px' }}>
       {(loading || geocodingLoading) ? (
         <div className="flex justify-center items-center h-full">
           <LoadingSpinner />
@@ -123,7 +147,7 @@ export default function IndiaMap() {
           No data available for the selected date range
         </div>
       ) : (
-        <div className="rounded-lg overflow-hidden h-full">
+        <div className="rounded-lg overflow-hidden" style={{ height: '500px', width: '100%' }}>
           <MapContainer
             key={mapKey}
             center={SONIPAT_CENTER}
@@ -131,7 +155,11 @@ export default function IndiaMap() {
             scrollWheelZoom={true}
             style={{ height: '100%', width: '100%' }}
             className="z-0"
+            whenReady={() => {
+              // Map is ready
+            }}
           >
+            <MapResizeHandler />
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -181,7 +209,7 @@ export default function IndiaMap() {
           </MapContainer>
         </div>
       )}
-      </div>
+        </div>
       </div>
     </div>
   );

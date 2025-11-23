@@ -21,16 +21,16 @@ export default function FulfillmentGraph() {
   const { theme } = useTheme();
 
   const gradientWrapper = (content: React.ReactNode) => (
-    <div className={`rounded-2xl ${
+    <div className={`rounded-xl overflow-hidden ${
       theme === 'light' 
-        ? 'p-[2px] shadow-lg' 
-        : 'shadow-xl border border-blue-900/30'
+        ? 'p-[3px] shadow-2xl' 
+        : 'shadow-2xl border border-red-900/20'
     }`} style={theme === 'light' ? {
-      background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
-      boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
+      background: 'linear-gradient(135deg, rgba(234, 88, 12, 0.15), rgba(220, 38, 38, 0.15), rgba(185, 28, 28, 0.15))',
+      boxShadow: '0 25px 50px -12px rgba(220, 38, 38, 0.25), 0 0 0 1px rgba(220, 38, 38, 0.05)'
     } : {}}>
-      <div className={`rounded-2xl p-6 h-full ${
-        theme === 'light' ? 'bg-white border-0' : 'bg-white'
+      <div className={`rounded-xl p-8 flex flex-col backdrop-blur-sm transition-all duration-300 ${
+        theme === 'light' ? 'bg-gradient-to-br from-white via-red-50/30 to-white border-0' : 'bg-white/95'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         {content}
       </div>
@@ -40,10 +40,23 @@ export default function FulfillmentGraph() {
   if (loading) {
     return gradientWrapper(
       <>
-        <h2 className={`text-lg font-semibold mb-4 ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Fulfillment Trends graph</h2>
-        <div className="flex justify-center items-center h-64">
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="relative">
+              <div className="w-2 h-10 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-lg"></div>
+              <div className="absolute inset-0 w-2 h-10 bg-gradient-to-b from-red-400 to-red-600 rounded-full opacity-50 blur-sm"></div>
+            </div>
+            <div>
+              <h3 className={`text-2xl font-bold tracking-tight ${
+                theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+              }`}>
+                Fulfillment Trends graph
+              </h3>
+            </div>
+          </div>
+          <div className="h-1.5 w-20 bg-gradient-to-r from-red-500 via-red-600 to-red-700 rounded-full ml-5 shadow-sm"></div>
+        </div>
+        <div className="flex justify-center items-center flex-1 min-h-0">
           <LoadingSpinner />
         </div>
       </>
@@ -53,10 +66,23 @@ export default function FulfillmentGraph() {
   if (error) {
     return gradientWrapper(
       <>
-        <h2 className={`text-lg font-semibold mb-4 ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Fulfillment Trends graph</h2>
-        <div className={`flex justify-center items-center h-64 ${
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="relative">
+              <div className="w-2 h-10 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-lg"></div>
+              <div className="absolute inset-0 w-2 h-10 bg-gradient-to-b from-red-400 to-red-600 rounded-full opacity-50 blur-sm"></div>
+            </div>
+            <div>
+              <h3 className={`text-2xl font-bold tracking-tight ${
+                theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+              }`}>
+                Fulfillment Trends graph
+              </h3>
+            </div>
+          </div>
+          <div className="h-1.5 w-20 bg-gradient-to-r from-red-500 via-red-600 to-red-700 rounded-full ml-5 shadow-sm"></div>
+        </div>
+        <div className={`flex justify-center items-center flex-1 min-h-0 ${
           theme === 'light' ? 'text-red-600' : 'text-red-400'
         }`}>
           Error: {error}
@@ -68,9 +94,22 @@ export default function FulfillmentGraph() {
   if (!data || !data.fulfillmentData || data.fulfillmentData.length === 0) {
     return gradientWrapper(
       <>
-        <h2 className={`text-lg font-semibold mb-4 ${
-          theme === 'light' ? 'text-black' : 'text-black'
-        }`}>Fulfillment Trends graph</h2>
+        <div className="mb-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="relative">
+              <div className="w-2 h-10 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-lg"></div>
+              <div className="absolute inset-0 w-2 h-10 bg-gradient-to-b from-red-400 to-red-600 rounded-full opacity-50 blur-sm"></div>
+            </div>
+            <div>
+              <h3 className={`text-2xl font-bold tracking-tight ${
+                theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+              }`}>
+                Fulfillment Trends graph
+              </h3>
+            </div>
+          </div>
+          <div className="h-1.5 w-20 bg-gradient-to-r from-red-500 via-red-600 to-red-700 rounded-full ml-5 shadow-sm"></div>
+        </div>
         <div className="text-center py-12 text-black">
           No data available for the selected date range
         </div>
@@ -112,10 +151,23 @@ export default function FulfillmentGraph() {
 
   return gradientWrapper(
     <>
-      <h2 className={`text-lg font-semibold mb-4 ${
-        theme === 'light' ? 'text-black' : 'text-black'
-      }`}>Fulfillment Trends graph</h2>
-      <div className="h-64">
+      <div className="mb-6">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="relative">
+            <div className="w-2 h-10 bg-gradient-to-b from-red-500 via-red-600 to-red-700 rounded-full shadow-lg"></div>
+            <div className="absolute inset-0 w-2 h-10 bg-gradient-to-b from-red-400 to-red-600 rounded-full opacity-50 blur-sm"></div>
+          </div>
+          <div>
+            <h3 className={`text-2xl font-bold tracking-tight ${
+              theme === 'light' ? 'text-gray-900' : 'text-gray-900'
+            }`}>
+              Fulfillment Trends graph
+            </h3>
+          </div>
+        </div>
+        <div className="h-1.5 w-20 bg-gradient-to-r from-red-500 via-red-600 to-red-700 rounded-full ml-5 shadow-sm"></div>
+      </div>
+      <div className="flex-1 min-h-0" style={{ minHeight: '360px' }}>
         <Bar
           data={chartData}
           plugins={[valuePlugin]}
@@ -131,7 +183,7 @@ export default function FulfillmentGraph() {
                 backgroundColor: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.95)',
                 titleColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
                 bodyColor: theme === 'light' ? '#1e3a8a' : '#1e3a8a',
-                borderColor: theme === 'light' ? 'rgba(30, 58, 138, 0.3)' : 'rgba(30, 58, 138, 0.5)',
+                borderColor: theme === 'light' ? 'rgba(220, 38, 38, 0.4)' : 'rgba(220, 38, 38, 0.4)',
                 borderWidth: 1,
                 titleFont: {
                   weight: theme === 'light' ? 600 : 'normal',
@@ -158,7 +210,7 @@ export default function FulfillmentGraph() {
                   },
                 },
                 grid: {
-                  color: theme === 'light' ? 'rgba(30, 58, 138, 0.2)' : 'rgba(30, 58, 138, 0.2)',
+                  color: theme === 'light' ? 'rgba(220, 38, 38, 0.08)' : 'rgba(220, 38, 38, 0.08)',
                 },
                 beginAtZero: true,
                 max: yAxisMax,
