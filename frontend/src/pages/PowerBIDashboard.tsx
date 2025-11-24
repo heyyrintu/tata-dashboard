@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import CompactHeader from '../components/phase4/CompactHeader';
 import RevenueCard from '../components/phase4/RevenueCard';
+import CostCard from '../components/phase4/CostCard';
 import ProfitLossCard from '../components/phase4/ProfitLossCard';
 import ProfitLossPercentageCard from '../components/phase4/ProfitLossPercentageCard';
-import VehicleCostCard from '../components/phase4/VehicleCostCard';
 import CombinedFinanceTable from '../components/phase5/CombinedFinanceTable';
 import VehicleCostTable from '../components/phase5/VehicleCostTable';
 import MonthlyActualKmChart from '../components/phase5/MonthlyActualKmChart';
@@ -47,22 +47,12 @@ export default function PowerBIDashboard() {
 
       {/* Main Content with proper spacing */}
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* KPI Cards */}
-        <div className="mb-8 max-w-7xl mx-auto">
-          <div className="flex flex-nowrap gap-6 overflow-x-auto pb-4 lg:overflow-visible lg:pb-0">
-            <div className="min-w-[260px] flex-1 lg:flex-none">
-              <RevenueCard />
-            </div>
-            <div className="min-w-[260px] flex-1 lg:flex-none">
-              <ProfitLossCard />
-            </div>
-            <div className="min-w-[260px] flex-1 lg:flex-none">
-              <ProfitLossPercentageCard />
-            </div>
-            <div className="min-w-[260px] flex-1 lg:flex-none">
-              <VehicleCostCard />
-            </div>
-          </div>
+        {/* Revenue, Cost, Profit & Loss, Profit & Loss % Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-6 max-w-7xl mx-auto">
+          <RevenueCard />
+          <CostCard />
+          <ProfitLossCard />
+          <ProfitLossPercentageCard />
         </div>
 
         {/* Range-Wise Financial Summary - Right after cards */}
