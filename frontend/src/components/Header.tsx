@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router-dom';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useDashboard } from '../context/DashboardContext';
 import { format } from 'date-fns';
@@ -7,6 +7,7 @@ import { getLatestIndentDate } from '../services/api';
 import { formatOrdinalDate } from '../utils/dateFormatting';
 import DateRangeSelector from './DateRangeSelector';
 import { IconCalendarEvent, IconChevronDown } from '@tabler/icons-react';
+import { useAvailableMonths } from '../hooks/useAvailableMonths';
 
 export default function Header() {
   const location = useLocation();
@@ -14,6 +15,7 @@ export default function Header() {
   const { dateRange, setDateRange } = useDashboard();
   const [latestIndentDate, setLatestIndentDate] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const { monthOptions, loading } = useAvailableMonths();
 
   useEffect(() => {
     if (dateRange.from && dateRange.to) {
@@ -40,15 +42,6 @@ export default function Header() {
       setDateRange(null, null);
     }
   };
-
-  const monthOptions = useMemo(() => {
-    const today = new Date();
-    return Array.from({ length: 13 }).map((_, idx) => {
-      const offset = 12 - idx;
-      const date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
-      return { value: format(date, 'yyyy-MM'), label: format(date, 'MMMM yyyy') };
-    });
-  }, []);
 
   useEffect(() => {
     const fetchLatestDate = async () => {
@@ -102,11 +95,12 @@ export default function Header() {
                 <select
                   value={selectedMonth}
                   onChange={handleMonthChange}
+                  disabled={loading}
                   className={`appearance-none rounded-full border pl-8 pr-7 py-1.5 focus:outline-none ${
                     theme === 'light'
                       ? 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
                       : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/20'
-                  }`}
+                  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <option value="">All months</option>
                   {monthOptions.map((option) => (

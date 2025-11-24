@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useDashboard } from '../../context/DashboardContext';
 import { useTheme } from '../../context/ThemeContext';
 import { format } from 'date-fns';
+import { useAvailableMonths } from '../../hooks/useAvailableMonths';
 
 export default function MonthSelector() {
   const { dateRange, setDateRange } = useDashboard();
   const { theme } = useTheme();
   const [selectedMonth, setSelectedMonth] = useState<string>('');
+  const { monthOptions, loading } = useAvailableMonths();
 
   // Initialize selectedMonth from dateRange
   useEffect(() => {
@@ -33,23 +35,6 @@ export default function MonthSelector() {
     }
   };
 
-  // Generate month options (last 12 months + current month)
-  const generateMonthOptions = () => {
-    const options = [];
-    const today = new Date();
-    
-    for (let i = 12; i >= 0; i--) {
-      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-      const monthKey = format(date, 'yyyy-MM');
-      const monthLabel = format(date, 'MMMM yyyy');
-      options.push({ value: monthKey, label: monthLabel });
-    }
-    
-    return options;
-  };
-
-  const monthOptions = generateMonthOptions();
-
   return (
     <div className={`mb-6 flex justify-center ${
       theme === 'light' ? '' : ''
@@ -68,11 +53,12 @@ export default function MonthSelector() {
           <select
             value={selectedMonth}
             onChange={handleMonthChange}
+            disabled={loading}
             className={`px-4 py-2 pr-8 rounded-lg text-sm font-medium transition-all duration-300 appearance-none cursor-pointer ${
               theme === 'light'
                 ? 'bg-white text-black border border-gray-300 focus:ring-2 focus:ring-orange-500 focus:border-orange-500'
                 : 'bg-gray-900 border border-gray-700 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500'
-            }`}
+            } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <option value="">All Months</option>
             {monthOptions.map((option) => (

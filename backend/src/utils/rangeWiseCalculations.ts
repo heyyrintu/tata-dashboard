@@ -13,6 +13,7 @@ interface RangeWiseData {
   barrelCount: number;
   totalCostAE: number; // From Column AE - main total cost
   profitLoss: number;
+  totalKm: number; // Total km for this range
 }
 
 interface RangeWiseCalculationResult {
@@ -60,8 +61,16 @@ export async function calculateRangeWiseSummary(
   const totalLoad = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
   const totalCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
   const totalProfitLoss = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
-  const totalRemainingCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.remainingCost) || 0), 0); // Sum of remainingCost
+  // Total Remaining Cost should include ALL indents in date range (including cancelled) since cancelled trips may still have loading/unloading costs
+  const totalRemainingCost = dateFilterResult.allIndentsFiltered.reduce((sum: number, indent: any) => sum + (Number(indent.remainingCost) || 0), 0); // Sum of remainingCost from ALL indents
   const totalVehicleCost = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.vehicleCost) || 0), 0); // Sum of vehicleCost
+  
+  // Debug logging for remaining cost calculation
+  const remainingCostFromValid = validIndents.reduce((sum: number, indent: any) => sum + (Number(indent.remainingCost) || 0), 0);
+  const remainingCostFromCancelled = totalRemainingCost - remainingCostFromValid;
+  console.log(`[DEBUG calculateRangeWiseSummary] Total Remaining Cost: ₹${totalRemainingCost.toLocaleString('en-IN')} (from ${dateFilterResult.allIndentsFiltered.length} indents)`);
+  console.log(`[DEBUG calculateRangeWiseSummary]   - From valid indents: ₹${remainingCostFromValid.toLocaleString('en-IN')} (${validIndents.length} indents)`);
+  console.log(`[DEBUG calculateRangeWiseSummary]   - From cancelled indents: ₹${remainingCostFromCancelled.toLocaleString('en-IN')} (${dateFilterResult.allIndentsFiltered.length - validIndents.length} indents)`);
   
   let totalBuckets = 0;
   let totalBarrels = 0;
@@ -93,6 +102,7 @@ export async function calculateRangeWiseSummary(
     const totalLoadInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
     const totalCostAEInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
     const profitLossInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
+    const totalKmInRange = rangeIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalKm) || 0), 0); // Sum totalKm for this range
     
     const percentage = totalRows > 0 ? (indentCount / totalRows) * 100 : 0;
     
@@ -115,7 +125,8 @@ export async function calculateRangeWiseSummary(
       bucketCount,
       barrelCount,
       totalCostAE: totalCostAEInRange, // From Column AE
-      profitLoss: profitLossInRange
+      profitLoss: profitLossInRange,
+      totalKm: totalKmInRange // Total km for this range
     };
   });
   
@@ -134,6 +145,7 @@ export async function calculateRangeWiseSummary(
     const otherTotalLoad = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalLoad) || 0), 0);
     const otherTotalCostAE = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalCostAE) || 0), 0); // From Column AE - includes all rows
     const otherProfitLoss = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.profitLoss) || 0), 0);
+    const otherTotalKm = otherIndents.reduce((sum: number, indent: any) => sum + (Number(indent.totalKm) || 0), 0); // Sum totalKm for "Other" range
     const otherPercentage = totalRows > 0 ? (otherIndentCount / totalRows) * 100 : 0;
     
     let otherBucketCount = 0;
@@ -155,7 +167,8 @@ export async function calculateRangeWiseSummary(
       bucketCount: otherBucketCount,
       barrelCount: otherBarrelCount,
       totalCostAE: otherTotalCostAE, // From Column AE
-      profitLoss: otherProfitLoss
+      profitLoss: otherProfitLoss,
+      totalKm: otherTotalKm // Total km for "Other" range
     });
   }
   

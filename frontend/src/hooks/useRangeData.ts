@@ -13,6 +13,7 @@ interface RangeWiseData {
   totalCost?: number; // Total cost for this range (deprecated, use totalCostAE)
   totalCostAE?: number; // Total cost from Column AE for this range
   profitLoss?: number; // Profit & Loss for this range
+  totalKm?: number; // Total km for this range
 }
 
 interface LocationData {

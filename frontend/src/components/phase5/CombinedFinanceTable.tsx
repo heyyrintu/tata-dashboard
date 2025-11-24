@@ -19,6 +19,7 @@ export default function CombinedFinanceTable() {
     barrelCount: number;
     totalCostAE?: number; // From Column AE - main total cost
     profitLoss?: number;
+    totalKm?: number; // Total km for this range
   }> | undefined) => {
     if (!rangeData) return [];
     
@@ -48,7 +49,7 @@ export default function CombinedFinanceTable() {
         cost,
         profitLoss,
         profitLossPercentage,
-        totalKm: 0 // TODO: Add totalKm to range data if available
+        totalKm: item.totalKm || 0 // Use totalKm from range data
       };
     });
   };
