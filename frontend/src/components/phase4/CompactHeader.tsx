@@ -1,23 +1,57 @@
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTheme } from '../../context/ThemeContext';
-import { Button } from '../ui/moving-border';
-import { cn } from '../../lib/utils';
+import { useDashboard } from '../../context/DashboardContext';
 import { getLatestIndentDate } from '../../services/api';
 import { formatOrdinalDate } from '../../utils/dateFormatting';
+import DateRangeSelector from '../DateRangeSelector';
+import { format } from 'date-fns';
+import { IconCalendarEvent, IconChevronDown } from '@tabler/icons-react';
 
 export default function CompactHeader() {
-  const navigate = useNavigate();
   const { theme } = useTheme();
+  const { dateRange, setDateRange } = useDashboard();
   const [latestIndentDate, setLatestIndentDate] = useState<string | null>(null);
+  const [selectedMonth, setSelectedMonth] = useState<string>('');
 
-  // Fetch latest indent date on mount
+  useEffect(() => {
+    if (dateRange.from && dateRange.to) {
+      const fromMonth = format(dateRange.from, 'yyyy-MM');
+      const toMonth = format(dateRange.to, 'yyyy-MM');
+      setSelectedMonth(fromMonth === toMonth ? fromMonth : '');
+    } else {
+      setSelectedMonth('');
+    }
+  }, [dateRange.from, dateRange.to]);
+
+  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const monthValue = e.target.value;
+    setSelectedMonth(monthValue);
+
+    if (monthValue) {
+      const [year, month] = monthValue.split('-');
+      const startDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(parseInt(year, 10), parseInt(month, 10), 0);
+      endDate.setHours(23, 59, 59, 999);
+      setDateRange(startDate, endDate);
+    } else {
+      setDateRange(null, null);
+    }
+  };
+
+  const monthOptions = useMemo(() => {
+    const today = new Date();
+    return Array.from({ length: 13 }).map((_, idx) => {
+      const offset = 12 - idx;
+      const date = new Date(today.getFullYear(), today.getMonth() - offset, 1);
+      return { value: format(date, 'yyyy-MM'), label: format(date, 'MMMM yyyy') };
+    });
+  }, []);
+
   useEffect(() => {
     const fetchLatestDate = async () => {
       try {
-        console.log('[CompactHeader] Fetching latest indent date...');
         const date = await getLatestIndentDate();
-        console.log('[CompactHeader] Latest indent date received:', date);
         setLatestIndentDate(date);
       } catch (error) {
         console.error('[CompactHeader] Error fetching latest indent date:', error);
@@ -26,102 +60,84 @@ export default function CompactHeader() {
     fetchLatestDate();
   }, []);
 
+  const shellClasses =
+    theme === 'light'
+      ? 'bg-white/85 border-slate-200 text-slate-900'
+      : 'bg-slate-950/80 border-white/10 text-white';
+
   return (
-    <header className={`sticky top-0 z-50 backdrop-blur-lg shadow-xl ${
-      theme === 'light' 
-        ? 'relative' 
-        : 'enhanced-glass-card border-b-2 border-red-500/30'
-    }`} style={theme === 'light' ? {
-      background: 'linear-gradient(to right, rgba(239, 68, 68, 0.2), rgba(234, 179, 8, 0.2))'
-    } : {}}>
-      {theme === 'light' && (
-        <div 
-          className="absolute bottom-0 left-0 right-0 h-[2px]"
-          style={{
-            background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))'
-          }}
-        />
-      )}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between py-[10px]">
-          {/* Logo */}
-          <div className="flex items-center">
-            <div className={`backdrop-blur-lg px-4 py-2 rounded-xl shadow-lg hover:scale-105 transition-all duration-300 ${
-              theme === 'light'
-                ? 'bg-white/70 border border-gray-200/50 hover:bg-white/80'
-                : 'bg-white/10 border border-white/20 hover:bg-white/15'
-            }`}>
-              <img 
-                src="https://cdn.dribbble.com/userupload/45564127/file/6c01b78a863edd968c45d2287bcd5854.png?resize=752x470&vertical=center" 
-                alt="Drona Logo" 
-                className="h-[63px] w-auto object-contain hover:scale-105 transition-transform duration-300 cursor-pointer"
+    <header
+      className={`sticky top-0 z-50 border-b backdrop-blur-lg transition-all duration-300 ${shellClasses}`}
+    >
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
+        <div className="flex h-14 items-center gap-3">
+          <div className="flex flex-1 items-center gap-2 text-base font-semibold leading-none uppercase tracking-tight">
+            <span>DRONA</span>
+            <span className={theme === 'light' ? 'text-slate-400' : 'text-slate-600'}>/</span>
+            <span className={theme === 'light' ? 'text-slate-600' : 'text-slate-300'}>
+              TATA DEF FINANCE
+            </span>
+          </div>
+
+          <div className="hidden lg:flex flex-shrink-0 items-center gap-2 text-xs font-semibold">
+            <div
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 ${
+                theme === 'light'
+                  ? 'border-slate-200 bg-white text-slate-600'
+                  : 'border-white/10 bg-white/5 text-slate-200'
+              }`}
+            >
+              <DateRangeSelector compact />
+            </div>
+            <div className="relative">
+              <IconCalendarEvent
+                size={14}
+                className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                  theme === 'light' ? 'text-slate-400' : 'text-slate-500'
+                }`}
+              />
+              <select
+                value={selectedMonth}
+                onChange={handleMonthChange}
+                className={`appearance-none rounded-full border pl-8 pr-7 py-1.5 focus:outline-none ${
+                  theme === 'light'
+                    ? 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/20'
+                }`}
+              >
+                <option value="">All months</option>
+                {monthOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <IconChevronDown
+                size={12}
+                className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
+                  theme === 'light' ? 'text-slate-400' : 'text-slate-500'
+                }`}
               />
             </div>
           </div>
 
-          {/* Center: Dashboard Title */}
-          <div className="flex-1 flex justify-center">
-            <div className={`backdrop-blur-lg px-6 py-3 shadow-lg ${
-              theme === 'light'
-                ? 'bg-white/50 border border-gray-200/50'
-                : 'bg-white/10 border border-white/20'
-            }`}>
-              <div className={`text-center text-2xl font-bold ${
-                theme === 'light' 
-                  ? 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent' 
-                  : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent'
-              }`}>
-                Finance Dashboard
-              </div>
-            </div>
-          </div>
-
-          {/* Right: Latest Date Display and Back Button */}
-          <div className="flex flex-col items-end gap-2">
-            {/* Latest Indent Date Display */}
-            {latestIndentDate ? (
-              <div className={`backdrop-blur-md px-4 py-2 shadow-lg rounded-lg ${
-                theme === 'light'
-                  ? 'bg-gray-100/70 border border-gray-300'
-                  : 'bg-white/70 border border-white/20'
-              }`}>
-                <div className={`text-center text-sm font-semibold whitespace-nowrap ${
-                  theme === 'light' 
-                    ? 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent' 
-                    : 'bg-gradient-to-r from-red-600 to-yellow-500 bg-clip-text text-transparent'
-                }`}>
-                  The data is upto : {formatOrdinalDate(latestIndentDate)}
-                </div>
-              </div>
-            ) : (
-              <div className="text-xs text-gray-400">Loading date...</div>
-            )}
-            
-            {/* Back Button */}
-            <div className="flex items-center">
-              <Button
-                onClick={() => navigate('/')}
-                borderRadius="0.5rem"
-                containerClassName="h-auto w-auto transition-all duration-300 hover:scale-105 active:scale-95"
-                className={cn(
-                  'px-4 py-2 text-sm font-bold whitespace-nowrap transition-all duration-300',
+          {latestIndentDate && (
+            <div className="flex flex-shrink-0 items-center gap-2 text-xs font-semibold">
+              <span
+                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-1 ${
                   theme === 'light'
-                    ? '!bg-white !text-[#FEA519] !border-neutral-200 hover:!bg-orange-50 hover:!text-[#E01E1F] hover:shadow-lg hover:shadow-orange-200/50 active:!bg-orange-100' // Yellow text
-                    : 'bg-slate-900 text-white border-slate-800 hover:bg-slate-800 hover:shadow-lg hover:shadow-blue-500/30 active:bg-slate-700'
-                )}
-                borderClassName={cn(
-                  'transition-all duration-300',
-                  theme === 'light'
-                    ? 'bg-[radial-gradient(#E01E1F_40%,transparent_60%)] hover:bg-[radial-gradient(#E01E1F_60%,transparent_40%)]' // Red border
-                    : 'bg-[radial-gradient(#0ea5e9_40%,transparent_60%)] hover:bg-[radial-gradient(#0ea5e9_60%,transparent_40%)]'
-                )}
+                    ? 'border-emerald-100 bg-white text-emerald-600'
+                    : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
+                }`}
               >
-                Back to Dashboard
-              </Button>
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                Data up to {formatOrdinalDate(latestIndentDate)}
+              </span>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </header>
   );
 }
+
