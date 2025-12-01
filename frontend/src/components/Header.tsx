@@ -1,21 +1,33 @@
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useDashboard } from '../context/DashboardContext';
+import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
 import { getLatestIndentDate } from '../services/api';
 import { formatOrdinalDate } from '../utils/dateFormatting';
 import DateRangeSelector from './DateRangeSelector';
-import { IconCalendarEvent, IconChevronDown } from '@tabler/icons-react';
+import { IconCalendarEvent, IconChevronDown, IconLogout, IconUser } from '@tabler/icons-react';
 import { useAvailableMonths } from '../hooks/useAvailableMonths';
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { theme } = useTheme();
   const { dateRange, setDateRange } = useDashboard();
+  const { user, logout } = useAuth();
   const [latestIndentDate, setLatestIndentDate] = useState<string | null>(null);
   const [selectedMonth, setSelectedMonth] = useState<string>('');
   const { monthOptions, loading } = useAvailableMonths();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/auth');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    }
+  };
 
   useEffect(() => {
     if (dateRange.from && dateRange.to) {
@@ -75,7 +87,7 @@ export default function Header() {
           </div>
 
           {location.pathname === '/' && (
-            <div className="hidden lg:flex flex-shrink-0 items-center gap-2 text-xs font-semibold">
+            <div className="hidden lg:flex shrink-0 items-center gap-2 text-xs font-semibold">
               <div
                 className={`flex items-center gap-2 rounded-full border px-3 py-1.5 ${
                   theme === 'light'
@@ -120,7 +132,7 @@ export default function Header() {
           )}
 
           {latestIndentDate && (
-            <div className="flex flex-shrink-0 items-center gap-2 text-xs font-semibold">
+            <div className="flex shrink-0 items-center gap-2 text-xs font-semibold">
               <span
                 className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-1 ${
                   theme === 'light'
@@ -131,6 +143,34 @@ export default function Header() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Data up to {formatOrdinalDate(latestIndentDate)}
               </span>
+            </div>
+          )}
+
+          {/* User Info & Logout */}
+          {user && (
+            <div className="flex shrink-0 items-center gap-2">
+              <div
+                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  theme === 'light'
+                    ? 'border-slate-200 bg-white text-slate-600'
+                    : 'border-white/10 bg-white/5 text-slate-200'
+                }`}
+              >
+                <IconUser size={14} />
+                <span className="max-w-[120px] truncate">{user.name || user.email}</span>
+              </div>
+              <button
+                onClick={handleLogout}
+                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  theme === 'light'
+                    ? 'border-red-200 bg-white text-red-600 hover:bg-red-50'
+                    : 'border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20'
+                }`}
+                title="Logout"
+              >
+                <IconLogout size={14} />
+                <span className="hidden sm:inline">Logout</span>
+              </button>
             </div>
           )}
         </div>

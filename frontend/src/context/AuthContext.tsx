@@ -1,0 +1,82 @@
+import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { account, teams, ADMIN_TEAM_ID } from '../lib/appwrite';
+import { ID, type Models } from 'appwrite';
+
+interface AuthContextType {
+  user: Models.User<Models.Preferences> | null;
+  isLoading: boolean;
+  isAdmin: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  signup: (email: string, password: string, name: string) => Promise<void>;
+  logout: () => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Check if user is already logged in on mount
+  useEffect(() => {
+    checkUser();
+  }, []);
+
+  const checkAdminStatus = async () => {
+    try {
+      // Get user's membership in admin team
+      const membership = await teams.listMemberships(ADMIN_TEAM_ID);
+      // Check if current user is in the admin team
+      const isInAdminTeam = membership.memberships.length > 0;
+      setIsAdmin(isInAdminTeam);
+    } catch {
+      setIsAdmin(false);
+    }
+  };
+
+  const checkUser = async () => {
+    try {
+      const currentUser = await account.get();
+      setUser(currentUser);
+      await checkAdminStatus();
+    } catch {
+      setUser(null);
+      setIsAdmin(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (email: string, password: string) => {
+    await account.createEmailPasswordSession(email, password);
+    const currentUser = await account.get();
+    setUser(currentUser);
+    await checkAdminStatus();
+  };
+
+  const signup = async (email: string, password: string, name: string) => {
+    await account.create(ID.unique(), email, password, name);
+    await login(email, password);
+  };
+
+  const logout = async () => {
+    await account.deleteSession('current');
+    setUser(null);
+    setIsAdmin(false);
+  };
+
+  return (
+    <AuthContext.Provider value={{ user, isLoading, isAdmin, login, signup, logout }}>
+      {children}
+    </AuthContext.Provider>
+  );
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}

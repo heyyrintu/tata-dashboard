@@ -8,11 +8,13 @@ import {
 import { motion } from "framer-motion";
 import { Link, useLocation } from "react-router-dom";
 import { useTheme } from "@/context/ThemeContext";
+import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 
 export default function AppSidebar() {
   const location = useLocation();
   const pathname = location.pathname;
+  const { isAdmin } = useAuth();
   
   const links = [
     {
@@ -21,6 +23,7 @@ export default function AppSidebar() {
       icon: (
         <IconBrandTabler className="h-5 w-5 shrink-0" />
       ),
+      adminOnly: false,
     },
     {
       label: "Analytics",
@@ -28,6 +31,7 @@ export default function AppSidebar() {
       icon: (
         <IconTable className="h-5 w-5 shrink-0" />
       ),
+      adminOnly: true,
     },
     {
       label: "Upload Data",
@@ -35,8 +39,9 @@ export default function AppSidebar() {
       icon: (
         <IconUserBolt className="h-5 w-5 shrink-0" />
       ),
+      adminOnly: true,
     },
-  ];
+  ].filter(link => !link.adminOnly || isAdmin);
 
   const [open, setOpen] = useState(false);
 
