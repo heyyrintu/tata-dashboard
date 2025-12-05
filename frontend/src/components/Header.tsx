@@ -1,178 +1,91 @@
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useTheme } from '../context/ThemeContext';
 import { useDashboard } from '../context/DashboardContext';
-import { useAuth } from '../context/AuthContext';
 import { format } from 'date-fns';
-import { getLatestIndentDate } from '../services/api';
-import { formatOrdinalDate } from '../utils/dateFormatting';
-import DateRangeSelector from './DateRangeSelector';
-import { IconCalendarEvent, IconChevronDown, IconLogout, IconUser } from '@tabler/icons-react';
-import { useAvailableMonths } from '../hooks/useAvailableMonths';
 
 export default function Header() {
   const location = useLocation();
-  const navigate = useNavigate();
   const { theme } = useTheme();
-  const { dateRange, setDateRange } = useDashboard();
-  const { user, logout } = useAuth();
-  const [latestIndentDate, setLatestIndentDate] = useState<string | null>(null);
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
-  const { monthOptions, loading } = useAvailableMonths();
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/auth');
-    } catch (error) {
-      console.error('Logout failed:', error);
-    }
-  };
+  const { dateRange } = useDashboard();
+  const [currentMonth, setCurrentMonth] = useState<string>('');
 
   useEffect(() => {
-    if (dateRange.from && dateRange.to) {
-      const fromMonth = format(dateRange.from, 'yyyy-MM');
-      const toMonth = format(dateRange.to, 'yyyy-MM');
-      setSelectedMonth(fromMonth === toMonth ? fromMonth : '');
+    if (dateRange.from) {
+      setCurrentMonth(format(dateRange.from, "MMM''yy"));
     } else {
-      setSelectedMonth('');
+      setCurrentMonth(format(new Date(), "MMM''yy"));
     }
-  }, [dateRange.from, dateRange.to]);
+  }, [dateRange.from]);
 
-  const handleMonthChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const monthValue = e.target.value;
-    setSelectedMonth(monthValue);
-
-    if (monthValue) {
-      const [year, month] = monthValue.split('-');
-      const startDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(parseInt(year, 10), parseInt(month, 10), 0);
-      endDate.setHours(23, 59, 59, 999);
-      setDateRange(startDate, endDate);
-    } else {
-      setDateRange(null, null);
-    }
-  };
-
-  useEffect(() => {
-    const fetchLatestDate = async () => {
-      try {
-        const date = await getLatestIndentDate();
-        setLatestIndentDate(date);
-      } catch (error) {
-        console.error('[Header] Error fetching latest indent date:', error);
-      }
-    };
-    fetchLatestDate();
-  }, []);
-
-  const shellClasses =
-    theme === 'light'
-      ? 'bg-white/85 border-slate-200 text-slate-900'
-      : 'bg-slate-950/80 border-white/10 text-white';
+  const pageTitle = location.pathname === '/upload' ? 'TML DEF Update' : 'TML DEF Dashboard';
 
   return (
-    <header
-      className={`sticky top-0 z-50 border-b backdrop-blur-lg transition-all duration-300 ${shellClasses}`}
-    >
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-        <div className="flex h-14 items-center gap-3">
-          <div className="flex flex-1 items-center gap-2 text-base font-semibold leading-none uppercase tracking-tight">
-            <span>DRONA</span>
-            <span className={theme === 'light' ? 'text-slate-400' : 'text-slate-600'}>/</span>
-            <span className={theme === 'light' ? 'text-slate-600' : 'text-slate-300'}>
-              {location.pathname === '/upload' ? 'TATA DEF UPDATE' : 'TATA DEF DASHBOARD'}
-            </span>
-          </div>
+    <header className="sticky top-0 z-50">
+      {/* Main Header with Sidebar Gradient */}
+      <div 
+        className="py-3 px-4 sm:px-6 backdrop-blur-md border-b-2"
+        style={{
+          background: theme === 'light' 
+            ? 'linear-gradient(to bottom right, rgba(224, 30, 31, 0.15), rgba(254, 165, 25, 0.15))'
+            : 'linear-gradient(to bottom right, rgba(224, 30, 31, 0.1), rgba(254, 165, 25, 0.1))',
+          borderColor: theme === 'light' ? 'rgba(224, 30, 31, 0.2)' : 'rgba(254, 165, 25, 0.2)'
+        }}
+      >
+        <div className="max-w-[1400px] mx-auto">
+          <div className="flex items-center justify-between gap-4">
+            {/* Left - DRONA Logo Image */}
+            <Link 
+              to="/"
+              className={`flex items-center justify-center px-3 py-1.5 rounded-xl shadow-lg backdrop-blur-md transition-transform hover:scale-105 ${
+                theme === 'light'
+                  ? 'bg-gray-100/80 border border-gray-300'
+                  : 'bg-white/10 border border-white/20 hover:bg-white/15'
+              }`}
+            >
+              <img 
+                src="https://cdn.dribbble.com/userupload/45564127/file/6c01b78a863edd968c45d2287bcd5854.png?resize=752x470&vertical=center" 
+                alt="Drona Logo" 
+                className="h-10 w-auto object-contain"
+              />
+            </Link>
 
-          {location.pathname === '/' && (
-            <div className="hidden lg:flex shrink-0 items-center gap-2 text-xs font-semibold">
-              <div
-                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 ${
-                  theme === 'light'
-                    ? 'border-slate-200 bg-white text-slate-600'
-                    : 'border-white/10 bg-white/5 text-slate-200'
-                }`}
+            {/* Center - Page Title */}
+            <div className="flex-1 flex justify-center">
+              <div 
+                className="px-10 py-3 rounded-full shadow-md backdrop-blur-md"
+                style={{
+                  background: theme === 'light' 
+                    ? 'rgba(255, 255, 255, 0.85)'
+                    : 'rgba(255, 255, 255, 0.08)',
+                  border: theme === 'light' ? '1px solid rgba(224, 30, 31, 0.15)' : '1px solid rgba(255,255,255,0.1)'
+                }}
               >
-                <DateRangeSelector compact />
-              </div>
-              <div className="relative">
-                <IconCalendarEvent
-                  size={14}
-                  className={`absolute left-3 top-1/2 -translate-y-1/2 ${
-                    theme === 'light' ? 'text-slate-400' : 'text-slate-500'
-                  }`}
-                />
-                <select
-                  value={selectedMonth}
-                  onChange={handleMonthChange}
-                  disabled={loading}
-                  className={`appearance-none rounded-full border pl-8 pr-7 py-1.5 focus:outline-none ${
-                    theme === 'light'
-                      ? 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
-                      : 'border-white/10 bg-white/5 text-slate-200 hover:border-white/20'
-                  } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                <h1 
+                  className="text-lg sm:text-xl font-bold tracking-wide"
+                  style={{ 
+                    color: theme === 'light' ? '#b45309' : '#FEA519',
+                  }}
                 >
-                  <option value="">All months</option>
-                  {monthOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <IconChevronDown
-                  size={12}
-                  className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
-                    theme === 'light' ? 'text-slate-400' : 'text-slate-500'
-                  }`}
-                />
+                  {pageTitle}
+                </h1>
               </div>
             </div>
-          )}
 
-          {latestIndentDate && (
-            <div className="flex shrink-0 items-center gap-2 text-xs font-semibold">
-              <span
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-1 ${
-                  theme === 'light'
-                    ? 'border-emerald-100 bg-white text-emerald-600'
-                    : 'border-emerald-500/40 bg-emerald-500/10 text-emerald-300'
-                }`}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                Data up to {formatOrdinalDate(latestIndentDate)}
-              </span>
+            {/* Right - Month Badge (Bigger) */}
+            <div 
+              className="px-5 py-2.5 rounded-xl text-lg font-bold shadow-lg backdrop-blur-md transition-transform hover:scale-105"
+              style={{
+                background: theme === 'light' 
+                  ? 'linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)'
+                  : 'linear-gradient(135deg, rgba(254, 165, 25, 0.2) 0%, rgba(224, 30, 31, 0.2) 100%)',
+                color: theme === 'light' ? '#92400e' : '#FEA519',
+                border: theme === 'light' ? '2px solid #fcd34d' : '2px solid rgba(254, 165, 25, 0.3)'
+              }}
+            >
+              {currentMonth}
             </div>
-          )}
-
-          {/* User Info & Logout */}
-          {user && (
-            <div className="flex shrink-0 items-center gap-2">
-              <div
-                className={`hidden sm:flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
-                  theme === 'light'
-                    ? 'border-slate-200 bg-white text-slate-600'
-                    : 'border-white/10 bg-white/5 text-slate-200'
-                }`}
-              >
-                <IconUser size={14} />
-                <span className="max-w-[120px] truncate">{user.name || user.email}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                  theme === 'light'
-                    ? 'border-red-200 bg-white text-red-600 hover:bg-red-50'
-                    : 'border-red-500/30 bg-red-500/10 text-red-400 hover:bg-red-500/20'
-                }`}
-                title="Logout"
-              >
-                <IconLogout size={14} />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          )}
+          </div>
         </div>
       </div>
     </header>

@@ -1,55 +1,11 @@
 import { useFulfillmentData } from '../hooks/useFulfillmentData';
 import { useTheme } from '../context/ThemeContext';
-import { useDashboard } from '../context/DashboardContext';
 import { LoadingSpinner } from './LoadingSpinner';
 import { formatIndentCount } from '../utils/fulfillmentCalculations';
-import { exportMissingIndents } from '../services/api';
-import { useState } from 'react';
 
 export default function FulfillmentTable() {
   const { data, loading, error } = useFulfillmentData();
   const { theme } = useTheme();
-  const { dateRange } = useDashboard();
-  const [downloading, setDownloading] = useState(false);
-
-  const handleDownloadMissingIndents = async () => {
-    try {
-      setDownloading(true);
-      const fromDate = dateRange.from ? new Date(dateRange.from) : undefined;
-      const toDate = dateRange.to ? new Date(dateRange.to) : undefined;
-      
-      const blob = await exportMissingIndents(fromDate, toDate);
-      
-      // Create download link
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      
-      // Generate filename
-      // Helper function to format date as YYYY-MM-DD using local timezone
-      const formatDateLocal = (date: Date): string => {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        return `${year}-${month}-${day}`;
-      };
-      
-      const dateRangeStr = fromDate && toDate 
-        ? `${formatDateLocal(fromDate)}_to_${formatDateLocal(toDate)}`
-        : 'all_dates';
-      link.download = `Missing_Indents_${dateRangeStr}.xlsx`;
-      
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error('Error downloading missing indents:', err);
-      alert('Failed to download missing indents. Please try again.');
-    } finally {
-      setDownloading(false);
-    }
-  };
 
   return (
     <div className={`rounded-3xl ${
@@ -64,24 +20,11 @@ export default function FulfillmentTable() {
         theme === 'light' ? 'bg-white/95 border-0' : 'bg-white/95'
       }`} style={theme === 'light' ? { border: 'none' } : {}}>
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className={`text-2xl font-bold ${
-              theme === 'light' ? 'text-gray-900' : 'text-white'
-            }`}>
-              Fulfillment Trends
-            </h2>
-            <button
-              onClick={handleDownloadMissingIndents}
-              disabled={loading || downloading || !data || !data.fulfillmentData || data.fulfillmentData.length === 0}
-              className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
-                theme === 'light'
-                  ? 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed'
-                  : 'bg-red-600 text-white hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed'
-              }`}
-            >
-              {downloading ? 'Downloading...' : 'Download Missing Indents'}
-            </button>
-          </div>
+          <h2 className={`text-2xl font-bold mb-2 ${
+            theme === 'light' ? 'text-gray-900' : 'text-white'
+          }`}>
+            Fulfillment Trends
+          </h2>
           <div className="h-1 w-20 bg-gradient-to-r from-red-600 to-yellow-500 rounded-full"></div>
         </div>
 

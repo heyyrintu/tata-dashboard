@@ -6,7 +6,7 @@ import {
   IconTable,
 } from "@tabler/icons-react";
 import { motion } from "framer-motion";
-import { Link, useLocation } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
@@ -49,8 +49,7 @@ export default function AppSidebar() {
     <Sidebar open={open} setOpen={setOpen}>
       <SidebarBody className="justify-between gap-10">
         <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
-          <SidebarLogo />
-          <div className="mt-8 flex flex-col gap-2">
+          <div className="mt-4 flex flex-col gap-2">
             {links.map((link, idx) => (
               <SidebarLink
                 key={idx}
@@ -67,34 +66,6 @@ export default function AppSidebar() {
     </Sidebar>
   );
 }
-
-const SidebarLogo = () => {
-  const { open, animate } = useSidebar();
-  const { theme } = useTheme();
-  
-  return (
-    <Link
-      to="/"
-      className="relative z-20 flex items-center justify-center py-3 px-2 rounded-lg hover:bg-white/5 transition-all duration-300"
-    >
-      <div className={`backdrop-blur-md px-3 py-2 rounded-xl shadow-lg transition-all duration-300 hover:scale-105 shrink-0 ${
-        theme === 'light'
-          ? 'bg-gray-100/80 border border-gray-300'
-          : 'bg-white/10 border border-white/20 hover:bg-white/15'
-      }`}>
-        <motion.img 
-          src="https://cdn.dribbble.com/userupload/45564127/file/6c01b78a863edd968c45d2287bcd5854.png?resize=752x470&vertical=center" 
-          alt="Drona Logo" 
-          className="w-auto object-contain transition-transform duration-300"
-          animate={{
-            height: animate ? (open ? "50px" : "24px") : "50px",
-          }}
-          transition={{ duration: 0.3, ease: "easeInOut" }}
-        />
-      </div>
-    </Link>
-  );
-};
 
 const ThemeToggleButton = () => {
   const { theme, toggleTheme } = useTheme();

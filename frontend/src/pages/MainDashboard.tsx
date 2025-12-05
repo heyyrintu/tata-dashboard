@@ -11,6 +11,7 @@ import LoadTrendChart from '../components/LoadTrendChart';
 import FulfillmentTrendChart from '../components/FulfillmentTrendChart';
 import MonthOnMonthIndentsChart from '../components/MonthOnMonthIndentsChart';
 import MonthOnMonthTripsChart from '../components/MonthOnMonthTripsChart';
+import PageDateFilter from '../components/PageDateFilter';
 import { useDashboard } from '../context/DashboardContext';
 import { useTheme } from '../context/ThemeContext';
 import { getAnalytics } from '../services/api';
@@ -128,6 +129,7 @@ function MainDashboard() {
           </div>
         ) : (
           <>
+            <PageDateFilter />
             <SummaryCards />
             
             {/* Phase 2: Range Analytics */}
