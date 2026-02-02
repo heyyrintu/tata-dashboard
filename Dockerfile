@@ -17,8 +17,8 @@ RUN apk add --no-cache python3 make g++
 # Copy backend package files
 COPY backend/package*.json ./
 
-# Install all dependencies (including devDependencies for build)
-RUN npm ci
+# Install all dependencies (ignore postinstall script - prisma schema not available yet)
+RUN npm ci --ignore-scripts
 
 # Copy backend source code (including Prisma schema)
 COPY backend/ .
@@ -76,8 +76,8 @@ WORKDIR /app
 COPY backend/package*.json ./backend/
 COPY backend/prisma ./backend/prisma
 
-# Install production dependencies
-RUN cd backend && npm ci --omit=dev && npm cache clean --force
+# Install production dependencies (ignore postinstall - we run prisma generate explicitly)
+RUN cd backend && npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # Generate Prisma client in production
 RUN cd backend && npx prisma generate
