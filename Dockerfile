@@ -1,7 +1,7 @@
 # ================================
 # TATA Dashboard - Combined Dockerfile
 # Single-service deployment (Frontend + Backend)
-# External MongoDB required
+# External PostgreSQL required
 # ================================
 
 # ================================
@@ -20,11 +20,11 @@ COPY backend/package*.json ./
 # Install all dependencies (including devDependencies for build)
 RUN npm ci
 
-# Copy backend source code
+# Copy backend source code (including Prisma schema)
 COPY backend/ .
 
-# Build TypeScript
-RUN npm run build
+# Generate Prisma client and build TypeScript
+RUN npx prisma generate && npm run build
 
 # ================================
 # Stage 2: Build Frontend
@@ -72,9 +72,15 @@ RUN apk add --no-cache nginx supervisor
 
 WORKDIR /app
 
-# Copy backend package files and install production dependencies
+# Copy backend package files and Prisma schema
 COPY backend/package*.json ./backend/
+COPY backend/prisma ./backend/prisma
+
+# Install production dependencies
 RUN cd backend && npm ci --omit=dev && npm cache clean --force
+
+# Generate Prisma client in production
+RUN cd backend && npx prisma generate
 
 # Copy built backend
 COPY --from=backend-builder /app/backend/dist ./backend/dist

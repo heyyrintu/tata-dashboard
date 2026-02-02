@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import path from 'path';
 import { parseExcelFile } from '../utils/excelParser';
-import Trip from '../models/Trip';
-import mongoose from 'mongoose';
+import prisma from '../lib/prisma';
 import fs from 'fs';
 
 interface UploadResult {
@@ -23,7 +22,7 @@ export const processExcelFile = async (
   fileName?: string
 ): Promise<UploadResult> => {
   let tempFilePath: string | null = null;
-  
+
   try {
     // If buffer is provided, save to temp file first
     if (fileBuffer) {
@@ -31,7 +30,7 @@ export const processExcelFile = async (
       if (!fs.existsSync(tempDir)) {
         fs.mkdirSync(tempDir, { recursive: true });
       }
-      
+
       tempFilePath = path.join(tempDir, `temp_${Date.now()}_${fileName || 'upload.xlsx'}`);
       fs.writeFileSync(tempFilePath, fileBuffer);
     }
@@ -60,7 +59,7 @@ export const processExcelFile = async (
       const dateB = b.indentDate instanceof Date ? b.indentDate.getTime() : new Date(b.indentDate).getTime();
       return dateA - dateB;
     });
-    
+
     console.log(`[uploadController] Sorted ${indents.length} indents by indentDate (oldest first)`);
     if (indents.length > 0) {
       const firstDate = indents[0].indentDate instanceof Date ? indents[0].indentDate : new Date(indents[0].indentDate);
@@ -69,112 +68,104 @@ export const processExcelFile = async (
     }
 
     // Delete all existing data before inserting new data
-    // Use maxTimeMS and ensure connection is ready
-    console.log('[uploadController] Checking MongoDB connection...');
-    const connectionState = mongoose.connection.readyState;
-    console.log(`[uploadController] Connection state: ${connectionState} (0=disconnected, 1=connected, 2=connecting, 3=disconnecting)`);
-    
-    // Wait for connection if it's connecting (state 2)
-    if (connectionState === 2) {
-      console.log('[uploadController] Connection in progress, waiting...');
-      await new Promise<void>((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(new Error('MongoDB connection timeout. Please check your connection string and ensure MongoDB is running.'));
-        }, 30000); // 30 second timeout
-        
-        const checkConnection = () => {
-          if (mongoose.connection.readyState === 1) {
-            clearTimeout(timeout);
-            mongoose.connection.removeListener('connected', checkConnection);
-            mongoose.connection.removeListener('error', onError);
-            resolve();
-          }
-        };
-        
-        const onError = (err: Error) => {
-          clearTimeout(timeout);
-          mongoose.connection.removeListener('connected', checkConnection);
-          mongoose.connection.removeListener('error', onError);
-          reject(new Error(`MongoDB connection failed: ${err.message}`));
-        };
-        
-        mongoose.connection.once('connected', checkConnection);
-        mongoose.connection.once('error', onError);
-      });
-    } else if (connectionState !== 1) {
-      // If disconnected (0) or disconnecting (3), try to reconnect
-      if (connectionState === 0 || connectionState === 3) {
-        console.log('[uploadController] Connection not ready, attempting to reconnect...');
-        try {
-          await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tata-dashboard');
-          console.log('[uploadController] Reconnected successfully');
-        } catch (reconnectError) {
-          throw new Error(`MongoDB connection failed. Please check your connection string and ensure MongoDB is running. Error: ${reconnectError instanceof Error ? reconnectError.message : 'Unknown error'}`);
-        }
-      } else {
-        throw new Error(`MongoDB connection is not ready (state: ${connectionState}). Please wait and try again.`);
-      }
-    }
-    
-    console.log('[uploadController] MongoDB connection verified');
-    
     console.log('[uploadController] Deleting existing trips...');
-    const deleteResult = await Trip.deleteMany({})
-      .maxTimeMS(120000) // 2 minutes timeout
-      .lean();
-    console.log(`[uploadController] Deleted ${deleteResult.deletedCount} existing trips`);
+    const deleteResult = await prisma.trip.deleteMany();
+    console.log(`[uploadController] Deleted ${deleteResult.count} existing trips`);
 
     // Insert new data in batches to avoid timeout
     const batchSize = 100;
     let insertedCount = 0;
     for (let i = 0; i < indents.length; i += batchSize) {
       const batch = indents.slice(i, i + batchSize);
-      
-      await Trip.insertMany(batch, { ordered: false });
+
+      // Convert batch data to Prisma format
+      const prismaData = batch.map(indent => ({
+        sNo: indent.sNo,
+        indentDate: indent.indentDate instanceof Date ? indent.indentDate : new Date(indent.indentDate),
+        indent: indent.indent,
+        allocationDate: indent.allocationDate instanceof Date ? indent.allocationDate : (indent.allocationDate ? new Date(indent.allocationDate) : null),
+        customerName: indent.customerName,
+        location: indent.location,
+        vehicleModel: indent.vehicleModel,
+        vehicleNumber: indent.vehicleNumber,
+        vehicleBased: indent.vehicleBased,
+        lrNo: indent.lrNo,
+        material: indent.material,
+        loadPerBucket: indent.loadPerBucket || 0,
+        noOfBuckets: indent.noOfBuckets || 0,
+        totalLoad: indent.totalLoad || 0,
+        podReceived: indent.podReceived,
+        loadingCharge: indent.loadingCharge || 0,
+        unloadingCharge: indent.unloadingCharge || 0,
+        actualRunning: indent.actualRunning || 0,
+        billableRunning: indent.billableRunning || 0,
+        range: indent.range,
+        remarks: indent.remarks,
+        freightTigerMonth: indent.freightTigerMonth,
+        totalCostAE: indent.totalCostAE || 0,
+        totalCostLoading: indent.totalCostLoading || 0,
+        totalCostUnload: indent.totalCostUnload || 0,
+        anyOtherCost: indent.anyOtherCost || 0,
+        remainingCost: indent.remainingCost || 0,
+        vehicleCost: indent.vehicleCost || 0,
+        profitLoss: indent.profitLoss || 0,
+        totalKm: indent.totalKm || 0,
+      }));
+
+      await prisma.trip.createMany({
+        data: prismaData,
+        skipDuplicates: true
+      });
       insertedCount += batch.length;
       console.log(`[uploadController] Inserted batch ${Math.floor(i / batchSize) + 1}: ${batch.length} indents (${insertedCount}/${indents.length})`);
-      
     }
-    
+
     // Verify data was inserted correctly
-    const totalInserted = await Trip.countDocuments({});
-    const insertedWithCost = await Trip.countDocuments({ totalCostAE: { $exists: true, $ne: 0 } });
-    const insertedWithKm = await Trip.countDocuments({ totalKm: { $exists: true, $ne: 0 } });
-    
-    const totalCostInserted = await Trip.aggregate([
-      { $group: { _id: null, total: { $sum: { $ifNull: ['$totalCostAE', 0] } } } }
-    ]);
-    const totalCostValue = totalCostInserted.length > 0 ? totalCostInserted[0].total : 0;
-    
-    const totalKmInserted = await Trip.aggregate([
-      { $group: { _id: null, total: { $sum: { $ifNull: ['$totalKm', 0] } } } }
-    ]);
-    const totalKmValue = totalKmInserted.length > 0 ? totalKmInserted[0].total : 0;
-    
+    const totalInserted = await prisma.trip.count();
+    const insertedWithCost = await prisma.trip.count({
+      where: {
+        totalCostAE: { not: 0 }
+      }
+    });
+    const insertedWithKm = await prisma.trip.count({
+      where: {
+        totalKm: { not: 0 }
+      }
+    });
+
+    const aggregateResult = await prisma.trip.aggregate({
+      _sum: {
+        totalCostAE: true,
+        totalKm: true
+      }
+    });
+    const totalCostValue = aggregateResult._sum.totalCostAE ?? 0;
+    const totalKmValue = aggregateResult._sum.totalKm ?? 0;
+
     console.log(`[uploadController] ===== UPLOAD COMPLETE =====`);
     console.log(`[uploadController] Total indents inserted: ${totalInserted} (expected: ${indents.length})`);
     console.log(`[uploadController] Indents with totalCostAE > 0: ${insertedWithCost}`);
     console.log(`[uploadController] Indents with totalKm > 0: ${insertedWithKm}`);
     console.log(`[uploadController] Total cost in database: ₹${totalCostValue.toLocaleString('en-IN')}`);
     console.log(`[uploadController] Total Km in database: ${totalKmValue.toLocaleString('en-IN')} km`);
-    
+
     console.log(`[uploadController] ============================`);
-    
+
     // Calculate expected values from parsed indents
     const expectedTotalCost = indents.reduce((sum, indent) => sum + (indent.totalCostAE || 0), 0);
     const expectedTotalKm = indents.reduce((sum, indent) => sum + (Number(indent.totalKm) || 0), 0);
-    
+
     console.log(`  Expected total cost: ₹${expectedTotalCost.toLocaleString('en-IN')}`);
     console.log(`  Expected total Km: ${expectedTotalKm.toLocaleString('en-IN')} km`);
-    
+
     if (totalInserted !== indents.length) {
       console.warn(`[uploadController] WARNING: Inserted count (${totalInserted}) doesn't match parsed count (${indents.length})`);
     }
-    
+
     if (Math.abs(totalCostValue - expectedTotalCost) > 0.01) {
       console.warn(`[uploadController] WARNING: Database total cost (₹${totalCostValue.toLocaleString('en-IN')}) doesn't match expected (₹${expectedTotalCost.toLocaleString('en-IN')})`);
     }
-    
+
     if (Math.abs(totalKmValue - expectedTotalKm) > 0.01) {
       console.warn(`[uploadController] WARNING: Database total Km (${totalKmValue.toLocaleString('en-IN')} km) doesn't match expected (${expectedTotalKm.toLocaleString('en-IN')} km)`);
     } else if (totalKmValue > 0) {
@@ -188,31 +179,33 @@ export const processExcelFile = async (
       const { calculateCardValues } = await import('../utils/cardCalculations');
       const { calculateRangeWiseSummary } = await import('../utils/rangeWiseCalculations');
       const { calculateVehicleCosts } = await import('../utils/vehicleCostCalculations');
-      
+
       // Get all trips (sorted by indentDate)
-      const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+      const allTrips = await prisma.trip.findMany({
+        orderBy: { indentDate: 'asc' }
+      });
       console.log(`[uploadController] Fetched ${allTrips.length} trips (sorted by indentDate)`);
-      
+
       // Pre-calculate TML DEF Dashboard data (MainDashboard)
       console.log(`[uploadController] Calculating TML DEF Dashboard data...`);
-      const cardResults = calculateCardValues(allTrips, null, null);
+      const cardResults = calculateCardValues(allTrips as any, null, null);
       const rangeWiseResults = await calculateRangeWiseSummary(null, null);
       console.log(`[uploadController] ✓ TML DEF Dashboard: ${cardResults.totalIndents} indents, ${cardResults.totalTrips} trips, ${cardResults.totalLoad} kg load`);
-      
+
       // Pre-calculate Finance Dashboard data (PowerBIDashboard)
       console.log(`[uploadController] Calculating Finance Dashboard data...`);
-      const vehicleCostResults = calculateVehicleCosts(allTrips, null, null);
+      const vehicleCostResults = calculateVehicleCosts(allTrips as any, null, null);
       console.log(`[uploadController] ✓ Finance Dashboard: ${vehicleCostResults.length} vehicle cost entries`);
-      
+
       // Calculate revenue, cost, profit-loss summaries
-      const totalRevenue = rangeWiseResults.rangeData.reduce((sum, r) => {
+      const totalRevenue = rangeWiseResults.rangeData.reduce((sum: number, r: any) => {
         const revenue = (r.bucketCount || 0) * 11636 + (r.barrelCount || 0) * 51420;
         return sum + revenue;
       }, 0);
       const totalCost = rangeWiseResults.totalCost || 0;
       const totalProfitLoss = rangeWiseResults.totalProfitLoss || 0;
       console.log(`[uploadController] ✓ Finance Summary: Revenue ₹${totalRevenue.toLocaleString('en-IN')}, Cost ₹${totalCost.toLocaleString('en-IN')}, P&L ₹${totalProfitLoss.toLocaleString('en-IN')}`);
-      
+
       console.log(`[uploadController] ===== DASHBOARD DATA PRE-CALCULATION COMPLETE =====`);
     } catch (calcError) {
       console.error(`[uploadController] ⚠️  Warning: Failed to pre-calculate dashboard data:`, calcError);
@@ -259,9 +252,9 @@ export const processExcelFile = async (
 export const uploadExcel = async (req: Request, res: Response) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'No file uploaded' 
+      return res.status(400).json({
+        success: false,
+        error: 'No file uploaded'
       });
     }
 
@@ -288,4 +281,3 @@ export const uploadExcel = async (req: Request, res: Response) => {
     });
   }
 };
-

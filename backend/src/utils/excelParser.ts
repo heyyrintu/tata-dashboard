@@ -1,5 +1,38 @@
 import * as XLSX from 'xlsx';
-import { ITrip } from '../models/Trip';
+
+// Trip input type for creating records (matches Prisma schema)
+export interface TripInput {
+  sNo?: number;
+  indentDate?: Date;
+  indent?: string;
+  allocationDate?: Date;
+  customerName?: string;
+  location?: string;
+  vehicleModel?: string;
+  vehicleNumber?: string;
+  vehicleBased?: string;
+  lrNo?: string;
+  material?: string;
+  loadPerBucket?: number;
+  noOfBuckets?: number;
+  totalLoad?: number;
+  podReceived?: string;
+  loadingCharge?: number;
+  unloadingCharge?: number;
+  actualRunning?: number;
+  billableRunning?: number;
+  range?: string;
+  remarks?: string;
+  freightTigerMonth?: string;
+  totalCostAE?: number;
+  totalCostLoading?: number;
+  totalCostUnload?: number;
+  anyOtherCost?: number;
+  remainingCost?: number;
+  vehicleCost?: number;
+  profitLoss?: number;
+  totalKm?: number;
+}
 
 interface ExcelRow {
   [key: string]: any;
@@ -36,7 +69,7 @@ const normalizeRange = (range: string | null | undefined): string => {
   return trimmed;
 };
 
-export const parseExcelFile = (filePath: string): ITrip[] => {
+export const parseExcelFile = (filePath: string): TripInput[] => {
   try {
     const workbook = XLSX.readFile(filePath, { 
       type: 'file', 
@@ -168,7 +201,7 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
     if (columnNIndex === -1 && rowKeys.length > 13) columnNIndex = 13; // Column N
     if (columnOIndex === -1 && rowKeys.length > 14) columnOIndex = 14; // Column O
     
-    const indents: ITrip[] = jsonData.map((row: ExcelRow, index: number) => {
+    const indents: TripInput[] = jsonData.map((row: ExcelRow, index: number) => {
       // Parse Total Cost from Column AE (index 30) - main total cost for all calculations
       // Use column name if available (exactly like September script)
       const totalCostAE = columnAEName 
@@ -288,7 +321,7 @@ export const parseExcelFile = (filePath: string): ITrip[] => {
           return parseNumericValue(row['P & L'] || row['P&L'] || 0);
         })(),
         totalKm: totalKm, // From Column U (21st column, index 20) - Total Km
-      } as ITrip;
+      } as TripInput;
     });
 
     const filtered = indents.filter(indent => indent.indent && indent.indentDate);

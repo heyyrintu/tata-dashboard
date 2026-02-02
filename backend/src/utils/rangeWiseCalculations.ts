@@ -1,4 +1,4 @@
-import Trip from '../models/Trip';
+import prisma from '../lib/prisma';
 import { format } from 'date-fns';
 import { filterIndentsByDate } from './dateFiltering';
 import { calculateCardValues } from './cardCalculations';
@@ -36,7 +36,7 @@ export async function calculateRangeWiseSummary(
   console.log(`[DEBUG calculateRangeWiseSummary] Date range: ${fromDate?.toISOString().split('T')[0] || 'null'} to ${toDate?.toISOString().split('T')[0] || 'null'}`);
 
   // Step 1: Get all indents from database (sorted by indentDate - oldest first)
-  const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+  const allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
   console.log(`[DEBUG calculateRangeWiseSummary] Total trips in DB: ${allIndents.length} (sorted by indentDate)`);
   
   if (allIndents.length === 0) {

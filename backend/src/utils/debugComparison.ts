@@ -3,7 +3,7 @@
  * This helps identify why values don't match
  */
 
-import Trip from '../models/Trip';
+import prisma from '../lib/prisma';
 import { format } from 'date-fns';
 import { normalizeFreightTigerMonth } from './freightTigerMonth';
 
@@ -18,7 +18,7 @@ export async function debugCompareCalculations(monthKey: string) {
   console.log(`Month boundaries: ${monthStart.toISOString()} to ${monthEnd.toISOString()}\n`);
   
   // Get all indents
-  const allIndents = await Trip.find({});
+  const allIndents = await prisma.trip.findMany();
   console.log(`Total indents in DB: ${allIndents.length}\n`);
   
   // ===== MONTH-ON-MONTH LOGIC =====
@@ -107,11 +107,11 @@ export async function debugCompareCalculations(monthKey: string) {
   // Show differences
   if (allIndentsForMonth.length !== allIndentsFiltered.length) {
     console.log('--- DIFFERENCES IN ALL INDENTS ---');
-    const monthOnMonthSet = new Set(allIndentsForMonth.map(i => i._id?.toString()));
-    const getAnalyticsSet = new Set(allIndentsFiltered.map(i => i._id?.toString()));
+    const monthOnMonthSet = new Set(allIndentsForMonth.map(i => i.id?.toString()));
+    const getAnalyticsSet = new Set(allIndentsFiltered.map(i => i.id?.toString()));
     
-    const onlyInMonthOnMonth = allIndentsForMonth.filter(i => !getAnalyticsSet.has(i._id?.toString()));
-    const onlyInGetAnalytics = allIndentsFiltered.filter(i => !monthOnMonthSet.has(i._id?.toString()));
+    const onlyInMonthOnMonth = allIndentsForMonth.filter(i => !getAnalyticsSet.has(i.id?.toString()));
+    const onlyInGetAnalytics = allIndentsFiltered.filter(i => !monthOnMonthSet.has(i.id?.toString()));
     
     if (onlyInMonthOnMonth.length > 0) {
       console.log(`Indents only in Month-on-Month (${onlyInMonthOnMonth.length}):`);

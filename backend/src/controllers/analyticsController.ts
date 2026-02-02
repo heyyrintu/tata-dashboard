@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Trip from '../models/Trip';
+import prisma from '../lib/prisma';
 import { parseDateParam } from '../utils/dateFilter';
 import { format, startOfWeek, getISOWeek, parse } from 'date-fns';
 import { calculateTripsByVehicleDay, type TripDocument } from '../utils/tripCount';
@@ -14,7 +14,7 @@ export const getAnalytics = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
 
     // Query all trips from database (sorted by indentDate - oldest first)
-    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
 
     // Use clean card calculation utility (single source of truth)
     const cardResults = calculateCardValues(allIndents, fromDate, toDate);
@@ -50,7 +50,7 @@ export const getRangeWiseAnalytics = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
 
     // Check database first (sorted by indentDate - oldest first)
-    const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allTrips = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
 
     // Use the new utility function for all calculations
     const { calculateRangeWiseSummary } = await import('../utils/rangeWiseCalculations');
@@ -132,7 +132,7 @@ export const getFulfillmentAnalytics = async (req: Request, res: Response) => {
     const toDate = parseDateParam(req.query.toDate as string);
 
     // STEP 1: Fetch all indents from database (sorted by indentDate)
-    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
 
     // STEP 2: Use clean date filtering utility (same as all other analytics functions)
     const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
@@ -311,7 +311,7 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
     console.log(`[exportMissingIndents] Raw query params: fromDate=${originalFromDateStr || 'undefined'}, toDate=${originalToDateStr || 'undefined'}`);
 
     // STEP 1: Get all indents that match Card 2 criteria (non-blank range, date filtered) - sorted by indentDate
-    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     console.log(`[exportMissingIndents] Total indents in database: ${allIndents.length} (sorted by indentDate)`);
     
     let filteredIndents = [...allIndents];
@@ -656,7 +656,7 @@ export const exportAllIndents = async (req: Request, res: Response) => {
     console.log(`[exportAllIndents] Date filter: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
 
     // Get all indents from database (sorted by indentDate)
-    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     console.log(`[exportAllIndents] Total indents from DB: ${allIndents.length} (sorted by indentDate)`);
 
     // Filter by date using the same logic as other analytics
@@ -802,7 +802,7 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
 
     // Query all indents first (sorted by indentDate - we'll filter in memory to match 4th card logic)
     // This matches the same date filtering logic as calculateRangeWiseSummary
-    let allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    let allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     
     console.log(`[DEBUG getLoadOverTime] Total indents fetched: ${allIndents.length} (sorted by indentDate)`);
     console.log(`[getLoadOverTime] Granularity: ${granularity}`);
@@ -1076,7 +1076,7 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     const granularity = req.query.granularity as string || 'daily';
 
     // Query all indents first (sorted by indentDate)
-    let allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    let allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     
     // For monthly granularity, show all available months (like month-on-month graphs)
     // For daily/weekly, apply date filtering
@@ -1090,21 +1090,24 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     } else {
       // For daily/weekly, apply date filtering
       // Build date filter query using indentDate instead of allocationDate
-      const dateFilter: any = {};
+      const whereClause: any = {};
       if (fromDate || toDate) {
-        dateFilter.indentDate = {};
+        whereClause.indentDate = {};
         if (fromDate) {
-          dateFilter.indentDate.$gte = fromDate;
+          whereClause.indentDate.gte = fromDate;
         }
         if (toDate) {
           const endDate = new Date(toDate);
           endDate.setHours(23, 59, 59, 999);
-          dateFilter.indentDate.$lte = endDate;
+          whereClause.indentDate.lte = endDate;
         }
       }
 
       // Query database with date filter (sorted by indentDate)
-      indents = await Trip.find(dateFilter).sort({ indentDate: 1 }).lean();
+      indents = await prisma.trip.findMany({
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+        orderBy: { indentDate: 'asc' }
+      });
     }
 
     // Bucket rates by range
@@ -1285,7 +1288,7 @@ export const getCostAnalytics = async (req: Request, res: Response) => {
     const granularity = req.query.granularity as string || 'daily';
 
     // Query all indents first (sorted by indentDate)
-    let allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    let allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     
     // For monthly granularity, show all available months (like month-on-month graphs)
     // For daily/weekly, apply date filtering
@@ -1299,21 +1302,24 @@ export const getCostAnalytics = async (req: Request, res: Response) => {
     } else {
       // For daily/weekly, apply date filtering
       // Build date filter query using indentDate instead of allocationDate
-      const dateFilter: any = {};
+      const whereClause: any = {};
       if (fromDate || toDate) {
-        dateFilter.indentDate = {};
+        whereClause.indentDate = {};
         if (fromDate) {
-          dateFilter.indentDate.$gte = fromDate;
+          whereClause.indentDate.gte = fromDate;
         }
         if (toDate) {
           const endDate = new Date(toDate);
           endDate.setHours(23, 59, 59, 999);
-          dateFilter.indentDate.$lte = endDate;
+          whereClause.indentDate.lte = endDate;
         }
       }
 
       // Query database with date filter (sorted by indentDate)
-      indents = await Trip.find(dateFilter).sort({ indentDate: 1 }).lean();
+      indents = await prisma.trip.findMany({
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+        orderBy: { indentDate: 'asc' }
+      });
     }
 
     // Range mappings - values are normalized during parsing
@@ -1446,7 +1452,7 @@ export const getProfitLossAnalytics = async (req: Request, res: Response) => {
     const granularity = req.query.granularity as string || 'daily';
 
     // Query all indents first (sorted by indentDate)
-    let allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    let allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     
     // For monthly granularity, show all available months (like month-on-month graphs)
     // For daily/weekly, apply date filtering
@@ -1460,21 +1466,24 @@ export const getProfitLossAnalytics = async (req: Request, res: Response) => {
     } else {
       // For daily/weekly, apply date filtering
       // Build date filter query using indentDate instead of allocationDate
-      const dateFilter: any = {};
+      const whereClause: any = {};
       if (fromDate || toDate) {
-        dateFilter.indentDate = {};
+        whereClause.indentDate = {};
         if (fromDate) {
-          dateFilter.indentDate.$gte = fromDate;
+          whereClause.indentDate.gte = fromDate;
         }
         if (toDate) {
           const endDate = new Date(toDate);
           endDate.setHours(23, 59, 59, 999);
-          dateFilter.indentDate.$lte = endDate;
+          whereClause.indentDate.lte = endDate;
         }
       }
 
       // Query database with date filter (sorted by indentDate)
-      indents = await Trip.find(dateFilter).sort({ indentDate: 1 }).lean();
+      indents = await prisma.trip.findMany({
+        where: Object.keys(whereClause).length > 0 ? whereClause : undefined,
+        orderBy: { indentDate: 'asc' }
+      });
     }
 
     // Range mappings - values are normalized during parsing
@@ -1622,7 +1631,7 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
   try {
     console.log(`[DEBUG getMonthOnMonthAnalytics] ===== START =====`);
     // Query all trips from database (sorted by indentDate - no date filter - show all available months)
-    const allIndents = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allIndents = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
 
     console.log(`[DEBUG getMonthOnMonthAnalytics] Total indents fetched: ${allIndents.length}`);
     
@@ -1756,7 +1765,7 @@ export const getMonthOnMonthAnalytics = async (req: Request, res: Response) => {
 
 export const getMonthlyVehicleCostAnalytics = async (req: Request, res: Response) => {
   try {
-    const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allTrips = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     
     const FIXED_VEHICLES = [
       'HR38AC7854',
@@ -1868,7 +1877,7 @@ export const getMonthlyVehicleCostAnalytics = async (req: Request, res: Response
 
 export const getMonthlyMarketVehicleRevenue = async (req: Request, res: Response) => {
   try {
-    const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allTrips = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     
     // Bucket rates by range
     const BUCKET_RATES: Record<string, number> = {
@@ -1976,7 +1985,7 @@ export const getVehicleCostAnalytics = async (req: Request, res: Response) => {
     console.log(`[DEBUG getVehicleCostAnalytics] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
 
     // Query all trips from database - use lean() for faster queries (sorted by indentDate - oldest first)
-    const allTrips = await Trip.find({}).sort({ indentDate: 1 }).lean();
+    const allTrips = await prisma.trip.findMany({ orderBy: { indentDate: 'asc' } });
     console.log(`[DEBUG getVehicleCostAnalytics] Total trips from DB: ${allTrips.length} (sorted by indentDate)`);
     
     if (allTrips.length === 0) {
@@ -2016,10 +2025,10 @@ export const getVehicleCostAnalytics = async (req: Request, res: Response) => {
 export const getLatestIndentDate = async (req: Request, res: Response) => {
   try {
     // Find the trip with the latest indentDate
-    const latestTrip = await Trip.findOne({})
-      .sort({ indentDate: -1 }) // Sort descending to get latest date
-      .select('indentDate')
-      .lean();
+    const latestTrip = await prisma.trip.findFirst({
+      orderBy: { indentDate: 'desc' },
+      select: { indentDate: true }
+    });
 
     if (!latestTrip || !latestTrip.indentDate) {
       return res.json({

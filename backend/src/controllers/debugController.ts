@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Trip from '../models/Trip';
+import prisma from '../lib/prisma';
 import { parseDateParam } from '../utils/dateFilter';
 import { calculateCardValues } from '../utils/cardCalculations';
 import { calculateRangeWiseSummary } from '../utils/rangeWiseCalculations';
@@ -12,19 +12,19 @@ export const debugCalculations = async (req: Request, res: Response) => {
   try {
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
-    
+
     console.log(`[debugCalculations] ===== START =====`);
     console.log(`[debugCalculations] Date params: fromDate=${fromDate?.toISOString().split('T')[0] || 'null'}, toDate=${toDate?.toISOString().split('T')[0] || 'null'}`);
-    
-    const allIndents = await Trip.find({});
+
+    const allIndents = await prisma.trip.findMany();
     console.log(`[debugCalculations] Total indents in DB: ${allIndents.length}`);
-    
+
     // Calculate card values
-    const cardResults = calculateCardValues(allIndents, fromDate, toDate);
-    
+    const cardResults = calculateCardValues(allIndents as any, fromDate, toDate);
+
     // Calculate range-wise summary
     const rangeWiseResults = await calculateRangeWiseSummary(fromDate || undefined, toDate || undefined);
-    
+
     // Manual verification calculations
     const sampleIndents = allIndents.slice(0, 10).map((indent: any) => ({
       indent: indent.indent,
@@ -34,7 +34,7 @@ export const debugCalculations = async (req: Request, res: Response) => {
       noOfBuckets: indent.noOfBuckets,
       totalLoad: indent.totalLoad
     }));
-    
+
     const debugInfo = {
       dateRange: {
         from: fromDate?.toISOString().split('T')[0] || null,
@@ -69,11 +69,11 @@ export const debugCalculations = async (req: Request, res: Response) => {
       },
       sampleIndents: sampleIndents
     };
-    
+
     console.log(`[debugCalculations] ===== RESULTS =====`);
     console.log(JSON.stringify(debugInfo, null, 2));
     console.log(`[debugCalculations] ===== END =====`);
-    
+
     res.json({
       success: true,
       ...debugInfo
@@ -86,4 +86,3 @@ export const debugCalculations = async (req: Request, res: Response) => {
     });
   }
 };
-

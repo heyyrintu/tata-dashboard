@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import Trip from '../models/Trip';
+import prisma from '../lib/prisma';
 import { parseDateParam } from '../utils/dateFilter';
 import { filterIndentsByDate } from '../utils/dateFiltering';
 import { format } from 'date-fns';
@@ -26,7 +26,7 @@ export const exportAllIndentsToExcel = async (req: Request, res: Response) => {
     });
 
     // Get all indents
-    const allIndents = await Trip.find({}).lean();
+    const allIndents = await prisma.trip.findMany();
     console.log('[EXPORT] Total indents from DB:', allIndents.length);
 
     // Filter by date

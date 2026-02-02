@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Trip {
+  id              Int       @id @default(autoincrement())
+  sNo             Int?
+  indentDate      DateTime? @db.Timestamptz
+  indent          String?
+  allocationDate  DateTime? @db.Timestamptz
+  customerName    String?
+  location        String?
+  vehicleModel    String?
+  vehicleNumber   String?
+  vehicleBased    String?
+  lrNo            String?
+  material        String?
+  loadPerBucket   Float?    @default(0)
+  noOfBuckets     Float?    @default(0)
+  totalLoad       Float?    @default(0)
+  podReceived     String?
+  loadingCharge   Float?    @default(0)
+  unloadingCharge Float?    @default(0)
+  actualRunning   Float?    @default(0)
+  billableRunning Float?    @default(0)
+  range           String?
+  remarks         String?
+  freightTigerMonth String?
+  totalCostAE     Float?    @default(0)
+  totalCostLoading Float?   @default(0)
+  totalCostUnload Float?    @default(0)
+  anyOtherCost    Float?    @default(0)
+  remainingCost   Float?    @default(0)
+  vehicleCost     Float?    @default(0)
+  profitLoss      Float?    @default(0)
+  totalKm         Float?    @default(0)
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
+
+  @@index([indentDate])
+  @@index([indent])
+  @@index([allocationDate])
+  @@map("trips")
+}
