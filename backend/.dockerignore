@@ -1,0 +1,56 @@
+# Dependencies
+node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output (will be rebuilt in container)
+dist
+
+# Environment files (use docker-compose env instead)
+.env
+.env.local
+.env.*.local
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Logs
+logs
+*.log
+
+# Uploads (mount as volume)
+uploads/*
+!uploads/.gitkeep
+
+# Test files
+*.test.ts
+*.spec.ts
+__tests__
+coverage
+
+# Documentation
+*.md
+!README.md
+
+# Docker files (don't copy into build context)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Misc
+*.pem
+*.key
+.nyc_output

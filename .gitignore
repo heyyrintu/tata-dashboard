@@ -1,9 +1,46 @@
+# Dependencies
 node_modules/
+
+# Build output
 dist/
+
+# Uploads
 uploads/
+
+# Environment files
 .env
+.env.local
+.env.*.local
 backend/.env
 frontend/.env
+frontend/.env.production
+
+# Logs
 *.log
+logs/
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.claude/
+
+# Docker (optional - uncomment to ignore)
+# docker-compose.override.yml
+
+# SSL certificates (keep in ssl/ but ignore actual certs)
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+
+# Backups
+backups/
+
+# Test coverage
+coverage/
 

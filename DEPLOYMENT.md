@@ -1,6 +1,167 @@
 # TATA DEF Dashboard - Production Deployment Guide
 
-This guide provides step-by-step instructions for deploying the TATA DEF Dashboard to a production VPS server.
+This guide provides step-by-step instructions for deploying the TATA DEF Dashboard to a production server.
+
+## Deployment Options
+
+| Method | Best For | Complexity |
+|--------|----------|------------|
+| **Docker (Recommended)** | Quick setup, consistency, easy scaling | Low |
+| **Manual VPS** | Full control, custom configurations | Medium |
+
+---
+
+# Option A: Docker Deployment (Recommended)
+
+## Prerequisites
+- Docker Engine 20.10+ and Docker Compose v2+
+- 2GB RAM minimum (4GB recommended)
+- Domain name (optional)
+
+## Quick Start with Docker
+
+### 1. Clone and Configure
+
+```bash
+git clone <your-repo-url> tata-dashboard
+cd tata-dashboard
+
+# Copy environment template
+cp .env.example .env
+
+# Edit environment variables
+nano .env
+```
+
+### 2. Configure Environment Variables
+
+Edit `.env` with your values:
+```env
+# Database
+MONGO_ROOT_USERNAME=admin
+MONGO_ROOT_PASSWORD=your_secure_password
+
+# URLs
+FRONTEND_URL=http://yourdomain.com
+VITE_API_URL=/api
+
+# Appwrite Auth (get from Appwrite console)
+VITE_APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1
+VITE_APPWRITE_PROJECT_ID=your_project_id
+VITE_APPWRITE_ADMIN_TEAM_ID=your_team_id
+```
+
+### 3. Build and Start
+
+```bash
+# Build and start all services
+docker compose up -d --build
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f
+```
+
+### 4. Access Application
+
+- **Frontend**: http://localhost (or your domain)
+- **API**: http://localhost/api
+- **Health Check**: http://localhost/health
+
+## Docker Commands Reference
+
+```bash
+# Start services
+docker compose up -d
+
+# Stop services
+docker compose down
+
+# Rebuild after code changes
+docker compose up -d --build
+
+# View logs
+docker compose logs -f backend
+docker compose logs -f frontend
+
+# Access container shell
+docker compose exec backend sh
+docker compose exec mongodb mongosh
+
+# Restart specific service
+docker compose restart backend
+
+# Remove everything (including volumes)
+docker compose down -v
+```
+
+## Production with SSL/HTTPS
+
+### Using Traefik (Recommended)
+
+Create `docker-compose.prod.yml`:
+```yaml
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.email=your@email.com"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks:
+      - tata-network
+
+  nginx:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.tata.rule=Host(`yourdomain.com`)"
+      - "traefik.http.routers.tata.entrypoints=websecure"
+      - "traefik.http.routers.tata.tls.certresolver=letsencrypt"
+
+volumes:
+  letsencrypt:
+```
+
+Run with:
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+## Development with Docker
+
+For local development with hot-reload:
+```bash
+docker compose -f docker-compose.dev.yml up -d
+```
+
+This starts:
+- MongoDB on port 27017
+- Backend on port 5000 (with hot-reload)
+- Frontend on port 5173 (Vite dev server)
+
+## Docker Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| MongoDB won't start | Check disk space: `docker system df` |
+| Backend health check fails | Check logs: `docker compose logs backend` |
+| Frontend build fails | Ensure env vars are set in `.env` |
+| Permission denied | Run: `chmod -R 755 ./nginx/ssl` |
+
+---
+
+# Option B: Manual VPS Deployment
 
 ## Prerequisites
 
