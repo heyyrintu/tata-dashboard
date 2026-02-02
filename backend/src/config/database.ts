@@ -9,9 +9,11 @@ export const connectDatabase = async () => {
     if (mongoURI.includes('?') && !mongoURI.match(/\/[^\/\?]+\?/)) {
       // URI has query params but no database name before the ?
       const [base, query] = mongoURI.split('?');
-      mongoURI = `${base}/tata-dashboard?${query}`;
-    } else if (!mongoURI.includes('/') || mongoURI.endsWith('/')) {
-      // URI ends with / or has no database path
+      // Remove trailing slash if present before adding database name
+      const cleanBase = base.replace(/\/$/, '');
+      mongoURI = `${cleanBase}/tata-dashboard?${query}`;
+    } else if (!mongoURI.match(/\/[^\/]+$/) || mongoURI.endsWith('/')) {
+      // URI ends with / or has no database path after port
       mongoURI = mongoURI.replace(/\/$/, '') + '/tata-dashboard';
     }
     
@@ -25,7 +27,6 @@ export const connectDatabase = async () => {
       connectTimeoutMS: 60000, // 60 seconds
       maxPoolSize: 10, // Maintain up to 10 socket connections
       minPoolSize: 2, // Maintain at least 2 socket connections
-      bufferMaxEntries: 0, // Disable mongoose buffering
       bufferCommands: false, // Disable mongoose buffering
     };
     
