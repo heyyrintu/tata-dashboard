@@ -1,0 +1,109 @@
+# ================================
+# TATA Dashboard - Combined Dockerfile
+# Single-service deployment (Frontend + Backend)
+# External MongoDB required
+# ================================
+
+# ================================
+# Stage 1: Build Backend
+# ================================
+FROM node:22-alpine AS backend-builder
+
+WORKDIR /app/backend
+
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
+
+# Copy backend package files
+COPY backend/package*.json ./
+
+# Install all dependencies (including devDependencies for build)
+RUN npm ci
+
+# Copy backend source code
+COPY backend/ .
+
+# Build TypeScript
+RUN npm run build
+
+# ================================
+# Stage 2: Build Frontend
+# ================================
+FROM node:22-alpine AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Copy frontend package files
+COPY frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy frontend source code
+COPY frontend/ .
+
+# Build arguments for environment variables
+ARG VITE_API_URL=/api
+ARG VITE_APPWRITE_ENDPOINT
+ARG VITE_APPWRITE_PROJECT_ID
+ARG VITE_APPWRITE_ADMIN_TEAM_ID
+
+# Set environment variables for build
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_APPWRITE_ENDPOINT=$VITE_APPWRITE_ENDPOINT
+ENV VITE_APPWRITE_PROJECT_ID=$VITE_APPWRITE_PROJECT_ID
+ENV VITE_APPWRITE_ADMIN_TEAM_ID=$VITE_APPWRITE_ADMIN_TEAM_ID
+
+# Build the application
+RUN npm run build
+
+# ================================
+# Stage 3: Production
+# ================================
+FROM node:22-alpine AS production
+
+# Add labels
+LABEL maintainer="TATA Dashboard Team"
+LABEL description="TATA DEF Dashboard - Combined Frontend & Backend"
+LABEL version="1.0.0"
+
+# Install nginx and supervisor
+RUN apk add --no-cache nginx supervisor
+
+WORKDIR /app
+
+# Copy backend package files and install production dependencies
+COPY backend/package*.json ./backend/
+RUN cd backend && npm ci --omit=dev && npm cache clean --force
+
+# Copy built backend
+COPY --from=backend-builder /app/backend/dist ./backend/dist
+
+# Create backend directories
+RUN mkdir -p backend/uploads backend/logs
+
+# Copy built frontend to nginx html directory
+COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
+
+# Copy nginx configuration
+COPY nginx.combined.conf /etc/nginx/http.d/default.conf
+
+# Copy supervisor configuration
+COPY supervisord.conf /etc/supervisord.conf
+
+# Create necessary directories
+RUN mkdir -p /var/log/supervisor /run/nginx
+
+# Set environment variables
+ENV NODE_ENV=production
+ENV PORT=5000
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1
+
+# Expose port
+EXPOSE 80
+
+# Start supervisor (manages both nginx and node)
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]

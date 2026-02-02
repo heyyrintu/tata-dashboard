@@ -1,0 +1,64 @@
+# Dependencies
+**/node_modules
+
+# Build outputs (will be built in container)
+frontend/dist
+backend/dist
+
+# Development files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+**/*.test.*
+**/*.spec.*
+**/__tests__
+
+# Logs
+**/*.log
+**/logs
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Docker files (not needed inside container)
+docker-compose*.yml
+Dockerfile.dev
+**/Dockerfile.dev
+
+# Development configs
+ecosystem.config.js
+Makefile
+
+# Excel/data files (not needed for deployment)
+*.xlsx
+*.xls
+
+# Local uploads
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Nginx folder (using combined config)
+nginx/
+
+# Scripts (not needed in container)
+scripts/
+
+# Template folder
+dashboard-template/
