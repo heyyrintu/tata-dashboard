@@ -476,7 +476,7 @@ export const exportMissingIndents = async (req: Request, res: Response) => {
     });
 
     // Remove duplicates (keep only unique indent values)
-    const uniqueMissingIndents = new Map<string, TripDocument>();
+    const uniqueMissingIndents = new Map<string, any>();
     for (const indent of missingIndents) {
       if (indent.indent && !uniqueMissingIndents.has(indent.indent)) {
         uniqueMissingIndents.set(indent.indent, indent);
@@ -924,6 +924,9 @@ export const getLoadOverTime = async (req: Request, res: Response) => {
     console.log(`[getLoadOverTime] Total indents fetched: ${indents.length}`);
 
     indents.forEach(indent => {
+      // Skip indents without valid date
+      if (!indent.indentDate) return;
+
       let key: string;
 
       // Group by time period based on granularity
@@ -1180,6 +1183,9 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
     const groupedData: Record<string, number> = {};
 
     indents.forEach(indent => {
+      // Skip indents without valid date
+      if (!indent.indentDate) return;
+
       let key: string;
 
       // Group by time period based on granularity
@@ -1217,17 +1223,17 @@ export const getRevenueAnalytics = async (req: Request, res: Response) => {
       }
 
       // Calculate revenue based on Material type and count
-      const indentRange = indent.range;
+      const indentRange = indent.range || '';
       const count = indent.noOfBuckets || 0;
       const material = (indent.material || '').trim();
-      
+
       let revenue = 0;
       if (material === '20L Buckets') {
         revenue = count * (BUCKET_RATES[indentRange] || 0);
       } else if (material === '210L Barrels') {
         revenue = count * (BARREL_RATES[indentRange] || 0);
       }
-      
+
       groupedData[key] += revenue;
     });
 
@@ -1355,6 +1361,9 @@ export const getCostAnalytics = async (req: Request, res: Response) => {
     const groupedData: Record<string, number> = {};
 
     indents.forEach(indent => {
+      // Skip indents without valid date
+      if (!indent.indentDate) return;
+
       let key: string;
 
       // Group by time period based on granularity
@@ -1519,6 +1528,9 @@ export const getProfitLossAnalytics = async (req: Request, res: Response) => {
     const groupedData: Record<string, number> = {};
 
     indents.forEach(indent => {
+      // Skip indents without valid date
+      if (!indent.indentDate) return;
+
       let key: string;
 
       // Group by time period based on granularity
@@ -1793,50 +1805,59 @@ export const getMonthlyVehicleCostAnalytics = async (req: Request, res: Response
     
     // Process fixed vehicle trips for actualKm (Monthly Actual KM chart)
     for (const trip of fixedVehicleTrips) {
+      // Skip trips without valid date
+      if (!trip.indentDate && !trip.freightTigerMonth) continue;
+
       let monthKey: string;
-      
+
       // Use Freight Tiger Month if available (like month-on-month graphs)
       if (trip.freightTigerMonth && typeof trip.freightTigerMonth === 'string' && trip.freightTigerMonth.trim() !== '') {
         const normalizedMonth = normalizeFreightTigerMonth(trip.freightTigerMonth.trim());
         if (normalizedMonth) {
           monthKey = normalizedMonth;
-        } else {
+        } else if (trip.indentDate) {
           // Fallback to indentDate if normalization fails
           monthKey = format(new Date(trip.indentDate), 'yyyy-MM');
+        } else {
+          continue;
         }
-      } else {
+      } else if (trip.indentDate) {
         // Fallback to indentDate if Freight Tiger Month is not available
         monthKey = format(new Date(trip.indentDate), 'yyyy-MM');
+      } else {
+        continue;
       }
-      
+
       if (!monthlyData[monthKey]) {
         monthlyData[monthKey] = { actualKm: 0, totalCost: 0 };
       }
-      
+
       // Sum totalKm for this month (for Monthly Actual KM chart)
       const totalKm = Number(trip.totalKm) || 0;
       monthlyData[monthKey].actualKm += totalKm;
     }
-    
+
     // Process market trips for totalCost (Monthly Extra Vehicle Cost chart)
     // Use Allocation Date (column D) for grouping Market trips
     for (const trip of marketTrips) {
       // Use allocationDate for Monthly Market Vehicle Cost chart
       const allocationDate = trip.allocationDate ? new Date(trip.allocationDate) : null;
       let monthKey: string;
-      
+
       if (allocationDate && !isNaN(allocationDate.getTime())) {
         // Group by month from allocationDate
         monthKey = format(allocationDate, 'yyyy-MM');
-      } else {
+      } else if (trip.indentDate) {
         // Fallback to indentDate if allocationDate is not available
         monthKey = format(new Date(trip.indentDate), 'yyyy-MM');
+      } else {
+        continue;
       }
-      
+
       if (!monthlyData[monthKey]) {
         monthlyData[monthKey] = { actualKm: 0, totalCost: 0 };
       }
-      
+
       // Sum totalCostAE for this month (for Monthly Extra Vehicle Cost chart)
       const totalCost = Number(trip.totalCostAE) || 0;
       monthlyData[monthKey].totalCost += totalCost;
@@ -1912,24 +1933,26 @@ export const getMonthlyMarketVehicleRevenue = async (req: Request, res: Response
       // Use allocationDate for Monthly Market Vehicle Revenue chart
       const allocationDate = trip.allocationDate ? new Date(trip.allocationDate) : null;
       let monthKey: string;
-      
+
       if (allocationDate && !isNaN(allocationDate.getTime())) {
         // Group by month from allocationDate
         monthKey = format(allocationDate, 'yyyy-MM');
-      } else {
+      } else if (trip.indentDate) {
         // Fallback to indentDate if allocationDate is not available
         monthKey = format(new Date(trip.indentDate), 'yyyy-MM');
+      } else {
+        continue;
       }
-      
+
       if (!monthlyData[monthKey]) {
         monthlyData[monthKey] = { revenue: 0, cost: 0 };
       }
-      
+
       // Calculate revenue: (Bucket Count × Bucket Rate) + (Barrel Count × Barrel Rate)
       const indentRange = trip.range || '';
       const count = Number(trip.noOfBuckets) || 0;
       const material = String(trip.material || '').trim();
-      
+
       let revenue = 0;
       if (material === '20L Buckets') {
         revenue = count * (BUCKET_RATES[indentRange] || 0);

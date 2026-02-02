@@ -26,9 +26,9 @@ export interface TripCountResult {
 }
 
 export interface TripDocument {
-  indentDate: Date;
-  vehicleNumber: string;
-  remarks?: string;
+  indentDate: Date | null;
+  vehicleNumber: string | null;
+  remarks?: string | null;
 }
 
 /**

@@ -55,16 +55,20 @@ export const processExcelFile = async (
 
     // Sort indents by indentDate (time) - oldest first
     indents.sort((a, b) => {
-      const dateA = a.indentDate instanceof Date ? a.indentDate.getTime() : new Date(a.indentDate).getTime();
-      const dateB = b.indentDate instanceof Date ? b.indentDate.getTime() : new Date(b.indentDate).getTime();
+      const dateA = a.indentDate ? (a.indentDate instanceof Date ? a.indentDate.getTime() : new Date(a.indentDate).getTime()) : 0;
+      const dateB = b.indentDate ? (b.indentDate instanceof Date ? b.indentDate.getTime() : new Date(b.indentDate).getTime()) : 0;
       return dateA - dateB;
     });
 
     console.log(`[uploadController] Sorted ${indents.length} indents by indentDate (oldest first)`);
     if (indents.length > 0) {
-      const firstDate = indents[0].indentDate instanceof Date ? indents[0].indentDate : new Date(indents[0].indentDate);
-      const lastDate = indents[indents.length - 1].indentDate instanceof Date ? indents[indents.length - 1].indentDate : new Date(indents[indents.length - 1].indentDate);
-      console.log(`[uploadController] Date range: ${firstDate.toISOString().split('T')[0]} to ${lastDate.toISOString().split('T')[0]}`);
+      const firstIndent = indents[0];
+      const lastIndent = indents[indents.length - 1];
+      const firstDate = firstIndent.indentDate ? (firstIndent.indentDate instanceof Date ? firstIndent.indentDate : new Date(firstIndent.indentDate)) : null;
+      const lastDate = lastIndent.indentDate ? (lastIndent.indentDate instanceof Date ? lastIndent.indentDate : new Date(lastIndent.indentDate)) : null;
+      if (firstDate && lastDate) {
+        console.log(`[uploadController] Date range: ${firstDate.toISOString().split('T')[0]} to ${lastDate.toISOString().split('T')[0]}`);
+      }
     }
 
     // Delete all existing data before inserting new data
@@ -81,7 +85,7 @@ export const processExcelFile = async (
       // Convert batch data to Prisma format
       const prismaData = batch.map(indent => ({
         sNo: indent.sNo,
-        indentDate: indent.indentDate instanceof Date ? indent.indentDate : new Date(indent.indentDate),
+        indentDate: indent.indentDate ? (indent.indentDate instanceof Date ? indent.indentDate : new Date(indent.indentDate)) : null,
         indent: indent.indent,
         allocationDate: indent.allocationDate instanceof Date ? indent.allocationDate : (indent.allocationDate ? new Date(indent.allocationDate) : null),
         customerName: indent.customerName,
