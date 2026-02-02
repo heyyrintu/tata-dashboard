@@ -85,21 +85,22 @@ RUN mkdir -p backend/uploads backend/logs
 # Copy built frontend to nginx html directory
 COPY --from=frontend-builder /app/frontend/dist /usr/share/nginx/html
 
-# Copy nginx configuration
-COPY nginx.combined.conf /etc/nginx/http.d/default.conf
+# Copy nginx configuration (replace main config for Alpine)
+COPY nginx.combined.conf /etc/nginx/nginx.conf
 
 # Copy supervisor configuration
 COPY supervisord.conf /etc/supervisord.conf
 
-# Create necessary directories
-RUN mkdir -p /var/log/supervisor /run/nginx
+# Create necessary directories and set permissions
+RUN mkdir -p /var/log/supervisor /run/nginx /var/log/nginx && \
+    chown -R nginx:nginx /var/log/nginx /run/nginx /usr/share/nginx/html
 
 # Set environment variables
 ENV NODE_ENV=production
 ENV PORT=5000
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+# Health check (increased start period for service initialization)
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=5 \
     CMD wget --no-verbose --tries=1 --spider http://localhost:80/health || exit 1
 
 # Expose port
