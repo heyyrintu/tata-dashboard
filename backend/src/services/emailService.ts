@@ -83,7 +83,9 @@ class EmailService {
           console.log(`[EmailService] Filtering emails from: ${this.allowedSenders.join(', ')}`);
         }
 
-        const uids = await client.search(searchCriteria);
+        const searchResult = await client.search(searchCriteria);
+        // search() can return false if no matches, or number[] of UIDs
+        const uids = searchResult || [];
         console.log(`[EmailService] Found ${uids.length} unread email(s)`);
 
         if (uids.length === 0) {
