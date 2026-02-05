@@ -1,4 +1,4 @@
-import emailService, { EmailMessage, EmailAttachment } from '../services/emailService';
+import emailService, { EmailMessage } from '../services/emailService';
 import { processExcelFile } from '../controllers/uploadController';
 
 interface ProcessingResult {
@@ -23,7 +23,7 @@ export async function processEmailAttachments(
   }
 
   // Filter Excel attachments
-  const excelAttachments = email.attachments.filter(att => 
+  const excelAttachments = email.attachments.filter(att =>
     emailService.isExcelAttachment(att)
   );
 
@@ -37,16 +37,11 @@ export async function processEmailAttachments(
   // Process each Excel attachment
   for (const attachment of excelAttachments) {
     try {
-      console.log(`[emailProcessor] Downloading attachment: ${attachment.name} (${attachment.size} bytes)`);
-      
-      // Download attachment
-      const fileBuffer = await emailService.downloadAttachment(email.id, attachment.id);
-      
-      console.log(`[emailProcessor] Processing Excel file: ${attachment.name}`);
-      
-      // Process the file
-      const result = await processExcelFile(fileBuffer, null, attachment.name);
-      
+      console.log(`[emailProcessor] Processing Excel file: ${attachment.name} (${attachment.size} bytes)`);
+
+      // Process the file - attachment.content is already a Buffer
+      const result = await processExcelFile(attachment.content, null, attachment.name);
+
       if (result.success) {
         console.log(`[emailProcessor] Successfully processed ${attachment.name}: ${result.recordCount} records`);
         results.push({
@@ -83,105 +78,82 @@ export async function processEmailAttachments(
  */
 export async function processEmail(email: EmailMessage): Promise<ProcessingResult[]> {
   try {
-    console.log(`[emailProcessor] Processing email: ${email.subject} (ID: ${email.id})`);
-    
+    console.log(`[emailProcessor] Processing email: ${email.subject} from ${email.from} (UID: ${email.uid})`);
+
     // Process attachments
     const results = await processEmailAttachments(email);
-    
+
     // Check if at least one attachment was processed successfully
     const hasSuccess = results.some(r => r.success);
-    
+
     if (hasSuccess) {
       // Mark as read
-      await emailService.markAsRead(email.id);
-      
+      await emailService.markAsRead(email.uid);
+
       // Archive email
-      await emailService.archiveEmail(email.id);
-      
-      console.log(`[emailProcessor] Successfully processed and archived email ${email.id}`);
-    } else {
-      console.warn(`[emailProcessor] No successful processing for email ${email.id}, not archiving`);
+      await emailService.archiveEmail(email.uid);
+
+      console.log(`[emailProcessor] Successfully processed and archived email UID ${email.uid}`);
+    } else if (results.length > 0) {
+      console.warn(`[emailProcessor] No successful processing for email UID ${email.uid}, not archiving`);
     }
-    
+
     return results;
   } catch (error) {
-    console.error(`[emailProcessor] Failed to process email ${email.id}:`, error);
+    console.error(`[emailProcessor] Failed to process email UID ${email.uid}:`, error);
     throw error;
   }
 }
 
 /**
- * Process all unread emails
+ * Process all unread emails from allowed sender
  */
 export async function processAllUnreadEmails(): Promise<ProcessingResult[]> {
   try {
     console.log('[emailProcessor] Checking for unread emails...');
-    
-    let emails;
-    try {
-      emails = await emailService.getUnreadEmails();
-    } catch (error: any) {
-      // Handle authentication/configuration errors
-      if (error.message && error.message.includes('credentials')) {
-        console.error('[emailProcessor] Email service not configured properly:', error.message);
-        throw new Error('Email service configuration error. Please check Azure app credentials.');
-      } else if (error.message && error.message.includes('Rate limit')) {
-        console.warn('[emailProcessor] Rate limited. Will retry on next poll cycle.');
-        throw error; // Re-throw to be handled by caller
-      }
-      throw error;
+
+    if (!emailService.isConfigured()) {
+      console.warn('[emailProcessor] Email service not configured. Skipping.');
+      return [];
     }
-    
+
+    const emails = await emailService.getUnreadEmails();
+
     if (emails.length === 0) {
       console.log('[emailProcessor] No unread emails found');
       return [];
     }
 
     console.log(`[emailProcessor] Found ${emails.length} unread email(s)`);
-    
+
     const allResults: ProcessingResult[] = [];
-    
+
     // Process each email
     for (const email of emails) {
       try {
         const results = await processEmail(email);
         allResults.push(...results);
-        
-        // Small delay between emails to avoid rate limiting
+
+        // Small delay between emails to avoid overwhelming the server
         await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (error: any) {
-        console.error(`[emailProcessor] Failed to process email ${email.id}:`, error);
+      } catch (error) {
+        console.error(`[emailProcessor] Failed to process email UID ${email.uid}:`, error);
         allResults.push({
           success: false,
           messageId: email.id,
           error: error instanceof Error ? error.message : 'Unknown error'
         });
-        
-        // If rate limited, stop processing remaining emails
-        if (error.message && error.message.includes('Rate limit')) {
-          console.warn('[emailProcessor] Rate limited. Stopping processing of remaining emails.');
-          break;
-        }
       }
     }
-    
+
     const successCount = allResults.filter(r => r.success).length;
     const failureCount = allResults.filter(r => !r.success).length;
-    
+
     console.log(`[emailProcessor] Processing complete: ${successCount} successful, ${failureCount} failed`);
-    
+
     return allResults;
-  } catch (error: any) {
-    const errorMessage = error.message || 'Unknown error';
-    console.error(`[emailProcessor] Failed to process unread emails:`, errorMessage);
-    
-    // Don't throw for rate limiting - let it retry on next poll
-    if (error.message && error.message.includes('Rate limit')) {
-      console.warn('[emailProcessor] Rate limited. Will retry on next poll cycle.');
-      return [];
-    }
-    
+  } catch (error) {
+    console.error(`[emailProcessor] Failed to process unread emails:`, error);
     throw error;
   }
 }
-

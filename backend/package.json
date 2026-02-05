@@ -26,9 +26,9 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@azure/identity": "^4.0.0",
-    "@microsoft/microsoft-graph-client": "^3.0.7",
     "@prisma/client": "^6.8.0",
+    "imapflow": "^1.0.171",
+    "mailparser": "^3.7.2",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.4",
     "@types/multer": "^2.0.0",
@@ -49,6 +49,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/mailparser": "^3.4.5",
     "prisma": "^6.8.0"
   }
 }

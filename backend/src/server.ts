@@ -85,21 +85,18 @@ app.get('/health', (req, res) => {
 connectDatabase().then(() => {
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
-    
-    // Start email polling service if credentials are configured
-    // Note: In production, this can also run as a separate PM2 process
-    if (
-      process.env.OUTLOOK_CLIENT_ID &&
-      process.env.OUTLOOK_CLIENT_SECRET &&
-      process.env.OUTLOOK_TENANT_ID &&
-      process.env.OUTLOOK_UPLOAD_EMAIL
-    ) {
-      console.log('[Server] Starting email polling service');
-      console.log(`[Server] Polling interval: ${parseInt(process.env.OUTLOOK_POLL_INTERVAL || '600000', 10) / 1000}s`);
+
+    // Start email polling service if IMAP credentials are configured
+    if (process.env.IMAP_USER && process.env.IMAP_PASSWORD) {
+      console.log('[Server] Starting email polling service (IMAP)');
+      console.log(`[Server] IMAP Host: ${process.env.IMAP_HOST || 'imap.hostinger.com'}`);
+      console.log(`[Server] IMAP User: ${process.env.IMAP_USER}`);
+      console.log(`[Server] Allowed Sender: ${process.env.IMAP_ALLOWED_SENDER || '(any)'}`);
+      console.log(`[Server] Polling interval: ${parseInt(process.env.EMAIL_POLL_INTERVAL || '600000', 10) / 1000}s`);
       emailPollingService.start();
     } else {
-      console.log('[Server] Email polling service not configured (missing credentials)');
-      console.log('[Server] Set OUTLOOK_CLIENT_ID, OUTLOOK_CLIENT_SECRET, OUTLOOK_TENANT_ID, and OUTLOOK_UPLOAD_EMAIL in .env');
+      console.log('[Server] Email polling service not configured (missing IMAP credentials)');
+      console.log('[Server] Set IMAP_USER, IMAP_PASSWORD, and optionally IMAP_ALLOWED_SENDER in environment');
     }
   });
 });

@@ -10,7 +10,7 @@ class EmailPollingService {
 
   constructor() {
     // Poll interval in milliseconds (default: 10 minutes)
-    this.pollInterval = parseInt(process.env.OUTLOOK_POLL_INTERVAL || '600000', 10);
+    this.pollInterval = parseInt(process.env.EMAIL_POLL_INTERVAL || '600000', 10);
     
     if (this.pollInterval < 60000) {
       console.warn('[EmailPollingService] Poll interval too short, setting to minimum 1 minute');
