@@ -91,7 +91,7 @@ connectDatabase().then(() => {
       console.log('[Server] Starting email polling service (IMAP)');
       console.log(`[Server] IMAP Host: ${process.env.IMAP_HOST || 'imap.hostinger.com'}`);
       console.log(`[Server] IMAP User: ${process.env.IMAP_USER}`);
-      console.log(`[Server] Allowed Sender: ${process.env.IMAP_ALLOWED_SENDER || '(any)'}`);
+      console.log(`[Server] Allowed Senders: ${process.env.IMAP_ALLOWED_SENDER || '(any)'}`);
       console.log(`[Server] Polling interval: ${parseInt(process.env.EMAIL_POLL_INTERVAL || '600000', 10) / 1000}s`);
       emailPollingService.start();
     } else {

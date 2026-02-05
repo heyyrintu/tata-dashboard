@@ -24,7 +24,7 @@ class EmailService {
   private port: number;
   private user: string;
   private password: string;
-  private allowedSender: string;
+  private allowedSenders: string[];
   private archiveFolder: string;
 
   constructor() {
@@ -32,7 +32,12 @@ class EmailService {
     this.port = parseInt(process.env.IMAP_PORT || '993', 10);
     this.user = process.env.IMAP_USER || '';
     this.password = process.env.IMAP_PASSWORD || '';
-    this.allowedSender = process.env.IMAP_ALLOWED_SENDER || '';
+    // Support comma-separated list of allowed senders
+    const senderEnv = process.env.IMAP_ALLOWED_SENDER || '';
+    this.allowedSenders = senderEnv
+      .split(',')
+      .map(s => s.trim().toLowerCase())
+      .filter(s => s.length > 0);
     this.archiveFolder = process.env.IMAP_ARCHIVE_FOLDER || 'Processed';
 
     if (!this.user || !this.password) {
@@ -71,13 +76,11 @@ class EmailService {
       const lock = await client.getMailboxLock('INBOX');
 
       try {
-        // Search for unread emails
+        // Search for unread emails (filter by sender in code to support multiple senders)
         const searchCriteria: any = { seen: false };
 
-        // Add sender filter if configured
-        if (this.allowedSender) {
-          searchCriteria.from = this.allowedSender;
-          console.log(`[EmailService] Filtering emails from: ${this.allowedSender}`);
+        if (this.allowedSenders.length > 0) {
+          console.log(`[EmailService] Filtering emails from: ${this.allowedSenders.join(', ')}`);
         }
 
         const uids = await client.search(searchCriteria);
@@ -98,10 +101,14 @@ class EmailService {
               // Extract sender email
               const fromAddress = parsed.from?.value?.[0]?.address || '';
 
-              // Double-check sender filter
-              if (this.allowedSender && !fromAddress.toLowerCase().includes(this.allowedSender.toLowerCase())) {
-                console.log(`[EmailService] Skipping email from ${fromAddress} (not from allowed sender)`);
-                continue;
+              // Check if sender is in allowed list
+              if (this.allowedSenders.length > 0) {
+                const senderLower = fromAddress.toLowerCase();
+                const isAllowed = this.allowedSenders.some(allowed => senderLower.includes(allowed));
+                if (!isAllowed) {
+                  console.log(`[EmailService] Skipping email from ${fromAddress} (not in allowed senders)`);
+                  continue;
+                }
               }
 
               // Extract attachments
