@@ -97,6 +97,10 @@ COPY nginx.combined.conf /etc/nginx/nginx.conf
 # Copy supervisor configuration
 COPY supervisord.conf /etc/supervisord.conf
 
+# Copy and make startup script executable
+COPY start-backend.sh /app/start-backend.sh
+RUN chmod +x /app/start-backend.sh
+
 # Create necessary directories and set permissions
 RUN mkdir -p /var/log/supervisor /run/nginx /var/log/nginx && \
     chown -R nginx:nginx /var/log/nginx /run/nginx /usr/share/nginx/html
