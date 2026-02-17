@@ -1,6 +1,6 @@
 import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import { sortLocationsByIndents } from '../../utils/phase4Calculations';
 
 export default function TopLocationsTable() {
@@ -17,12 +17,20 @@ export default function TopLocationsTable() {
         background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
         boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
       } : {}}>
-        <div className={`rounded-2xl p-6 h-96 flex items-center justify-center ${
+        <div className={`rounded-2xl p-6 h-96 flex flex-col justify-center ${
           theme === 'light'
             ? 'bg-[#F1F1F1] border-0'
             : ''
         }`} style={theme === 'light' ? { border: 'none' } : {}}>
-          <LoadingSpinner />
+          <div className="space-y-4 w-full">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <Skeleton className="h-4 w-20 rounded-md" />
+                <Skeleton className="h-4 flex-1 rounded-full" />
+                <Skeleton className="h-4 w-10 rounded-md" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

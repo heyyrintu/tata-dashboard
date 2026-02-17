@@ -8,7 +8,7 @@ import {
 import { Doughnut } from 'react-chartjs-2';
 import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import { formatPercentage, formatProfitLoss } from '../../utils/profitLossCalculations';
 import { PROFIT_LOSS_COLORS } from '../../utils/constants';
 
@@ -284,8 +284,8 @@ export default function ProfitLossBreakdownChart() {
   // NOW WE CAN HAVE CONDITIONAL RETURNS - ALL HOOKS ARE CALLED ABOVE
   if (loading) {
     return gradientWrapper(
-      <div className="flex items-center justify-center h-full">
-        <LoadingSpinner />
+      <div className="flex items-center justify-center h-64">
+        <Skeleton className="w-48 h-48 rounded-full" />
       </div>
     );
   }

@@ -1,6 +1,6 @@
 import { useFulfillmentData } from '../hooks/useFulfillmentData';
 import { useTheme } from '../context/ThemeContext';
-import { LoadingSpinner } from './LoadingSpinner';
+import { Skeleton } from './ui/skeleton';
 import { formatIndentCount } from '../utils/fulfillmentCalculations';
 
 export default function FulfillmentTable() {
@@ -29,8 +29,17 @@ export default function FulfillmentTable() {
         </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner />
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            <Skeleton className="h-10 flex-2 rounded-lg" />
+            <Skeleton className="h-10 flex-1 rounded-lg" />
+          </div>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <Skeleton className="h-8 flex-2 rounded-md" />
+              <Skeleton className="h-8 flex-1 rounded-md" />
+            </div>
+          ))}
         </div>
       ) : error ? (
         <div className={`flex justify-center items-center h-64 ${

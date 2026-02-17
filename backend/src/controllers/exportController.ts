@@ -1,44 +1,31 @@
 import { Request, Response } from 'express';
 import prisma from '../lib/prisma';
 import { parseDateParam } from '../utils/dateFilter';
-import { filterIndentsByDate } from '../utils/dateFiltering';
 import { format } from 'date-fns';
 import * as XLSX from 'xlsx';
 
 /**
- * Export all indents to Excel - completely rebuilt from scratch
+ * Export all indents to Excel
  */
 export const exportAllIndentsToExcel = async (req: Request, res: Response) => {
   try {
-    console.log('[EXPORT] ===== START EXPORT =====');
-    console.log('[EXPORT] Request received:', {
-      method: req.method,
-      url: req.url,
-      query: req.query
-    });
-
     const fromDate = parseDateParam(req.query.fromDate as string);
     const toDate = parseDateParam(req.query.toDate as string);
-    
-    console.log('[EXPORT] Date params:', {
-      fromDate: fromDate?.toISOString().split('T')[0] || 'null',
-      toDate: toDate?.toISOString().split('T')[0] || 'null'
-    });
 
-    // Get all indents
-    const allIndents = await prisma.trip.findMany();
-    console.log('[EXPORT] Total indents from DB:', allIndents.length);
+    // Build where clause to push date filtering into SQL
+    const where: any = {};
+    if (fromDate || toDate) {
+      where.indentDate = {};
+      if (fromDate) where.indentDate.gte = fromDate;
+      if (toDate) {
+        const endOfDay = new Date(Date.UTC(toDate.getUTCFullYear(), toDate.getUTCMonth(), toDate.getUTCDate(), 23, 59, 59, 999));
+        where.indentDate.lte = endOfDay;
+      }
+    }
 
-    // Filter by date
-    const dateFilterResult = filterIndentsByDate(allIndents, fromDate, toDate);
-    const filteredIndents = dateFilterResult.allIndentsFiltered;
-    console.log('[EXPORT] Filtered indents:', filteredIndents.length);
-
-    // Sort by indentDate
-    filteredIndents.sort((a: any, b: any) => {
-      const dateA = a.indentDate instanceof Date ? a.indentDate : new Date(a.indentDate || 0);
-      const dateB = b.indentDate instanceof Date ? b.indentDate : new Date(b.indentDate || 0);
-      return dateA.getTime() - dateB.getTime();
+    const filteredIndents = await prisma.trip.findMany({
+      where,
+      orderBy: { indentDate: 'asc' },
     });
 
     // Prepare Excel data
@@ -87,8 +74,6 @@ export const exportAllIndentsToExcel = async (req: Request, res: Response) => {
         : ''
     }));
 
-    console.log('[EXPORT] Prepared Excel data:', excelData.length, 'rows');
-
     // Create workbook
     const workbook = XLSX.utils.book_new();
     const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -106,8 +91,6 @@ export const exportAllIndentsToExcel = async (req: Request, res: Response) => {
     
     // Generate buffer
     const excelBuffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
-    console.log('[EXPORT] Excel buffer size:', excelBuffer.length, 'bytes');
-
     // Set filename
     const dateRangeStr = fromDate && toDate 
       ? `${format(fromDate, 'yyyy-MM-dd')}_to_${format(toDate, 'yyyy-MM-dd')}`
@@ -125,7 +108,6 @@ export const exportAllIndentsToExcel = async (req: Request, res: Response) => {
 
     // Send file
     res.send(excelBuffer);
-    console.log('[EXPORT] ===== EXPORT COMPLETE =====');
   } catch (error) {
     console.error('[EXPORT] ERROR:', error);
     res.status(500).json({

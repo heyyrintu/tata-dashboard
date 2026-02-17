@@ -3,6 +3,8 @@ import path from 'path';
 import { parseExcelFile } from '../utils/excelParser';
 import prisma from '../lib/prisma';
 import fs from 'fs';
+import dashboardCache from '../services/cacheService';
+import { preComputeAll } from '../services/preComputeService';
 
 interface UploadResult {
   success: boolean;
@@ -31,7 +33,8 @@ export const processExcelFile = async (
         fs.mkdirSync(tempDir, { recursive: true });
       }
 
-      tempFilePath = path.join(tempDir, `temp_${Date.now()}_${fileName || 'upload.xlsx'}`);
+      const sanitizedName = (fileName || 'upload.xlsx').replace(/[^a-zA-Z0-9._-]/g, '_');
+      tempFilePath = path.join(tempDir, `temp_${Date.now()}_${sanitizedName}`);
       fs.writeFileSync(tempFilePath, fileBuffer);
     }
 
@@ -60,82 +63,57 @@ export const processExcelFile = async (
       return dateA - dateB;
     });
 
-    console.log(`[uploadController] Sorted ${indents.length} indents by indentDate (oldest first)`);
-    if (indents.length > 0) {
-      const firstIndent = indents[0];
-      const lastIndent = indents[indents.length - 1];
-      const firstDate = firstIndent.indentDate ? (firstIndent.indentDate instanceof Date ? firstIndent.indentDate : new Date(firstIndent.indentDate)) : null;
-      const lastDate = lastIndent.indentDate ? (lastIndent.indentDate instanceof Date ? lastIndent.indentDate : new Date(lastIndent.indentDate)) : null;
-      if (firstDate && lastDate) {
-        console.log(`[uploadController] Date range: ${firstDate.toISOString().split('T')[0]} to ${lastDate.toISOString().split('T')[0]}`);
-      }
-    }
-
-    // Delete all existing data before inserting new data
-    console.log('[uploadController] Deleting existing trips...');
-    const deleteResult = await prisma.trip.deleteMany();
-    console.log(`[uploadController] Deleted ${deleteResult.count} existing trips`);
-
-    // Insert new data in batches to avoid timeout
+    // Delete all existing data and insert new data in a transaction
     const batchSize = 100;
-    let insertedCount = 0;
-    for (let i = 0; i < indents.length; i += batchSize) {
-      const batch = indents.slice(i, i + batchSize);
 
-      // Convert batch data to Prisma format
-      const prismaData = batch.map(indent => ({
-        sNo: indent.sNo,
-        indentDate: indent.indentDate ? (indent.indentDate instanceof Date ? indent.indentDate : new Date(indent.indentDate)) : null,
-        indent: indent.indent,
-        allocationDate: indent.allocationDate instanceof Date ? indent.allocationDate : (indent.allocationDate ? new Date(indent.allocationDate) : null),
-        customerName: indent.customerName,
-        location: indent.location,
-        vehicleModel: indent.vehicleModel,
-        vehicleNumber: indent.vehicleNumber,
-        vehicleBased: indent.vehicleBased,
-        lrNo: indent.lrNo,
-        material: indent.material,
-        loadPerBucket: indent.loadPerBucket || 0,
-        noOfBuckets: indent.noOfBuckets || 0,
-        totalLoad: indent.totalLoad || 0,
-        podReceived: indent.podReceived,
-        loadingCharge: indent.loadingCharge || 0,
-        unloadingCharge: indent.unloadingCharge || 0,
-        actualRunning: indent.actualRunning || 0,
-        billableRunning: indent.billableRunning || 0,
-        range: indent.range,
-        remarks: indent.remarks,
-        freightTigerMonth: indent.freightTigerMonth,
-        totalCostAE: indent.totalCostAE || 0,
-        totalCostLoading: indent.totalCostLoading || 0,
-        totalCostUnload: indent.totalCostUnload || 0,
-        anyOtherCost: indent.anyOtherCost || 0,
-        remainingCost: indent.remainingCost || 0,
-        vehicleCost: indent.vehicleCost || 0,
-        profitLoss: indent.profitLoss || 0,
-        totalKm: indent.totalKm || 0,
-      }));
+    await prisma.$transaction(async (tx) => {
+      await tx.trip.deleteMany();
 
-      await prisma.trip.createMany({
-        data: prismaData,
-        skipDuplicates: true
-      });
-      insertedCount += batch.length;
-      console.log(`[uploadController] Inserted batch ${Math.floor(i / batchSize) + 1}: ${batch.length} indents (${insertedCount}/${indents.length})`);
-    }
+      for (let i = 0; i < indents.length; i += batchSize) {
+        const batch = indents.slice(i, i + batchSize);
 
-    // Verify data was inserted correctly
+        const prismaData = batch.map(indent => ({
+          sNo: indent.sNo,
+          indentDate: indent.indentDate ? (indent.indentDate instanceof Date ? indent.indentDate : new Date(indent.indentDate)) : null,
+          indent: indent.indent,
+          allocationDate: indent.allocationDate instanceof Date ? indent.allocationDate : (indent.allocationDate ? new Date(indent.allocationDate) : null),
+          customerName: indent.customerName,
+          location: indent.location,
+          vehicleModel: indent.vehicleModel,
+          vehicleNumber: indent.vehicleNumber,
+          vehicleBased: indent.vehicleBased,
+          lrNo: indent.lrNo,
+          material: indent.material,
+          loadPerBucket: indent.loadPerBucket || 0,
+          noOfBuckets: indent.noOfBuckets || 0,
+          totalLoad: indent.totalLoad || 0,
+          podReceived: indent.podReceived,
+          loadingCharge: indent.loadingCharge || 0,
+          unloadingCharge: indent.unloadingCharge || 0,
+          actualRunning: indent.actualRunning || 0,
+          billableRunning: indent.billableRunning || 0,
+          range: indent.range,
+          remarks: indent.remarks,
+          freightTigerMonth: indent.freightTigerMonth,
+          totalCostAE: indent.totalCostAE || 0,
+          totalCostLoading: indent.totalCostLoading || 0,
+          totalCostUnload: indent.totalCostUnload || 0,
+          anyOtherCost: indent.anyOtherCost || 0,
+          remainingCost: indent.remainingCost || 0,
+          vehicleCost: indent.vehicleCost || 0,
+          profitLoss: indent.profitLoss || 0,
+          totalKm: indent.totalKm || 0,
+        }));
+
+        await tx.trip.createMany({
+          data: prismaData,
+          skipDuplicates: true
+        });
+      }
+    }, { timeout: 60000 });
+
+    // Verify data integrity
     const totalInserted = await prisma.trip.count();
-    const insertedWithCost = await prisma.trip.count({
-      where: {
-        totalCostAE: { not: 0 }
-      }
-    });
-    const insertedWithKm = await prisma.trip.count({
-      where: {
-        totalKm: { not: 0 }
-      }
-    });
 
     const aggregateResult = await prisma.trip.aggregate({
       _sum: {
@@ -146,75 +124,27 @@ export const processExcelFile = async (
     const totalCostValue = aggregateResult._sum.totalCostAE ?? 0;
     const totalKmValue = aggregateResult._sum.totalKm ?? 0;
 
-    console.log(`[uploadController] ===== UPLOAD COMPLETE =====`);
-    console.log(`[uploadController] Total indents inserted: ${totalInserted} (expected: ${indents.length})`);
-    console.log(`[uploadController] Indents with totalCostAE > 0: ${insertedWithCost}`);
-    console.log(`[uploadController] Indents with totalKm > 0: ${insertedWithKm}`);
-    console.log(`[uploadController] Total cost in database: ₹${totalCostValue.toLocaleString('en-IN')}`);
-    console.log(`[uploadController] Total Km in database: ${totalKmValue.toLocaleString('en-IN')} km`);
-
-    console.log(`[uploadController] ============================`);
-
-    // Calculate expected values from parsed indents
+    // Verify data integrity
     const expectedTotalCost = indents.reduce((sum, indent) => sum + (indent.totalCostAE || 0), 0);
     const expectedTotalKm = indents.reduce((sum, indent) => sum + (Number(indent.totalKm) || 0), 0);
-
-    console.log(`  Expected total cost: ₹${expectedTotalCost.toLocaleString('en-IN')}`);
-    console.log(`  Expected total Km: ${expectedTotalKm.toLocaleString('en-IN')} km`);
 
     if (totalInserted !== indents.length) {
       console.warn(`[uploadController] WARNING: Inserted count (${totalInserted}) doesn't match parsed count (${indents.length})`);
     }
-
     if (Math.abs(totalCostValue - expectedTotalCost) > 0.01) {
       console.warn(`[uploadController] WARNING: Database total cost (₹${totalCostValue.toLocaleString('en-IN')}) doesn't match expected (₹${expectedTotalCost.toLocaleString('en-IN')})`);
     }
-
     if (Math.abs(totalKmValue - expectedTotalKm) > 0.01) {
       console.warn(`[uploadController] WARNING: Database total Km (${totalKmValue.toLocaleString('en-IN')} km) doesn't match expected (${expectedTotalKm.toLocaleString('en-IN')} km)`);
-    } else if (totalKmValue > 0) {
-      console.log(`[uploadController] ✅ Total Km verified: ${totalKmValue.toLocaleString('en-IN')} km from Column U (21st column, index 20)`);
     }
 
-    // Pre-calculate all dashboard endpoints after successful upload
-    console.log(`[uploadController] ===== PRE-CALCULATING DASHBOARD DATA =====`);
-    try {
-      // Import calculation functions
-      const { calculateCardValues } = await import('../utils/cardCalculations');
-      const { calculateRangeWiseSummary } = await import('../utils/rangeWiseCalculations');
-      const { calculateVehicleCosts } = await import('../utils/vehicleCostCalculations');
-
-      // Get all trips (sorted by indentDate)
-      const allTrips = await prisma.trip.findMany({
-        orderBy: { indentDate: 'asc' }
-      });
-      console.log(`[uploadController] Fetched ${allTrips.length} trips (sorted by indentDate)`);
-
-      // Pre-calculate TML DEF Dashboard data (MainDashboard)
-      console.log(`[uploadController] Calculating TML DEF Dashboard data...`);
-      const cardResults = calculateCardValues(allTrips as any, null, null);
-      const rangeWiseResults = await calculateRangeWiseSummary(null, null);
-      console.log(`[uploadController] ✓ TML DEF Dashboard: ${cardResults.totalIndents} indents, ${cardResults.totalTrips} trips, ${cardResults.totalLoad} kg load`);
-
-      // Pre-calculate Finance Dashboard data (PowerBIDashboard)
-      console.log(`[uploadController] Calculating Finance Dashboard data...`);
-      const vehicleCostResults = calculateVehicleCosts(allTrips as any, null, null);
-      console.log(`[uploadController] ✓ Finance Dashboard: ${vehicleCostResults.length} vehicle cost entries`);
-
-      // Calculate revenue, cost, profit-loss summaries
-      const totalRevenue = rangeWiseResults.rangeData.reduce((sum: number, r: any) => {
-        const revenue = (r.bucketCount || 0) * 11636 + (r.barrelCount || 0) * 51420;
-        return sum + revenue;
-      }, 0);
-      const totalCost = rangeWiseResults.totalCost || 0;
-      const totalProfitLoss = rangeWiseResults.totalProfitLoss || 0;
-      console.log(`[uploadController] ✓ Finance Summary: Revenue ₹${totalRevenue.toLocaleString('en-IN')}, Cost ₹${totalCost.toLocaleString('en-IN')}, P&L ₹${totalProfitLoss.toLocaleString('en-IN')}`);
-
-      console.log(`[uploadController] ===== DASHBOARD DATA PRE-CALCULATION COMPLETE =====`);
-    } catch (calcError) {
-      console.error(`[uploadController] ⚠️  Warning: Failed to pre-calculate dashboard data:`, calcError);
-      // Don't fail the upload if pre-calculation fails
-    }
+    // Invalidate cache and trigger background pre-computation
+    dashboardCache.invalidate();
+    setImmediate(() => {
+      preComputeAll().catch(err =>
+        console.error('[uploadController] Background pre-computation failed:', err)
+      );
+    });
 
     return {
       success: true,

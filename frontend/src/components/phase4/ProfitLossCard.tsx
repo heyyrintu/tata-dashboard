@@ -1,7 +1,7 @@
 import { useDashboard } from '../../context/DashboardContext';
 import { useTheme } from '../../context/ThemeContext';
 import { useRangeData } from '../../hooks/useRangeData';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import { formatProfitLoss } from '../../utils/profitLossCalculations';
 import { BUCKET_RATES, BARREL_RATES } from '../../utils/constants';
 
@@ -60,7 +60,7 @@ export default function ProfitLossCard() {
             theme === 'light' ? 'text-gray-600' : 'text-slate-400'
           }`}>Profit & Loss</p>
           {isLoading || rangeLoading ? (
-            <LoadingSpinner size="sm" />
+            <Skeleton className="h-10 w-28 rounded-lg" />
           ) : (
             <p className={`text-4xl font-bold ${
               theme === 'light'

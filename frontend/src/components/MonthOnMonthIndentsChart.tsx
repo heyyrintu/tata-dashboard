@@ -10,7 +10,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { useMonthOnMonthData } from '../hooks/useMonthOnMonthData';
-import { LoadingSpinner } from './LoadingSpinner';
+import { Skeleton } from './ui/skeleton';
 import { useTheme } from '../context/ThemeContext';
 import { formatIndentCount } from '../utils/fulfillmentCalculations';
 
@@ -51,8 +51,10 @@ export default function MonthOnMonthIndentsChart() {
 
   if (loading) {
     return gradientWrapper(
-      <div className="flex items-center justify-center h-full">
-        <LoadingSpinner />
+      <div className="flex items-end gap-3 h-64 pt-4 px-4">
+        {[40, 70, 55, 85, 35, 65, 50, 75].map((h, i) => (
+          <Skeleton key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%` }} />
+        ))}
       </div>
     );
   }
@@ -71,7 +73,6 @@ export default function MonthOnMonthIndentsChart() {
   }
 
   if (!data || !data.data || data.data.length === 0) {
-    console.log('[MonthOnMonthIndentsChart] No data:', { data, hasData: !!data, dataLength: data?.data?.length });
     return gradientWrapper(
       <div className="flex items-center justify-center h-full">
         <div className="text-sm text-gray-400">No data available</div>

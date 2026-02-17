@@ -13,7 +13,7 @@ import {
 import { Line } from 'react-chartjs-2';
 import { useProfitLossData } from '../../hooks/useProfitLossData';
 import { useRevenueData } from '../../hooks/useRevenueData';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import TimeGranularityToggle from '../TimeGranularityToggle';
 import { formatProfitLossPercentage } from '../../utils/profitLossCalculations';
 import { useTheme } from '../../context/ThemeContext';
@@ -58,8 +58,10 @@ export default function ProfitLossPercentageOverTimeChart() {
 
   if (loading) {
     return gradientWrapper(
-      <div className="flex items-center justify-center h-full">
-        <LoadingSpinner />
+      <div className="flex items-end gap-3 h-64 pt-4 px-4">
+        {[40, 70, 55, 85, 35, 65, 50, 75].map((h, i) => (
+          <Skeleton key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%` }} />
+        ))}
       </div>
     );
   }
@@ -142,28 +144,14 @@ export default function ProfitLossPercentageOverTimeChart() {
 
   // Check if we have any valid data after calculation
   if (profitLossPercentageOverTime.length === 0) {
-    console.warn('[ProfitLossPercentageOverTimeChart] No valid data after calculation:', {
-      granularity,
-      profitLossDataLength: profitLossData?.profitLossOverTime?.length || 0,
-      revenueDataLength: revenueData?.revenueOverTime?.length || 0,
-      profitLossDates: profitLossData?.profitLossOverTime?.map(i => i.date).slice(0, 5),
-      revenueDates: revenueData?.revenueOverTime?.map(i => i.date).slice(0, 5)
-    });
     return gradientWrapper(
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
           <div className="text-sm text-gray-400 mb-2">No valid profit & loss percentage data available for {granularity} view</div>
-          <div className="text-xs text-gray-500">Check console for details</div>
         </div>
       </div>
     );
   }
-
-  console.log('[ProfitLossPercentageOverTimeChart] Data prepared:', {
-    granularity,
-    dataPoints: profitLossPercentageOverTime.length,
-    sampleDates: profitLossPercentageOverTime.slice(0, 3).map(i => i.date)
-  });
 
   // Prepare data with point colors based on positive/negative values
   const allData = profitLossPercentageOverTime.map(item => item.profitLossPercentage);

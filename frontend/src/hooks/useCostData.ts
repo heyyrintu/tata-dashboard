@@ -31,7 +31,7 @@ export const useCostData = (granularity: 'daily' | 'weekly' | 'monthly' = 'month
     // Debounce API calls by 500ms
     const timer = setTimeout(() => {
       fetchCostData();
-    }, 500);
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [fetchCostData]);

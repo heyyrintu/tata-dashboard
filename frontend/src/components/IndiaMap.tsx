@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Circle, Marker, Popup, useMap } from 'react-le
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useRangeData } from '../hooks/useRangeData';
-import { LoadingSpinner } from './LoadingSpinner';
+import { Skeleton } from './ui/skeleton';
 import { formatLoad } from '../utils/rangeCalculations';
 import { geocodeAllLocations } from '../utils/geocoding';
 import { useTheme } from '../context/ThemeContext';
@@ -139,8 +139,10 @@ export default function IndiaMap() {
         </div>
         <div className="flex-1 min-h-0" style={{ minHeight: '500px', height: '500px' }}>
       {(loading || geocodingLoading) ? (
-        <div className="flex justify-center items-center h-full">
-          <LoadingSpinner />
+        <div className="flex items-end gap-3 h-64 pt-4 px-4">
+          {[40, 70, 55, 85, 35, 65, 50, 75].map((h, i) => (
+            <Skeleton key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%` }} />
+          ))}
         </div>
       ) : !data || data.locations.length === 0 ? (
         <div className="text-center py-12 text-black flex items-center justify-center h-full">

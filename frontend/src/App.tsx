@@ -6,9 +6,11 @@ import AuthPage from './pages/AuthPage';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import ErrorBoundary from './components/ErrorBoundary';
 
 function App() {
   return (
+    <ErrorBoundary>
     <Routes>
       <Route path="/auth" element={<AuthPage />} />
       <Route
@@ -40,6 +42,7 @@ function App() {
         }
       />
     </Routes>
+    </ErrorBoundary>
   );
 }
 

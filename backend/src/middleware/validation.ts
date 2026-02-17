@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { body, query, ValidationChain, validationResult } from 'express-validator';
+import { query, ValidationChain, validationResult } from 'express-validator';
 import { createError } from './errorHandler';
 import { logger } from '../utils/logger';
 
@@ -55,13 +55,4 @@ export const validateAnalyticsQuery = [
     })
 ];
 
-/**
- * Validation rules for email endpoints
- */
-export const validateEmailProcess = [
-  body('limit')
-    .optional()
-    .isInt({ min: 1, max: 100 })
-    .withMessage('limit must be an integer between 1 and 100')
-];
 

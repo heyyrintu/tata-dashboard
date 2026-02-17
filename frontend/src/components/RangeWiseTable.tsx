@@ -1,26 +1,12 @@
 import { useRangeData } from '../hooks/useRangeData';
 import { useTheme } from '../context/ThemeContext';
-import { useDashboard } from '../context/DashboardContext';
-import { LoadingSpinner } from './LoadingSpinner';
+import { Skeleton } from './ui/skeleton';
 import { formatPercentage, formatBucketBarrelCount } from '../utils/rangeCalculations';
 import { RANGE_COLORS } from '../utils/constants';
 
 export default function RangeWiseTable() {
   const { data, loading } = useRangeData();
   const { theme } = useTheme();
-  const { metrics, dateRange } = useDashboard();
-
-  console.log('[RangeWiseTable] ===== RENDER =====');
-  console.log('[RangeWiseTable] Input data:', {
-    dataExists: !!data,
-    rangeDataLength: data?.rangeData?.length || 0,
-    loading,
-    dateRange: {
-      from: dateRange.from?.toISOString().split('T')[0] || 'null',
-      to: dateRange.to?.toISOString().split('T')[0] || 'null'
-    },
-    metrics
-  });
 
   return (
     <div className={`rounded-3xl ${
@@ -44,8 +30,19 @@ export default function RangeWiseTable() {
         </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner />
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 flex-1 rounded-lg" />
+            ))}
+          </div>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              {Array.from({ length: 5 }).map((_, j) => (
+                <Skeleton key={j} className="h-8 flex-1 rounded-md" />
+              ))}
+            </div>
+          ))}
         </div>
       ) : data && data.rangeData ? (
         <div className="overflow-x-auto overflow-y-visible rounded-xl">
@@ -76,10 +73,6 @@ export default function RangeWiseTable() {
                 .filter(item => item.range !== 'Duplicate Indents') // Filter out duplicate indents row for now
                 .map((item, index) => {
                   const rangeColor = RANGE_COLORS[item.range] || '#E01E1F';
-                  // Debug log for "Other" row
-                  if (item.range === 'Other') {
-                    console.log('[RangeWiseTable] Rendering "Other" row:', item);
-                  }
                   return (
                   <tr
                     key={`${item.range}-${index}`}
@@ -147,13 +140,7 @@ export default function RangeWiseTable() {
               {(() => {
                 // Filter out "Other" and "Duplicate Indents" rows for all total calculations
                 const standardRanges = data.rangeData.filter(item => item.range !== 'Other' && item.range !== 'Duplicate Indents');
-                
-                console.log('[RangeWiseTable] Total Row Calculation:', {
-                  allRanges: data.rangeData.map(r => r.range),
-                  standardRanges: standardRanges.map(r => r.range),
-                  excludedRanges: data.rangeData.filter(item => item.range === 'Other' || item.range === 'Duplicate Indents').map(r => r.range)
-                });
-                
+
                 // Total indent count: sum of standard ranges only (exclude "Other" and "Duplicate Indents")
                 const totalIndents = standardRanges.reduce((sum, item) => sum + (item.uniqueIndentCount ?? item.indentCount), 0);
                 
@@ -167,17 +154,7 @@ export default function RangeWiseTable() {
                 // Total buckets and barrels: sum of standard ranges only (exclude "Other" and "Duplicate Indents")
                 const totalBuckets = standardRanges.reduce((sum, item) => sum + item.bucketCount, 0);
                 const totalBarrels = standardRanges.reduce((sum, item) => sum + item.barrelCount, 0);
-                
-                console.log('[RangeWiseTable] Total Row Values:', {
-                  totalIndents,
-                  totalPercentage,
-                  totalLoad_kg: totalLoad,
-                  totalLoad_tons: totalLoad / 1000,
-                  totalBuckets,
-                  totalBarrels
-                });
-                console.log('[RangeWiseTable] ===== END RENDER =====');
-                
+
                 return (
                   <tr className={`border-t-4 border-red-500 bg-gradient-to-r from-red-100 to-yellow-100 ${
                     theme === 'light' ? 'shadow-lg' : 'shadow-lg'

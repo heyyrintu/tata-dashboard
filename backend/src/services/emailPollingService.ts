@@ -32,11 +32,15 @@ class EmailPollingService {
     this.isRunning = true;
     
     // Process immediately on start
-    this.processEmails();
-    
+    this.processEmails().catch(err =>
+      console.error('[EmailPollingService] Initial poll failed:', err)
+    );
+
     // Then poll at intervals
     this.intervalId = setInterval(() => {
-      this.processEmails();
+      this.processEmails().catch(err =>
+        console.error('[EmailPollingService] Scheduled poll failed:', err)
+      );
     }, this.pollInterval);
   }
 

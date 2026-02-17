@@ -1,7 +1,7 @@
 import { useFulfillmentData } from '../../hooks/useFulfillmentData';
 import { useTheme } from '../../context/ThemeContext';
 import { RANGE_COLORS } from '../../utils/constants';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import { formatIndentCount } from '../../utils/fulfillmentCalculations';
 
 export default function CompactFulfillmentTable() {
@@ -18,12 +18,23 @@ export default function CompactFulfillmentTable() {
         background: 'linear-gradient(to right, rgba(224, 30, 31, 0.35), rgba(254, 165, 25, 0.35))',
         boxShadow: '0 10px 15px -3px rgba(224, 30, 31, 0.2), 0 4px 6px -2px rgba(254, 165, 25, 0.2)'
       } : {}}>
-        <div className={`rounded-2xl p-6 h-96 flex items-center justify-center ${
+        <div className={`rounded-2xl p-6 h-96 flex flex-col justify-center ${
           theme === 'light'
             ? 'bg-[#F1F1F1] border-0'
             : ''
         }`} style={theme === 'light' ? { border: 'none' } : {}}>
-          <LoadingSpinner />
+          <div className="space-y-4 w-full">
+            <div className="flex gap-4">
+              <Skeleton className="h-8 flex-2 rounded-lg" />
+              <Skeleton className="h-8 flex-1 rounded-lg" />
+            </div>
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex gap-4">
+                <Skeleton className="h-6 flex-2 rounded-md" />
+                <Skeleton className="h-6 flex-1 rounded-md" />
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

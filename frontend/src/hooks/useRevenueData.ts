@@ -32,7 +32,7 @@ export const useRevenueData = (granularity: 'daily' | 'weekly' | 'monthly' = 'da
     // Debounce API calls by 500ms
     const timer = setTimeout(() => {
       fetchRevenueData();
-    }, 500);
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [fetchRevenueData]);

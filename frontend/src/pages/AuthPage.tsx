@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { IconMail, IconLock, IconUser, IconLoader2, IconArrowRight } from '@tabler/icons-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
-const LOGO_URL = "https://cdn.dribbble.com/userupload/45564127/file/6c01b78a863edd968c45d2287bcd5854.png?resize=752x470&vertical=center";
+const LOGO_URL = import.meta.env.VITE_LOGO_URL || "/logo.png";
 
 export default function AuthPage() {
   const { login, signup, user } = useAuth();
@@ -16,16 +16,6 @@ export default function AuthPage() {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    document.body.classList.add('light-theme');
-    document.documentElement.classList.add('light-theme');
-
-    return () => {
-      document.body.classList.remove('light-theme');
-      document.documentElement.classList.remove('light-theme');
-    };
-  }, []);
 
   // Redirect if already logged in
   useEffect(() => {

@@ -62,7 +62,7 @@ export default function Header() {
               }`}
             >
               <img 
-                src="https://cdn.dribbble.com/userupload/45564127/file/6c01b78a863edd968c45d2287bcd5854.png?resize=752x470&vertical=center" 
+                src={import.meta.env.VITE_LOGO_URL || "/logo.png"} 
                 alt="Drona Logo" 
                 className="h-10 w-auto object-contain"
               />

@@ -13,10 +13,22 @@ export default function PageDateFilter() {
   const { dateRange, setDateRange } = useDashboard();
   const { theme } = useTheme();
   const { monthOptions, loading } = useAvailableMonths();
-  
-  const [pendingFrom, setPendingFrom] = useState<Date | null>(dateRange.from);
-  const [pendingTo, setPendingTo] = useState<Date | null>(dateRange.to);
-  const [selectedMonth, setSelectedMonth] = useState<string>('');
+
+  // Compute current month bounds once at initialization
+  const [initMonth] = useState(() => {
+    const now = new Date();
+    return {
+      key: format(now, 'yyyy-MM'),
+      start: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
+      end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+    };
+  });
+
+  const [pendingFrom, setPendingFrom] = useState<Date | null>(dateRange.from ?? initMonth.start);
+  const [pendingTo, setPendingTo] = useState<Date | null>(dateRange.to ?? initMonth.end);
+  const [selectedMonth, setSelectedMonth] = useState<string>(
+    dateRange.from && dateRange.to ? format(dateRange.from, 'yyyy-MM') : initMonth.key
+  );
   const [latestIndentDate, setLatestIndentDate] = useState<string | null>(null);
 
   // Fetch latest indent date
@@ -32,11 +44,18 @@ export default function PageDateFilter() {
     fetchLatestDate();
   }, []);
 
+  // Auto-apply current month on first load if no filter is set in context
+  useEffect(() => {
+    if (!dateRange.from && !dateRange.to) {
+      setDateRange(initMonth.start, initMonth.end);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sync local state with context
   useEffect(() => {
     setPendingFrom(dateRange.from);
     setPendingTo(dateRange.to);
-    
+
     if (dateRange.from && dateRange.to) {
       const fromMonth = format(dateRange.from, 'yyyy-MM');
       const toMonth = format(dateRange.to, 'yyyy-MM');
@@ -50,32 +69,28 @@ export default function PageDateFilter() {
     const monthValue = e.target.value;
     setSelectedMonth(monthValue);
 
-    if (monthValue) {
-      const [year, month] = monthValue.split('-');
-      const startDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
-      startDate.setHours(0, 0, 0, 0);
-      const endDate = new Date(parseInt(year, 10), parseInt(month, 10), 0);
-      endDate.setHours(23, 59, 59, 999);
-      setPendingFrom(startDate);
-      setPendingTo(endDate);
-      // Auto-apply when month is selected
-      setDateRange(startDate, endDate);
+    if (!monthValue) {
+      // "All Months" selected — clear the date filter
+      setPendingFrom(null);
+      setPendingTo(null);
+      setDateRange(null, null);
+      return;
     }
+
+    const [year, month] = monthValue.split('-');
+    const startDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(parseInt(year, 10), parseInt(month, 10), 0);
+    endDate.setHours(23, 59, 59, 999);
+    setPendingFrom(startDate);
+    setPendingTo(endDate);
+    // Auto-apply when month is selected
+    setDateRange(startDate, endDate);
   };
 
-  const handleApplyFilter = () => {
-    if (!pendingFrom || !pendingTo) return;
-
-    const fromYear = pendingFrom.getFullYear();
-    const fromMonth = pendingFrom.getMonth();
-    const fromDay = pendingFrom.getDate();
-    const normalizedFrom = new Date(fromYear, fromMonth, fromDay, 0, 0, 0, 0);
-
-    const toYear = pendingTo.getFullYear();
-    const toMonth = pendingTo.getMonth();
-    const toDay = pendingTo.getDate();
-    const normalizedTo = new Date(toYear, toMonth, toDay, 23, 59, 59, 999);
-
+  const applyDateRange = (from: Date, to: Date) => {
+    const normalizedFrom = new Date(from.getFullYear(), from.getMonth(), from.getDate(), 0, 0, 0, 0);
+    const normalizedTo = new Date(to.getFullYear(), to.getMonth(), to.getDate(), 23, 59, 59, 999);
     setDateRange(normalizedFrom, normalizedTo);
   };
 
@@ -87,9 +102,6 @@ export default function PageDateFilter() {
   };
 
   const isFilterActive = dateRange.from !== null && dateRange.to !== null;
-  const hasChanges = 
-    (pendingFrom?.getTime() !== dateRange.from?.getTime()) ||
-    (pendingTo?.getTime() !== dateRange.to?.getTime());
 
   return (
     <div 
@@ -158,7 +170,7 @@ export default function PageDateFilter() {
                   : 'bg-slate-800/80 border border-slate-600 text-slate-200 hover:border-[#FEA519]/30 focus:ring-[#FEA519]/20 focus:border-[#FEA519]'
               } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <option value="">Month</option>
+              <option value="">All Months</option>
               {monthOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
@@ -186,8 +198,10 @@ export default function PageDateFilter() {
               onChange={(date: Date | null) => {
                 setPendingFrom(date);
                 setSelectedMonth('');
-                if (date && !pendingTo) {
-                  setPendingTo(date);
+                const to = pendingTo || date;
+                if (date && to) {
+                  if (!pendingTo) setPendingTo(to);
+                  applyDateRange(date, to);
                 }
               }}
               selectsStart
@@ -220,6 +234,9 @@ export default function PageDateFilter() {
               onChange={(date: Date | null) => {
                 setPendingTo(date);
                 setSelectedMonth('');
+                if (pendingFrom && date) {
+                  applyDateRange(pendingFrom, date);
+                }
               }}
               selectsEnd
               startDate={pendingFrom || undefined}
@@ -236,23 +253,6 @@ export default function PageDateFilter() {
               portalId="date-picker-portal"
             />
           </div>
-
-          {/* Apply Button */}
-          <button
-            onClick={handleApplyFilter}
-            disabled={!pendingFrom || !pendingTo || !hasChanges}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              !pendingFrom || !pendingTo || !hasChanges
-                ? theme === 'light'
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
-                  : 'bg-slate-800 text-slate-500 cursor-not-allowed'
-                : theme === 'light'
-                  ? 'bg-gradient-to-r from-[#E01E1F] to-[#FEA519] text-white shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
-                  : 'bg-gradient-to-r from-[#E01E1F] to-[#FEA519] text-white shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98]'
-            }`}
-          >
-            Apply
-          </button>
 
           {/* Clear Button */}
           {isFilterActive && (

@@ -49,30 +49,4 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   next();
 };
 
-/**
- * Optional: IP Whitelist Middleware
- * Set ALLOWED_IPS in environment variable (comma-separated)
- */
-export const ipWhitelist = (req: Request, res: Response, next: NextFunction): void => {
-  const allowedIPs = process.env.ALLOWED_IPS;
-  
-  if (!allowedIPs) {
-    // No whitelist configured, allow all
-    return next();
-  }
-
-  const clientIP = req.ip || req.socket.remoteAddress || '';
-  const allowedIPList = allowedIPs.split(',').map(ip => ip.trim());
-
-  if (!allowedIPList.includes(clientIP)) {
-    logger.warn('IP whitelist check failed', { 
-      clientIP, 
-      allowedIPs: allowedIPList,
-      requestId: req.id 
-    });
-    return next(createError('Access denied. IP address not whitelisted.', 403));
-  }
-
-  next();
-};
 

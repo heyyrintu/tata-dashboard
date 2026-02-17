@@ -2,28 +2,14 @@ import { useDashboard } from '../context/DashboardContext';
 import { useTheme } from '../context/ThemeContext';
 import { useRevenueData } from '../hooks/useRevenueData';
 import { useRangeData } from '../hooks/useRangeData';
-import { LoadingSpinner } from './LoadingSpinner';
+import { Skeleton } from './ui/skeleton';
 import { calculateTotalLoad } from '../utils/phase4Calculations';
 
 export default function SummaryCards() {
-  const { metrics, isLoading, dateRange } = useDashboard();
+  const { metrics, isLoading } = useDashboard();
   const { theme } = useTheme();
-  const { data: revenueData, loading: revenueLoading } = useRevenueData();
+  const { loading: revenueLoading } = useRevenueData();
   const { data: rangeData, loading: rangeLoading } = useRangeData();
-
-  console.log('[SummaryCards] ===== RENDER =====');
-  console.log('[SummaryCards] Input data:', {
-    metrics,
-    dateRange: {
-      from: dateRange.from?.toISOString().split('T')[0] || 'null',
-      to: dateRange.to?.toISOString().split('T')[0] || 'null'
-    },
-    rangeDataExists: !!rangeData,
-    revenueDataExists: !!revenueData,
-    isLoading,
-    rangeLoading,
-    revenueLoading
-  });
 
   // Calculate total load: use totalLoad from API if available, otherwise sum from rangeData
   // Convert from kg to tons (divide by 1000)
@@ -31,66 +17,15 @@ export default function SummaryCards() {
     ? rangeData.totalLoad 
     : (rangeData?.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0);
   const totalLoad = totalLoadKg / 1000; // Convert to tons
-  
-  // Debug logging
-  if (rangeData) {
-    console.log('[SummaryCards] Total Load Calculation:', {
-      totalLoadFromAPI_kg: rangeData.totalLoad,
-      totalLoadFromRangeData_kg: rangeData.rangeData ? calculateTotalLoad(rangeData.rangeData) : 0,
-      finalTotalLoad_kg: totalLoadKg,
-      finalTotalLoad_tons: totalLoad,
-      rangeDataLength: rangeData.rangeData?.length || 0,
-      rangeDataItems: rangeData.rangeData?.map(item => ({ range: item.range, totalLoad: item.totalLoad }))
-    });
-  }
-  
-  // Calculate bucket and barrel counts from Range-Wise Summary (matches Range-Wise Summary table)
-  // Use totalBuckets and totalBarrels from rangeData API response (calculated from all indents in date range)
+
+  // Use totalBuckets and totalBarrels from rangeData API response
   const totalBuckets = rangeData?.totalBuckets ?? 0;
   const totalBarrels = rangeData?.totalBarrels ?? 0;
-  
-  // Debug logging
-  if (rangeData) {
-    console.log('[SummaryCards] Bucket+Barrel Count Calculation:', {
-      totalBucketsFromAPI: rangeData.totalBuckets,
-      totalBarrelsFromAPI: rangeData.totalBarrels,
-      finalTotalBuckets: totalBuckets,
-      finalTotalBarrels: totalBarrels,
-      rangeDataBuckets: rangeData.rangeData?.reduce((sum, item) => sum + (item.bucketCount || 0), 0) || 0,
-      rangeDataBarrels: rangeData.rangeData?.reduce((sum, item) => sum + (item.barrelCount || 0), 0) || 0
-    });
-  }
-  
-  // Keep revenue metrics for other calculations if needed
-  // const revenueTotalBuckets = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.bucketCount, 0) : 0;
-  // const revenueTotalBarrels = revenueData?.revenueByRange ? revenueData.revenueByRange.reduce((sum, item) => sum + item.barrelCount, 0) : 0;
-  // const totalUnits = totalBuckets + totalBarrels;
-  
-  // Calculate Avg Buckets/Trip: Convert barrels to buckets (1 barrel = 10.5 buckets) and divide by Card 2 (Total Trip)
-  const totalBucketsIncludingBarrels = totalBuckets + (totalBarrels * 10.5);
+
+  // Calculate Avg Buckets/Trip: Convert barrels to buckets (1 barrel = 10.5 buckets) and divide by Total Trip
+  const totalBucketsIncludingBarrels = totalBuckets + (totalBarrels * 10.5 /* barrel-to-bucket ratio */);
   const avgBucketsPerTrip = metrics.totalIndentsUnique > 0 ? totalBucketsIncludingBarrels / metrics.totalIndentsUnique : 0;
   const avgBucketsPerTripRounded = Math.round(avgBucketsPerTrip);
-  
-  // Debug logging
-  console.log('[SummaryCards] Avg Buckets/Trip Calculation:', {
-    totalBuckets,
-    totalBarrels,
-    barrelsConvertedToBuckets: totalBarrels * 10.5,
-    totalBucketsIncludingBarrels,
-    totalTripCount: metrics.totalIndentsUnique,
-    avgBucketsPerTrip,
-    avgBucketsPerTripRounded
-  });
-
-  console.log('[SummaryCards] Final Display Values:', {
-    totalIndents: metrics.totalIndents,
-    totalTrips: metrics.totalIndentsUnique,
-    totalLoad_tons: totalLoad,
-    totalBuckets,
-    totalBarrels,
-    avgBucketsPerTrip: avgBucketsPerTripRounded
-  });
-  console.log('[SummaryCards] ===== END RENDER =====');
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6 mb-6">
@@ -112,7 +47,7 @@ export default function SummaryCards() {
               theme === 'light' ? 'text-black' : 'text-slate-400'
             }`}>Total Indents</p>
             {isLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'
@@ -146,7 +81,7 @@ export default function SummaryCards() {
               theme === 'light' ? 'text-black' : 'text-slate-400'
             }`}>Total Trip</p>
             {isLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'
@@ -180,7 +115,7 @@ export default function SummaryCards() {
               theme === 'light' ? 'text-black' : 'text-slate-400'
             }`}>Total Load</p>
             {isLoading || rangeLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'
@@ -220,7 +155,7 @@ export default function SummaryCards() {
             theme === 'light' ? 'text-gray-600' : 'text-slate-400'
           }`}>Bucket & Barrel Count</p>
           {isLoading || rangeLoading ? (
-            <LoadingSpinner size="sm" />
+            <Skeleton className="h-10 w-24 rounded-lg" />
           ) : (
               <div className={`text-xl font-bold ${
                 theme === 'light'
@@ -255,7 +190,7 @@ export default function SummaryCards() {
               theme === 'light' ? 'text-black' : 'text-slate-400'
             }`}>Avg Buckets/Trip</p>
             {isLoading || revenueLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'

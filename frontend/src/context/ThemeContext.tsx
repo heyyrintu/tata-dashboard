@@ -12,12 +12,14 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>('light');
 
-  // Apply theme to body on mount and when theme changes
+  // Apply theme class to both body and documentElement
   useEffect(() => {
     if (theme === 'light') {
       document.body.classList.add('light-theme');
+      document.documentElement.classList.add('light-theme');
     } else {
       document.body.classList.remove('light-theme');
+      document.documentElement.classList.remove('light-theme');
     }
   }, [theme]);
 

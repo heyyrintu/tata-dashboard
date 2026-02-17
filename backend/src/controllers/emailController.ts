@@ -7,8 +7,6 @@ import { processAllUnreadEmails } from '../utils/emailProcessor';
  */
 export const processEmails = async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('[emailController] Manual email processing triggered');
-    
     const results = await processAllUnreadEmails();
     
     const successCount = results.filter(r => r.success).length;
@@ -48,10 +46,9 @@ export const getEmailStatus = async (req: Request, res: Response): Promise<void>
         pollInterval: pollInterval / 1000, // Convert to seconds
         pollIntervalFormatted: `${Math.round(pollInterval / 60000)} minutes`,
         configured: !!(
-          process.env.OUTLOOK_CLIENT_ID &&
-          process.env.OUTLOOK_CLIENT_SECRET &&
-          process.env.OUTLOOK_TENANT_ID &&
-          process.env.OUTLOOK_UPLOAD_EMAIL
+          process.env.IMAP_HOST &&
+          process.env.IMAP_USER &&
+          process.env.IMAP_PASSWORD
         )
       }
     });

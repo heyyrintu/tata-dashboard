@@ -41,6 +41,7 @@ export const geocodeLocation = async (locationName: string): Promise<{ lat: numb
           format: 'json',
           limit: 1,
         },
+        timeout: 10000,
       }
     );
 

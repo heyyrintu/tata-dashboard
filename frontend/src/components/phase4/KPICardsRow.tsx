@@ -3,7 +3,7 @@ import { useRangeData } from '../../hooks/useRangeData';
 import { useRevenueData } from '../../hooks/useRevenueData';
 import { useTheme } from '../../context/ThemeContext';
 import { calculateTotalLoad, formatCompactNumber } from '../../utils/phase4Calculations';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 
 export default function KPICardsRow() {
   const { metrics, isLoading } = useDashboard();
@@ -40,7 +40,7 @@ export default function KPICardsRow() {
               theme === 'light' ? 'text-black' : 'text-slate-400'
             }`}>Total Indents</p>
             {isLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'
@@ -74,7 +74,7 @@ export default function KPICardsRow() {
               theme === 'light' ? 'text-gray-600' : 'text-slate-400'
             }`}>Trip Count</p>
             {isLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'
@@ -108,7 +108,7 @@ export default function KPICardsRow() {
               theme === 'light' ? 'text-black' : 'text-slate-400'
             }`}>Total Load</p>
             {isLoading || rangeLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'
@@ -144,7 +144,7 @@ export default function KPICardsRow() {
               theme === 'light' ? 'text-gray-600' : 'text-slate-400'
             }`}>Total Counts</p>
             {isLoading || revenueLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'
@@ -178,7 +178,7 @@ export default function KPICardsRow() {
               theme === 'light' ? 'text-black' : 'text-slate-400'
             }`}>Avg Buckets/Trip</p>
             {isLoading || revenueLoading ? (
-              <LoadingSpinner size="sm" />
+              <Skeleton className="h-10 w-24 rounded-lg" />
             ) : (
               <p className={`text-4xl font-bold ${
                 theme === 'light'

@@ -23,12 +23,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkUser();
   }, []);
 
-  const checkAdminStatus = async () => {
+  const checkAdminStatus = async (currentUserId?: string) => {
     try {
-      // Get user's membership in admin team
+      if (!ADMIN_TEAM_ID) {
+        setIsAdmin(false);
+        return;
+      }
       const membership = await teams.listMemberships(ADMIN_TEAM_ID);
-      // Check if current user is in the admin team
-      const isInAdminTeam = membership.memberships.length > 0;
+      // Verify the CURRENT user is in the admin team, not just that members exist
+      const userId = currentUserId || user?.$id;
+      const isInAdminTeam = membership.memberships.some(
+        (m) => m.userId === userId
+      );
       setIsAdmin(isInAdminTeam);
     } catch {
       setIsAdmin(false);
@@ -39,7 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const currentUser = await account.get();
       setUser(currentUser);
-      await checkAdminStatus();
+      await checkAdminStatus(currentUser.$id);
     } catch {
       setUser(null);
       setIsAdmin(false);

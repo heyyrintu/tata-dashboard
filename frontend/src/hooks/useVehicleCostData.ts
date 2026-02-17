@@ -39,7 +39,7 @@ export const useVehicleCostData = () => {
     // Only fetch if date range actually changed
     const timer = setTimeout(() => {
       fetchVehicleCostData();
-    }, 300); // Reduced debounce time
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [dateRangeKey, fetchVehicleCostData]);

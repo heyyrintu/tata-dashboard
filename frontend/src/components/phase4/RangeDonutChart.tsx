@@ -8,7 +8,7 @@ import { Doughnut } from 'react-chartjs-2';
 import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
 import { RANGE_COLORS } from '../../utils/constants';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -31,7 +31,9 @@ export default function RangeDonutChart() {
             ? 'bg-[#F1F1F1] border-0'
             : ''
         }`} style={theme === 'light' ? { border: 'none' } : {}}>
-          <LoadingSpinner />
+          <div className="flex items-center justify-center h-64">
+            <Skeleton className="w-48 h-48 rounded-full" />
+          </div>
         </div>
       </div>
     );

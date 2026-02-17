@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import { formatCost } from '../../utils/costCalculations';
 import { COST_COLORS } from '../../utils/constants';
 
@@ -48,8 +48,17 @@ export default function CostTable() {
         <h2 className={`text-lg font-semibold mb-4 ${
           theme === 'light' ? 'text-black' : 'text-black'
         }`}>Cost by Distance Range</h2>
-        <div className="flex justify-center items-center flex-1">
-          <LoadingSpinner />
+        <div className="space-y-4 flex-1">
+          <div className="flex gap-4">
+            <Skeleton className="h-10 flex-1 rounded-lg" />
+            <Skeleton className="h-10 flex-1 rounded-lg" />
+          </div>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <Skeleton className="h-8 flex-1 rounded-md" />
+              <Skeleton className="h-8 flex-1 rounded-md" />
+            </div>
+          ))}
         </div>
       </>
     );

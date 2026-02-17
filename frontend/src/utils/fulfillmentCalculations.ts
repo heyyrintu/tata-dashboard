@@ -1,5 +1,3 @@
-export const TRUCK_CAPACITY = 6000;
-
 export interface FulfillmentData {
   range: string;
   tripCount: number;

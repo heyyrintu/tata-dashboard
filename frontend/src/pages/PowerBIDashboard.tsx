@@ -1,4 +1,3 @@
-import { useEffect } from 'react';
 import Header from '../components/Header';
 import PageDateFilter from '../components/PageDateFilter';
 import RevenueCard from '../components/phase4/RevenueCard';
@@ -17,16 +16,6 @@ import { useTheme } from '../context/ThemeContext';
 
 export default function PowerBIDashboard() {
   const { theme } = useTheme();
-
-  useEffect(() => {
-    if (theme === 'light') {
-      document.body.classList.add('light-theme');
-      document.documentElement.classList.add('light-theme');
-    } else {
-      document.body.classList.remove('light-theme');
-      document.documentElement.classList.remove('light-theme');
-    }
-  }, [theme]);
 
   return (
     <div className={`min-h-screen relative ${

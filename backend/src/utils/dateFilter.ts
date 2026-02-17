@@ -58,7 +58,6 @@ export const parseDateParam = (dateStr: string | undefined): Date | null => {
     
     // Validate the date
     if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
-      console.log(`[parseDateParam] Parsed "${dateStr}" as UTC date: ${date.toISOString().split('T')[0]} (year=${year}, month=${month+1}, day=${day})`);
       return date;
     }
   }
@@ -74,7 +73,6 @@ export const parseDateParam = (dateStr: string | undefined): Date | null => {
       const day = parseInt(yyyymmddMatch[3], 10);
       const date = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
       if (date.getUTCFullYear() === year && date.getUTCMonth() === month && date.getUTCDate() === day) {
-        console.log(`[parseDateParam] Extracted "${dateStr}" → "${dateOnly}" → UTC date: ${date.toISOString().split('T')[0]}`);
         return date;
       }
     }
@@ -88,7 +86,6 @@ export const parseDateParam = (dateStr: string | undefined): Date | null => {
     const month = date.getUTCMonth();
     const day = date.getUTCDate();
     const utcDate = new Date(Date.UTC(year, month, day, 0, 0, 0, 0));
-    console.log(`[parseDateParam] Parsed "${dateStr}" → UTC date: ${utcDate.toISOString().split('T')[0]}`);
     return utcDate;
   }
   

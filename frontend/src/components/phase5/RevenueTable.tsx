@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import { formatCurrency } from '../../utils/revenueCalculations';
 import { formatBucketBarrelCount } from '../../utils/rangeCalculations';
 import { RANGE_COLORS, BUCKET_RATES, BARREL_RATES } from '../../utils/constants';
@@ -62,8 +62,19 @@ export default function RevenueTable() {
         <h2 className={`text-lg font-semibold mb-4 ${
           theme === 'light' ? 'text-black' : 'text-black'
         }`}>Revenue by Distance Range</h2>
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner />
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 flex-1 rounded-lg" />
+            ))}
+          </div>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              {Array.from({ length: 3 }).map((_, j) => (
+                <Skeleton key={j} className="h-8 flex-1 rounded-md" />
+              ))}
+            </div>
+          ))}
         </div>
       </>
     );

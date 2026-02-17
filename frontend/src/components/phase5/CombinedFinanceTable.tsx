@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import { formatCurrency } from '../../utils/revenueCalculations';
 import { formatCost } from '../../utils/costCalculations';
 import { formatProfitLoss, formatProfitLossPercentage } from '../../utils/profitLossCalculations';
@@ -77,8 +77,19 @@ export default function CombinedFinanceTable() {
         <h2 className={`text-lg font-semibold mb-4 ${
           theme === 'light' ? 'text-black' : 'text-black'
         }`}>Range-Wise Financial Summary</h2>
-        <div className="flex justify-center items-center h-64">
-          <LoadingSpinner />
+        <div className="space-y-4">
+          <div className="flex gap-4">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-10 flex-1 rounded-lg" />
+            ))}
+          </div>
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              {Array.from({ length: 7 }).map((_, j) => (
+                <Skeleton key={j} className="h-8 flex-1 rounded-md" />
+              ))}
+            </div>
+          ))}
         </div>
       </>
     );
@@ -168,8 +179,6 @@ export default function CombinedFinanceTable() {
           </thead>
           <tbody>
             {combinedData.map((item, index) => {
-              // const rangeColor = RANGE_COLORS[item.range] || '#E01E1F';
-              // const costColor = COST_COLORS[item.range] || '#3B82F6';
               const isProfit = item.profitLoss >= 0;
               const profitLossColor = isProfit 
                 ? (PROFIT_LOSS_COLORS[item.range] || '#10B981')

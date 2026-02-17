@@ -1,7 +1,7 @@
 import React from 'react';
 import { useRangeData } from '../../hooks/useRangeData';
 import { useTheme } from '../../context/ThemeContext';
-import { LoadingSpinner } from '../LoadingSpinner';
+import { Skeleton } from '../ui/skeleton';
 import { formatProfitLoss } from '../../utils/profitLossCalculations';
 import { PROFIT_LOSS_COLORS } from '../../utils/constants';
 import { BUCKET_RATES, BARREL_RATES } from '../../utils/constants';
@@ -58,8 +58,17 @@ export default function ProfitLossTable() {
 
   if (loading) {
     return gradientWrapper(
-      <div className="flex items-center justify-center flex-1">
-        <LoadingSpinner />
+      <div className="space-y-4 flex-1">
+        <div className="flex gap-4">
+          <Skeleton className="h-10 flex-1 rounded-lg" />
+          <Skeleton className="h-10 flex-1 rounded-lg" />
+        </div>
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex gap-4">
+            <Skeleton className="h-8 flex-1 rounded-md" />
+            <Skeleton className="h-8 flex-1 rounded-md" />
+          </div>
+        ))}
       </div>
     );
   }

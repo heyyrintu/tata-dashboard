@@ -45,5 +45,20 @@ model Trip {
   @@index([indentDate])
   @@index([indent])
   @@index([allocationDate])
+  @@index([range])
+  @@index([material])
+  @@index([freightTigerMonth])
+  @@index([indentDate, range])
+  @@index([vehicleNumber, indentDate])
   @@map("trips")
+}
+
+model DashboardSnapshot {
+  id         Int       @id @default(autoincrement())
+  cacheKey   String    @unique
+  data       Json
+  computedAt DateTime  @default(now()) @db.Timestamptz
+  tripCount  Int
+
+  @@map("dashboard_snapshots")
 }

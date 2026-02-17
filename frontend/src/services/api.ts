@@ -108,6 +108,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
     'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -121,15 +122,7 @@ export const uploadExcel = async (file: File): Promise<UploadResponse> => {
   formData.append('file', file);
 
   try {
-    console.log('[API] Uploading file:', {
-      fileName: file.name,
-      fileSize: file.size,
-      fileType: file.type,
-      apiUrl: API_URL
-    });
-
     // Use axios directly (not the api instance) to avoid default JSON headers
-    // This prevents Content-Type: application/json from interfering with FormData
     const response = await axios.post<UploadResponse>(
       `${API_URL}/upload`,
       formData,
@@ -139,16 +132,9 @@ export const uploadExcel = async (file: File): Promise<UploadResponse> => {
         maxBodyLength: 50 * 1024 * 1024, // 50MB
         // Don't set headers - axios will automatically detect FormData and set
         // Content-Type: multipart/form-data with boundary
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            console.log('[API] Upload progress:', `${percentCompleted}%`);
-          }
-        },
       }
     );
 
-    console.log('[API] Upload successful:', response.data);
     return response.data;
   } catch (error: any) {
     console.error('[API] Upload error:', error);
@@ -178,102 +164,40 @@ const formatDateLocal = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
-export const getAnalytics = async (fromDate?: Date, toDate?: Date): Promise<Analytics> => {
+// Build URLSearchParams with optional date range and extra params
+const buildDateParams = (fromDate?: Date, toDate?: Date, extra?: Record<string, string>): string => {
   const params = new URLSearchParams();
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
+  if (extra) Object.entries(extra).forEach(([k, v]) => params.append(k, v));
+  if (fromDate) params.append('fromDate', formatDateLocal(fromDate));
+  if (toDate) params.append('toDate', formatDateLocal(toDate));
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+};
 
-  const url = `/analytics${params.toString() ? `?${params.toString()}` : ''}`;
-  console.log('[API] getAnalytics called:', {
-    fromDate: fromDate ? formatDateLocal(fromDate) : 'undefined',
-    toDate: toDate ? formatDateLocal(toDate) : 'undefined',
-    url
-  });
-
-  const response = await api.get<Analytics>(url);
-  console.log('[API] getAnalytics response:', {
-    success: response.data.success,
-    totalIndents: response.data.totalIndents,
-    totalIndentsUnique: response.data.totalIndentsUnique,
-    dateRange: response.data.dateRange
-  });
+export const getAnalytics = async (fromDate?: Date, toDate?: Date): Promise<Analytics> => {
+  const response = await api.get<Analytics>(`/analytics${buildDateParams(fromDate, toDate)}`);
   return response.data;
 };
 
 export const getRangeWiseAnalytics = async (fromDate?: Date, toDate?: Date): Promise<RangeWiseResponse> => {
-  const params = new URLSearchParams();
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
-
-  const url = `/analytics/range-wise${params.toString() ? `?${params.toString()}` : ''}`;
-  console.log('[API] getRangeWiseAnalytics called:', {
-    fromDate: fromDate ? formatDateLocal(fromDate) : 'undefined',
-    toDate: toDate ? formatDateLocal(toDate) : 'undefined',
-    url
-  });
-
-  const response = await api.get<RangeWiseResponse>(url);
-  console.log('[API] getRangeWiseAnalytics response:', {
-    success: response.data.success,
-    rangeDataLength: response.data.rangeData?.length || 0,
-    totalUniqueIndents: response.data.totalUniqueIndents,
-    dateRange: response.data.dateRange
-  });
+  const response = await api.get<RangeWiseResponse>(`/analytics/range-wise${buildDateParams(fromDate, toDate)}`);
   return response.data;
 };
 
 export const getFulfillmentAnalytics = async (fromDate?: Date, toDate?: Date): Promise<FulfillmentResponse> => {
-  const params = new URLSearchParams();
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
-
-  const response = await api.get<FulfillmentResponse>(`/analytics/fulfillment?${params.toString()}`);
+  const response = await api.get<FulfillmentResponse>(`/analytics/fulfillment${buildDateParams(fromDate, toDate)}`);
   return response.data;
 };
 
 export const exportMissingIndents = async (fromDate?: Date, toDate?: Date): Promise<Blob> => {
-  const params = new URLSearchParams();
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
-
-  const response = await api.get(`/analytics/fulfillment/export-missing?${params.toString()}`, {
+  const response = await api.get(`/analytics/fulfillment/export-missing${buildDateParams(fromDate, toDate)}`, {
     responseType: 'blob'
   });
   return response.data;
 };
 
 export const getLoadOverTime = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<LoadOverTimeResponse> => {
-  const params = new URLSearchParams();
-  params.append('granularity', granularity);
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
-
-  const response = await api.get<LoadOverTimeResponse>(`/analytics/load-over-time?${params.toString()}`);
+  const response = await api.get<LoadOverTimeResponse>(`/analytics/load-over-time${buildDateParams(fromDate, toDate, { granularity })}`);
   return response.data;
 };
 
@@ -302,17 +226,7 @@ interface RevenueAnalyticsResponse {
 }
 
 export const getRevenueAnalytics = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<RevenueAnalyticsResponse> => {
-  const params = new URLSearchParams();
-  params.append('granularity', granularity);
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
-
-  const response = await api.get<RevenueAnalyticsResponse>(`/analytics/revenue?${params.toString()}`);
+  const response = await api.get<RevenueAnalyticsResponse>(`/analytics/revenue${buildDateParams(fromDate, toDate, { granularity })}`);
   return response.data;
 };
 
@@ -339,17 +253,7 @@ export interface CostAnalyticsResponse {
 }
 
 export const getCostAnalytics = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<CostAnalyticsResponse> => {
-  const params = new URLSearchParams();
-  params.append('granularity', granularity);
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
-
-  const response = await api.get<CostAnalyticsResponse>(`/analytics/cost?${params.toString()}`);
+  const response = await api.get<CostAnalyticsResponse>(`/analytics/cost${buildDateParams(fromDate, toDate, { granularity })}`);
   return response.data;
 };
 
@@ -376,17 +280,7 @@ export interface ProfitLossAnalyticsResponse {
 }
 
 export const getProfitLossAnalytics = async (granularity: 'daily' | 'weekly' | 'monthly', fromDate?: Date, toDate?: Date): Promise<ProfitLossAnalyticsResponse> => {
-  const params = new URLSearchParams();
-  params.append('granularity', granularity);
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
-
-  const response = await api.get<ProfitLossAnalyticsResponse>(`/analytics/profit-loss?${params.toString()}`);
+  const response = await api.get<ProfitLossAnalyticsResponse>(`/analytics/profit-loss${buildDateParams(fromDate, toDate, { granularity })}`);
   return response.data;
 };
 
@@ -461,28 +355,7 @@ export const getMonthlyMarketVehicleRevenue = async (): Promise<MonthlyMarketVeh
 };
 
 export const getVehicleCostAnalytics = async (fromDate?: Date, toDate?: Date): Promise<VehicleCostResponse> => {
-  const params = new URLSearchParams();
-  
-  if (fromDate) {
-    params.append('fromDate', formatDateLocal(fromDate));
-  }
-  if (toDate) {
-    params.append('toDate', formatDateLocal(toDate));
-  }
-
-  const url = `/analytics/vehicle-cost${params.toString() ? `?${params.toString()}` : ''}`;
-  console.log('[API] getVehicleCostAnalytics called:', {
-    fromDate: fromDate ? formatDateLocal(fromDate) : 'undefined',
-    toDate: toDate ? formatDateLocal(toDate) : 'undefined',
-    url
-  });
-
-  const response = await api.get<VehicleCostResponse>(url);
-  console.log('[API] getVehicleCostAnalytics response:', {
-    success: response.data.success,
-    dataLength: response.data.data?.length || 0,
-    dateRange: response.data.dateRange
-  });
+  const response = await api.get<VehicleCostResponse>(`/analytics/vehicle-cost${buildDateParams(fromDate, toDate)}`);
   return response.data;
 };
 
@@ -492,18 +365,75 @@ export interface LatestIndentDateResponse {
   message?: string;
 }
 
+// ─── Dashboard Snapshot (pre-computed, fast initial load) ───────────────────
+
+export interface DashboardSnapshotResponse {
+  computedAt: string;
+  tripCount: number;
+  kpi: {
+    totalIndents: number;
+    totalTrips: number;
+    totalLoad: number;
+    totalBuckets: number;
+    totalBarrels: number;
+    avgBucketsPerTrip: number;
+    totalCost: number;
+    totalProfitLoss: number;
+    totalRemainingCost: number;
+    totalVehicleCost: number;
+  };
+  rangeWise: {
+    ranges: Array<{
+      range: string;
+      indentCount: number;
+      uniqueIndentCount: number;
+      totalLoad: number;
+      percentage: number;
+      bucketCount: number;
+      barrelCount: number;
+      totalCostAE: number;
+      profitLoss: number;
+      totalKm: number;
+      bucketRevenue: number;
+      barrelRevenue: number;
+      totalRevenue: number;
+    }>;
+    totalUniqueIndents: number;
+    totalLoad: number;
+    totalBuckets: number;
+    totalBarrels: number;
+    totalCost: number;
+    totalProfitLoss: number;
+    totalRevenue: number;
+    totalRemainingCost: number;
+    totalVehicleCost: number;
+    totalRows: number;
+  };
+  locations: Array<{ name: string; indentCount: number; totalLoad: number; range: string }>;
+  fulfillment: {
+    fulfillmentData: Array<{ range: string; bucketRange: string; tripCount: number; indentCount: number; uniqueIndentCount: number }>;
+    totalTrips: number;
+  };
+  monthOnMonth: Array<{ month: string; indentCount: number; tripCount: number; totalLoad: number; totalCost: number; totalProfitLoss: number; totalRevenue: number }>;
+  meta: {
+    earliestIndentDate: string | null;
+    latestIndentDate: string | null;
+    availableMonths: string[];
+    totalRows: number;
+  };
+}
+
+export const getDashboardSnapshot = async (): Promise<DashboardSnapshotResponse> => {
+  const response = await api.get<DashboardSnapshotResponse>('/analytics/dashboard');
+  return response.data;
+};
+
 export const getLatestIndentDate = async (): Promise<string | null> => {
   try {
-    console.log('[API] Calling /analytics/latest-indent-date');
     const response = await api.get<LatestIndentDateResponse>('/analytics/latest-indent-date');
-    console.log('[API] Response received:', response.data);
     return response.data.latestIndentDate;
   } catch (error) {
     console.error('[API] Error fetching latest indent date:', error);
-    if (error instanceof Error) {
-      console.error('[API] Error message:', error.message);
-      console.error('[API] Error stack:', error.stack);
-    }
     return null;
   }
 };

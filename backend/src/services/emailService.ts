@@ -106,7 +106,7 @@ class EmailService {
               // Check if sender is in allowed list
               if (this.allowedSenders.length > 0) {
                 const senderLower = fromAddress.toLowerCase();
-                const isAllowed = this.allowedSenders.some(allowed => senderLower.includes(allowed));
+                const isAllowed = this.allowedSenders.some(allowed => senderLower === allowed);
                 if (!isAllowed) {
                   console.log(`[EmailService] Skipping email from ${fromAddress} (not in allowed senders)`);
                   continue;

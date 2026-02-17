@@ -5,7 +5,7 @@ import {
   IconUserBolt,
   IconTable,
 } from "@tabler/icons-react";
-import { motion } from "framer-motion";
+import { motion } from "motion/react";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";

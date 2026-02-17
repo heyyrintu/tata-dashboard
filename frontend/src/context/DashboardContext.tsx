@@ -34,28 +34,26 @@ interface DashboardProviderProps {
   children: ReactNode;
 }
 
+// Initialize date range to current month so data hooks fire correctly on first render
+function getCurrentMonthRange() {
+  const now = new Date();
+  return {
+    from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
+    to: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+  };
+}
+
 export const DashboardProvider = ({ children }: DashboardProviderProps) => {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
-  // Default to no date filter (null) to show all data initially
-  const [dateRange, setDateRangeState] = useState<{ from: Date | null; to: Date | null }>({
-    from: null,
-    to: null,
-  });
+  const [dateRange, setDateRangeState] = useState<{ from: Date | null; to: Date | null }>(
+    getCurrentMonthRange
+  );
   const [metrics, setMetrics] = useState({ totalIndents: 0, totalIndentsUnique: 0 });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const setDateRange = (from: Date | null, to: Date | null) => {
-    console.log('[DashboardContext] ===== SETTING DATE RANGE =====');
-    console.log('[DashboardContext] New date range:', {
-      from: from ? from.toISOString().split('T')[0] : 'null',
-      to: to ? to.toISOString().split('T')[0] : 'null',
-      fromISO: from?.toISOString(),
-      toISO: to?.toISOString()
-    });
     setDateRangeState({ from, to });
-    console.log('[DashboardContext] Date range updated in context');
-    console.log('[DashboardContext] ===== DATE RANGE SET =====');
   };
 
   const value: DashboardContextType = {

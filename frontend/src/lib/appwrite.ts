@@ -22,4 +22,8 @@ const teams = new Teams(client);
 // Admin team ID from environment variable
 export const ADMIN_TEAM_ID = import.meta.env.VITE_APPWRITE_ADMIN_TEAM_ID || "";
 
+if (!ADMIN_TEAM_ID) {
+    console.warn("VITE_APPWRITE_ADMIN_TEAM_ID is not set. Admin features will be disabled.");
+}
+
 export { client, account, databases, teams };

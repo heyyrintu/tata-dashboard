@@ -46,7 +46,7 @@ export const useLoadOverTime = (granularity: 'daily' | 'weekly' | 'monthly') => 
     // Debounce API calls by 500ms
     const timer = setTimeout(() => {
       fetchLoadOverTimeData();
-    }, 500);
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [fetchLoadOverTimeData]);

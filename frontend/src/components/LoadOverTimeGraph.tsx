@@ -12,7 +12,7 @@ import {
 } from 'chart.js';
 import { Chart } from 'react-chartjs-2';
 import { useLoadOverTime } from '../hooks/useLoadOverTime';
-import { LoadingSpinner } from './LoadingSpinner';
+import { Skeleton } from './ui/skeleton';
 import TimeGranularityToggle from './TimeGranularityToggle';
 import { useTheme } from '../context/ThemeContext';
 
@@ -43,8 +43,10 @@ export default function LoadOverTimeGraph() {
           <h2 className="text-lg font-semibold text-white">Load Over Time</h2>
           <TimeGranularityToggle granularity={granularity} onGranularityChange={setGranularity} />
         </div>
-        <div className="flex justify-center items-center h-80">
-          <LoadingSpinner />
+        <div className="flex items-end gap-3 h-64 pt-4 px-4">
+          {[40, 70, 55, 85, 35, 65, 50, 75].map((h, i) => (
+            <Skeleton key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%` }} />
+          ))}
         </div>
       </div>
     );

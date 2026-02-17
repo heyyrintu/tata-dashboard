@@ -26,19 +26,14 @@ export const useMonthOnMonthData = () => {
 
     try {
       const response = await getMonthOnMonthAnalytics();
-      console.log('[useMonthOnMonthData] Response received:', response);
-      console.log('[useMonthOnMonthData] Timestamp:', new Date().toISOString());
       if (response.success && response.data) {
-        console.log('[useMonthOnMonthData] Data points:', response.data.length);
-        console.log('[useMonthOnMonthData] Sample data:', response.data.slice(0, 3));
         setData(response);
       } else {
-        console.warn('[useMonthOnMonthData] Response not successful or missing data:', response);
         setError('Invalid response format');
         setData(null);
       }
     } catch (err) {
-      console.error('[useMonthOnMonthData] Error fetching data:', err);
+      console.error('[useMonthOnMonthData] Failed to fetch:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch month-on-month data');
       setData(null);
     } finally {

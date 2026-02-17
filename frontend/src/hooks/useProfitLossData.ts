@@ -30,7 +30,7 @@ export const useProfitLossData = (granularity: 'daily' | 'weekly' | 'monthly' = 
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchProfitLossData();
-    }, 500);
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [fetchProfitLossData]);

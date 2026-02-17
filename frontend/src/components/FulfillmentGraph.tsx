@@ -10,7 +10,7 @@ import {
 } from 'chart.js';
 import { Bar } from 'react-chartjs-2';
 import { useFulfillmentData } from '../hooks/useFulfillmentData';
-import { LoadingSpinner } from './LoadingSpinner';
+import { Skeleton } from './ui/skeleton';
 import { formatIndentCount, calculateFulfillmentChartData } from '../utils/fulfillmentCalculations';
 import { useTheme } from '../context/ThemeContext';
 
@@ -56,8 +56,10 @@ export default function FulfillmentGraph() {
           </div>
           <div className="h-1.5 w-20 bg-gradient-to-r from-red-500 via-red-600 to-red-700 rounded-full ml-5 shadow-sm"></div>
         </div>
-        <div className="flex justify-center items-center flex-1 min-h-0">
-          <LoadingSpinner />
+        <div className="flex items-end gap-3 h-64 pt-4 px-4">
+          {[40, 70, 55, 85, 35, 65, 50, 75].map((h, i) => (
+            <Skeleton key={i} className="flex-1 rounded-t-md" style={{ height: `${h}%` }} />
+          ))}
         </div>
       </>
     );

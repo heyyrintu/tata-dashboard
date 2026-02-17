@@ -13,36 +13,40 @@ import MonthOnMonthIndentsChart from '../components/MonthOnMonthIndentsChart';
 import MonthOnMonthTripsChart from '../components/MonthOnMonthTripsChart';
 import PageDateFilter from '../components/PageDateFilter';
 import { useDashboard } from '../context/DashboardContext';
+import { useSnapshot } from '../context/SnapshotContext';
 import { useTheme } from '../context/ThemeContext';
 import { getAnalytics } from '../services/api';
 import { BackgroundBeams } from '../components/ui/background-beams';
 
 function MainDashboard() {
   const { uploadedFileName, dateRange, setMetrics, setIsLoading, setError, setUploadedFileName } = useDashboard();
+  const { snapshot } = useSnapshot();
   const { theme } = useTheme();
   const navigate = useNavigate();
 
-  const fetchInitialData = useCallback(async () => {
-    console.log('[MainDashboard] fetchInitialData called with dateRange:', {
-      from: dateRange.from?.toISOString().split('T')[0] || 'null',
-      to: dateRange.to?.toISOString().split('T')[0] || 'null'
-    });
+  // Use snapshot for initial load (no date filter), API for date-filtered requests
+  const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
-      const data = await getAnalytics(dateRange.from || undefined, dateRange.to || undefined);
-      console.log('[MainDashboard] Analytics data received:', {
-        totalIndents: data.totalIndents,
-        totalIndentsUnique: data.totalIndentsUnique,
-        dateRange: data.dateRange
-      });
-      setMetrics({
-        totalIndents: data.totalIndents,
-        totalIndentsUnique: data.totalIndentsUnique,
-      });
-      // If we have data, set uploadedFileName so dashboard shows content
-      if (data.totalIndents > 0 && !uploadedFileName) {
-        console.log('[MainDashboard] Setting uploadedFileName to email-processed');
-        setUploadedFileName('email-processed');
+      // If no date filter and snapshot is available, use it (sub-millisecond)
+      if (!dateRange.from && !dateRange.to && snapshot?.kpi) {
+        setMetrics({
+          totalIndents: snapshot.kpi.totalIndents,
+          totalIndentsUnique: snapshot.kpi.totalTrips,
+        });
+        if (snapshot.kpi.totalIndents > 0 && !uploadedFileName) {
+          setUploadedFileName('email-processed');
+        }
+      } else {
+        // Date filter active — call the (now SQL-backed) analytics API
+        const data = await getAnalytics(dateRange.from || undefined, dateRange.to || undefined);
+        setMetrics({
+          totalIndents: data.totalIndents,
+          totalIndentsUnique: data.totalIndentsUnique,
+        });
+        if (data.totalIndents > 0 && !uploadedFileName) {
+          setUploadedFileName('email-processed');
+        }
       }
     } catch (error) {
       console.error('[MainDashboard] Error fetching analytics:', error);
@@ -50,34 +54,21 @@ function MainDashboard() {
     } finally {
       setIsLoading(false);
     }
-  }, [dateRange.from, dateRange.to, setMetrics, setIsLoading, setError, uploadedFileName, setUploadedFileName]);
+  }, [dateRange.from, dateRange.to, snapshot, setMetrics, setIsLoading, setError, uploadedFileName, setUploadedFileName]);
 
-  // Check for data on mount (even without uploadedFileName)
+  // Fetch on mount
   useEffect(() => {
-    // Always try to fetch data on mount to check if data exists
-    console.log('[MainDashboard] Mounting - fetching initial data');
-    fetchInitialData();
+    fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, []);
 
-  // Fetch analytics when date range changes (if we have data)
+  // Re-fetch when date range or snapshot changes
   useEffect(() => {
     if (uploadedFileName) {
-      console.log('[MainDashboard] Date range changed - fetching data');
-      fetchInitialData();
+      fetchData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRange.from, dateRange.to, uploadedFileName]); // fetchInitialData is stable due to useCallback
-
-  useEffect(() => {
-    if (theme === 'light') {
-      document.body.classList.add('light-theme');
-      document.documentElement.classList.add('light-theme');
-    } else {
-      document.body.classList.remove('light-theme');
-      document.documentElement.classList.remove('light-theme');
-    }
-  }, [theme]);
+  }, [dateRange.from, dateRange.to, uploadedFileName, snapshot]);
 
   return (
     <div className={`min-h-screen relative ${

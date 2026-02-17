@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import React, { useState, createContext, useContext, useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion } from "motion/react";
 import { IconMenu2, IconX } from "@tabler/icons-react";
 import { Link } from "react-router-dom";
 import { createPortal } from "react-dom";
