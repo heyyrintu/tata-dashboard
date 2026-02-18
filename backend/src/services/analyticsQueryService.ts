@@ -210,13 +210,28 @@ export async function queryRangeWise(fromDate: Date | null, toDate: Date | null)
     });
   }
 
-  // Totals for remaining cost from valid (non-cancelled) rows only — same population as rangeData
-  const remainingCostResult = await prisma.$queryRaw<[{ total: number }]>`
-    SELECT COALESCE(SUM("remainingCost"), 0) AS total FROM trips
-    WHERE ${dateFilter}
-      AND range IS NOT NULL AND TRIM(range) != ''
-      AND LOWER(COALESCE(remarks, '')) NOT LIKE '%cancel%'
-  `;
+  // Totals from ALL rows in date range (not just those with valid range) for KPI cards
+  const [allTotalsResult, remainingCostResult] = await Promise.all([
+    prisma.$queryRaw<[{ total_cost: number; total_profit_loss: number; total_remaining_cost: number }]>`
+      SELECT
+        COALESCE(SUM("totalCostAE"), 0) AS total_cost,
+        COALESCE(SUM("profitLoss"), 0) AS total_profit_loss,
+        COALESCE(SUM("remainingCost"), 0) AS total_remaining_cost
+      FROM trips
+      WHERE ${dateFilter}
+        AND LOWER(COALESCE(remarks, '')) NOT LIKE '%cancel%'
+    `,
+    prisma.$queryRaw<[{ total: number }]>`
+      SELECT COALESCE(SUM("remainingCost"), 0) AS total FROM trips
+      WHERE ${dateFilter}
+        AND range IS NOT NULL AND TRIM(range) != ''
+        AND LOWER(COALESCE(remarks, '')) NOT LIKE '%cancel%'
+    `,
+  ]);
+
+  const totalCostAll = Number(allTotalsResult[0].total_cost);
+  const totalProfitLossAll = Number(allTotalsResult[0].total_profit_loss);
+  const totalRemainingCostAll = Number(allTotalsResult[0].total_remaining_cost);
 
   return {
     rangeData,
@@ -225,11 +240,11 @@ export async function queryRangeWise(fromDate: Date | null, toDate: Date | null)
     totalLoad: rangeData.reduce((s, r) => s + r.totalLoad, 0),
     totalBuckets: rangeData.reduce((s, r) => s + r.bucketCount, 0),
     totalBarrels: rangeData.reduce((s, r) => s + r.barrelCount, 0),
-    totalCost: rangeData.reduce((s, r) => s + r.totalCostAE, 0),
-    totalProfitLoss: rangeData.reduce((s, r) => s + r.profitLoss, 0),
+    totalCost: totalCostAll,
+    totalProfitLoss: totalProfitLossAll,
     totalRevenue: rangeData.reduce((s, r) => s + r.totalRevenue, 0),
     totalRemainingCost: Number(remainingCostResult[0].total),
-    totalVehicleCost: rangeData.reduce((s, r) => s + r.totalCostAE, 0) - Number(remainingCostResult[0].total),
+    totalVehicleCost: totalCostAll - totalRemainingCostAll,
   };
 }
 

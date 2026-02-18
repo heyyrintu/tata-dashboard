@@ -112,8 +112,39 @@ app.use('/api/email', apiLimiter, emailRoutes);
 console.log('[Server] Routes registered: /api/upload, /api/analytics, /api/email');
 
 // Health check endpoint (no auth required)
-app.get('/health', (_req, res) => {
-  res.json({ status: 'OK', message: 'Server is running' });
+app.get('/health', async (_req, res) => {
+  try {
+    const stats = await import('./lib/prisma').then(m => m.default.$queryRaw<[{
+      total_rows: bigint;
+      rows_with_cost: bigint;
+      total_cost: number;
+      rows_with_range: bigint;
+      min_date: string;
+      max_date: string;
+    }]>`
+      SELECT
+        COUNT(*) AS total_rows,
+        COUNT(CASE WHEN "totalCostAE" > 0 THEN 1 END) AS rows_with_cost,
+        COALESCE(SUM("totalCostAE"), 0) AS total_cost,
+        COUNT(CASE WHEN range IS NOT NULL AND TRIM(range) != '' THEN 1 END) AS rows_with_range,
+        MIN("indentDate")::text AS min_date,
+        MAX("indentDate")::text AS max_date
+      FROM trips
+    `);
+    const row = stats[0];
+    res.json({
+      status: 'OK',
+      db: {
+        totalRows: Number(row.total_rows),
+        rowsWithCost: Number(row.rows_with_cost),
+        totalCost: Number(row.total_cost),
+        rowsWithRange: Number(row.rows_with_range),
+        dateRange: { min: row.min_date, max: row.max_date },
+      },
+    });
+  } catch {
+    res.json({ status: 'OK', message: 'Server is running', db: 'query failed' });
+  }
 });
 
 // Centralized error handler (must be last middleware)

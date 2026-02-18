@@ -47,12 +47,20 @@ function normalizeColumnName(name: string): string {
 }
 
 /**
- * Parse numeric value, returning 0 for null/empty/invalid
+ * Parse numeric value, returning 0 for null/empty/invalid.
+ * Handles currency symbols (₹, $), commas, spaces, and other non-numeric chars
+ * that appear when Excel cells are formatted as currency.
  */
 function parseNumericValue(value: any): number {
   if (value === null || value === undefined || value === '') return 0;
-  if (value === '-' || value === 'N/A' || value === 'NA') return 0;
-  const num = typeof value === 'string' ? parseFloat(value.replace(/,/g, '').trim()) : Number(value);
+  if (typeof value === 'number') return isNaN(value) ? 0 : value;
+  if (typeof value !== 'string') return Number(value) || 0;
+  const trimmed = value.trim();
+  if (trimmed === '' || trimmed === '-' || trimmed === 'N/A' || trimmed === 'NA') return 0;
+  // Strip everything except digits, dots, and minus signs
+  const cleaned = trimmed.replace(/[^0-9.\-]/g, '');
+  if (cleaned === '' || cleaned === '-') return 0;
+  const num = parseFloat(cleaned);
   return isNaN(num) ? 0 : num;
 }
 
@@ -205,10 +213,29 @@ export const parseExcelFile = (filePath: string): TripInput[] => {
         columnAKName = columns[36];
         console.warn(`[ExcelParser] Could not find "P & L" column by name, falling back to index 36: "${columnAKName}"`);
       }
+      // Log all detected column mappings for diagnostics
+      console.log(`[ExcelParser] Column mapping results:`);
+      console.log(`[ExcelParser]   Total columns: ${columns.length}`);
+      console.log(`[ExcelParser]   All headers: ${columns.map((c, i) => `[${i}]="${c}"`).join(', ')}`);
+      console.log(`[ExcelParser]   Total Km (U):       ${columnUName ? `"${columnUName}"` : 'NOT FOUND'}`);
+      console.log(`[ExcelParser]   Cost Loading (Y):   ${columnYName ? `"${columnYName}"` : 'NOT FOUND'}`);
+      console.log(`[ExcelParser]   Cost Unload (AB):   ${columnABName ? `"${columnABName}"` : 'NOT FOUND'}`);
+      console.log(`[ExcelParser]   Any Other Cost (AD): ${columnADName ? `"${columnADName}"` : 'NOT FOUND'}`);
+      console.log(`[ExcelParser]   Total Cost (AE):    ${columnAEName ? `"${columnAEName}"` : 'NOT FOUND'}`);
+      console.log(`[ExcelParser]   P & L (AK):         ${columnAKName ? `"${columnAKName}"` : 'NOT FOUND'}`);
+
+      // Log sample values from first row to verify data
+      if (jsonData.length > 0) {
+        const sample = jsonData[0];
+        console.log(`[ExcelParser] Sample row 1 values:`);
+        if (columnAEName) console.log(`[ExcelParser]   Total Cost (AE) = "${sample[columnAEName]}" → ${parseNumericValue(sample[columnAEName])}`);
+        if (columnYName) console.log(`[ExcelParser]   Cost Loading (Y) = "${sample[columnYName]}" → ${parseNumericValue(sample[columnYName])}`);
+        if (columnAKName) console.log(`[ExcelParser]   P & L (AK) = "${sample[columnAKName]}" → ${parseNumericValue(sample[columnAKName])}`);
+      }
     } else {
       console.warn(`[ExcelParser] WARNING: No data rows found in Excel file!`);
     }
-    
+
     let rowsWithKm = 0;
     
     // Get column names for index-based access
@@ -349,6 +376,21 @@ export const parseExcelFile = (filePath: string): TripInput[] => {
 
     const filtered = indents.filter(indent => indent.indent && indent.indentDate);
 
+    // Diagnostics: count rows with non-zero values for key fields
+    const rowsWithCost = filtered.filter(i => (i.totalCostAE || 0) > 0).length;
+    const rowsWithPL = filtered.filter(i => (i.profitLoss || 0) !== 0).length;
+    const rowsWithRange = filtered.filter(i => i.range && i.range.trim() !== '').length;
+    const totalCostSum = filtered.reduce((s, i) => s + (i.totalCostAE || 0), 0);
+
+    console.log(`[ExcelParser] Parse summary: ${filtered.length} valid rows out of ${indents.length} total`);
+    console.log(`[ExcelParser]   Rows with cost > 0: ${rowsWithCost} (sum: ₹${totalCostSum.toLocaleString('en-IN')})`);
+    console.log(`[ExcelParser]   Rows with P&L:      ${rowsWithPL}`);
+    console.log(`[ExcelParser]   Rows with range:     ${rowsWithRange}`);
+    console.log(`[ExcelParser]   Rows with totalKm:   ${rowsWithKm}`);
+
+    if (rowsWithCost === 0 && columnAEName) {
+      console.warn(`[ExcelParser] WARNING: No cost values found — column "${columnAEName}" may be mapped incorrectly!`);
+    }
     if (rowsWithKm === 0 && columnUName) {
       console.warn(`[ExcelParser] No totalKm values found — column "${columnUName}" may be mapped incorrectly`);
     }

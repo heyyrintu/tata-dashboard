@@ -51,6 +51,24 @@ export default function PageDateFilter() {
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // When available months load, if current month has no data auto-switch to latest month that does
+  useEffect(() => {
+    if (monthOptions.length === 0) return;
+    const currentMonthInOptions = monthOptions.find(m => m.value === initMonth.key);
+    if (!currentMonthInOptions) {
+      const latest = monthOptions[0]; // sorted newest first
+      const [year, month] = latest.value.split('-');
+      const startDate = new Date(parseInt(year, 10), parseInt(month, 10) - 1, 1);
+      startDate.setHours(0, 0, 0, 0);
+      const endDate = new Date(parseInt(year, 10), parseInt(month, 10), 0);
+      endDate.setHours(23, 59, 59, 999);
+      setSelectedMonth(latest.value);
+      setPendingFrom(startDate);
+      setPendingTo(endDate);
+      setDateRange(startDate, endDate);
+    }
+  }, [monthOptions]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sync local state with context
   useEffect(() => {
     setPendingFrom(dateRange.from);
