@@ -24,7 +24,7 @@ export default function RequireCapability({ capability, children }: RequireCapab
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-[#0a0e27] to-[#08101e]">
-        <IconLoader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <IconLoader2 className="w-8 h-8 text-brand-600 animate-spin" />
       </div>
     );
   }
@@ -66,7 +66,7 @@ export default function RequireCapability({ capability, children }: RequireCapab
           </p>
           <a
             href="/"
-            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-block px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
           >
             Go to Dashboard
           </a>

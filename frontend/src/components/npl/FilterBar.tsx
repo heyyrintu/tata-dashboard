@@ -55,7 +55,7 @@ function Select({
       <select
         value={value ?? ''}
         onChange={(e) => onChange(e.target.value || null)}
-        className={`h-9 min-w-[9rem] rounded-lg border px-2 text-sm outline-none focus:border-blue-500 ${s.input}`}
+        className={`h-9 min-w-[9rem] rounded-lg border px-2 text-sm outline-none focus:border-brand-600 ${s.input}`}
       >
         <option value="">All</option>
         {options.map((o) => (
@@ -120,7 +120,7 @@ export default function FilterBar() {
                 onClick={() => setDateRange(r.from, r.to)}
                 className={`h-9 rounded-lg px-3 text-xs font-medium transition-colors ${
                   isActiveRange(r)
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-brand-600 text-white'
                     : s.light
                       ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       : 'bg-white/5 text-gray-300 hover:bg-white/10'
@@ -141,7 +141,7 @@ export default function FilterBar() {
             min={options?.dateRange.from ?? undefined}
             max={options?.dateRange.to ?? undefined}
             onChange={(e) => setDateRange(e.target.value || null, filters.to ?? null)}
-            className={`h-9 rounded-lg border px-2 text-sm outline-none focus:border-blue-500 ${s.input}`}
+            className={`h-9 rounded-lg border px-2 text-sm outline-none focus:border-brand-600 ${s.input}`}
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -152,7 +152,7 @@ export default function FilterBar() {
             min={options?.dateRange.from ?? undefined}
             max={options?.dateRange.to ?? undefined}
             onChange={(e) => setDateRange(filters.from ?? null, e.target.value || null)}
-            className={`h-9 rounded-lg border px-2 text-sm outline-none focus:border-blue-500 ${s.input}`}
+            className={`h-9 rounded-lg border px-2 text-sm outline-none focus:border-brand-600 ${s.input}`}
           />
         </label>
 
@@ -217,7 +217,7 @@ export default function FilterBar() {
             onClick={handleExport}
             disabled={isExporting}
             title="Download the filtered selection as .xlsx"
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-brand-600 px-3 text-xs font-medium text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
           >
             {isExporting ? (
               <IconLoader2 className="h-4 w-4 animate-spin" />

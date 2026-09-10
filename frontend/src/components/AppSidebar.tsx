@@ -14,6 +14,7 @@ import { motion } from "motion/react";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import { BRAND_ASSETS, BRAND_MARK, BRAND_NAME, BRAND_SUFFIX } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export default function AppSidebar() {
@@ -80,6 +81,7 @@ export default function AppSidebar() {
     <Sidebar open={open} setOpen={setOpen}>
       <SidebarBody className="justify-between gap-10">
         <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
+          <SidebarBrand />
           <div className="mt-4 flex flex-col gap-2">
             {links.map((link, idx) => (
               <SidebarLink
@@ -97,6 +99,45 @@ export default function AppSidebar() {
     </Sidebar>
   );
 }
+
+/**
+ * Brand mark at the top of the sidebar - the dashboard chrome carried no
+ * identity at all before this.
+ *
+ * The square mark is always shown; the wordmark fades in only when the sidebar
+ * is expanded, matching how SidebarLink handles its own labels. Both files are
+ * self-hosted in public/brand/ and swapped by overwriting them - see
+ * lib/brand.ts.
+ */
+const SidebarBrand = () => {
+  const { open, animate } = useSidebar();
+
+  return (
+    <a
+      href="/"
+      className="mb-2 flex items-center gap-2 border-b border-black/5 px-1 pb-3 pt-1 dark:border-white/10"
+      aria-label={BRAND_NAME}
+      title={BRAND_NAME}
+    >
+      <img
+        src={BRAND_ASSETS.mark}
+        alt=""
+        aria-hidden="true"
+        className="h-8 w-8 shrink-0 rounded-lg"
+      />
+      <motion.span
+        animate={{
+          display: animate ? (open ? "inline-block" : "none") : "inline-block",
+          opacity: animate ? (open ? 1 : 0) : 1,
+        }}
+        className="whitespace-pre text-sm font-bold tracking-tight"
+      >
+        <span className="brand-gradient-text">{BRAND_MARK}</span>
+        <span> {BRAND_SUFFIX}</span>
+      </motion.span>
+    </a>
+  );
+};
 
 const ThemeToggleButton = () => {
   const { theme, toggleTheme } = useTheme();

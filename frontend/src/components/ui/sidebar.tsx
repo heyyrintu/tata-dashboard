@@ -280,7 +280,7 @@ export const SidebarLink = ({
         className={cn(
           "flex items-center justify-start gap-2 group/sidebar px-3 py-2 rounded-lg cursor-pointer transition-all duration-300",
           isActive
-            ? "bg-gradient-to-r from-[#E01E1F] to-[#FEA519] text-white font-bold"
+            ? "brand-gradient-duo text-white font-bold"
             : "hover:bg-white/10",
           className
         )}
@@ -297,7 +297,7 @@ export const SidebarLink = ({
       className={cn(
         "flex items-center justify-start gap-2 group/sidebar px-3 py-2 rounded-lg cursor-pointer transition-all duration-300",
         isActive
-          ? "bg-gradient-to-r from-[#E01E1F] to-[#FEA519] text-white font-bold"
+          ? "brand-gradient-duo text-white font-bold"
           : "hover:bg-white/10",
         className
       )}

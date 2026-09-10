@@ -210,7 +210,7 @@ export function LoadingPane({ label = 'Loading dashboard…' }: { label?: string
   const s = useSurface();
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3">
-      <IconLoader2 className="h-7 w-7 animate-spin text-blue-500" />
+      <IconLoader2 className="h-7 w-7 animate-spin text-brand-600" />
       <p className={`text-sm ${s.muted}`}>{label}</p>
     </div>
   );
@@ -226,7 +226,7 @@ export function ErrorPane({ message, onRetry }: { message: string; onRetry?: () 
       {onRetry && (
         <button
           onClick={onRetry}
-          className="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+          className="mt-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
         >
           Try again
         </button>
