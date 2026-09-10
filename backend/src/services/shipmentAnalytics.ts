@@ -887,7 +887,12 @@ export async function getShipments(rawQuery: ShipmentPageQuery, masked: boolean)
         { lrNo: { contains, mode: 'insensitive' } },
         { invoiceNumber: { contains, mode: 'insensitive' } },
         { vehicleNumber: { contains, mode: 'insensitive' } },
-        { vendorName: { contains, mode: 'insensitive' } },
+        // Carrier names are searchable ONLY by callers entitled to see them.
+        // Leaving this in for a masked caller turns free-text search into an
+        // oracle: type a guessed carrier name, and the row count alone confirms
+        // whether that carrier exists and which shipments are theirs - which is
+        // exactly what pseudonymising the output is meant to prevent.
+        ...(masked ? [] : [{ vendorName: { contains, mode: 'insensitive' as const } }]),
       ];
     }
   }

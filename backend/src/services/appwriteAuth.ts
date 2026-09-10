@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { Client, Account, Teams, AppwriteException } from 'node-appwrite';
+import { Client, Account, Teams, Query, AppwriteException } from 'node-appwrite';
 import { Role } from '../config/roles';
 import { logger } from '../utils/logger';
 
@@ -42,6 +42,15 @@ const NEGATIVE_TTL_MS = 5_000;
 /** Hard ceiling on the cache, so a flood of distinct tokens cannot grow it without bound. */
 const MAX_ENTRIES = 5_000;
 
+/** Appwrite's maximum page size for a list query. */
+const TEAM_PAGE_SIZE = 100;
+
+/**
+ * Sanity stop on team pagination (2000 teams). Not an expected limit - it only
+ * prevents an unbounded loop if a page ever comes back full but unchanging.
+ */
+const MAX_TEAM_PAGES = 20;
+
 export interface VerifiedUser {
   userId: string;
   email: string | null;
@@ -56,6 +65,26 @@ interface CacheEntry {
 }
 
 const cache = new Map<string, CacheEntry>();
+
+/**
+ * Read the `exp` claim without verifying the signature.
+ *
+ * Reading an unverified claim is safe here for one specific reason: the value
+ * is only ever used to SHORTEN how long a result is trusted, never to grant
+ * anything and never to extend trust. Appwrite has already vouched for the
+ * token by the time this is used. A forged or malformed `exp` can only cause
+ * earlier re-verification, which is the safe direction.
+ */
+function jwtExpiryMs(jwt: string): number | null {
+  const payload = jwt.split('.')[1];
+  if (!payload) return null;
+  try {
+    const exp = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'))?.exp;
+    return typeof exp === 'number' && Number.isFinite(exp) ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Key on a digest, never the token itself: the raw JWT is a bearer credential
@@ -75,17 +104,29 @@ function readCache(key: string): CacheEntry | null {
   return hit;
 }
 
-function writeCache(key: string, user: VerifiedUser | null): void {
+function writeCache(
+  key: string,
+  user: VerifiedUser | null,
+  jwtExpiresAtMs: number | null
+): void {
   if (cache.size >= MAX_ENTRIES) {
     // Cheapest useful eviction: drop whatever is oldest by insertion order.
     // Entries are short-lived anyway, so precision here buys nothing.
     const oldest = cache.keys().next();
     if (!oldest.done) cache.delete(oldest.value);
   }
-  cache.set(key, {
-    user,
-    expiresAt: Date.now() + (user ? POSITIVE_TTL_MS : NEGATIVE_TTL_MS),
-  });
+
+  const ttl = user ? POSITIVE_TTL_MS : NEGATIVE_TTL_MS;
+  let expiresAt = Date.now() + ttl;
+
+  // The TTL is an upper bound, not a licence. A token verified shortly before
+  // it lapses must not keep its grants - `isAdmin` above all - for the rest of
+  // the window after Appwrite would already be rejecting it.
+  if (user && jwtExpiresAtMs !== null) {
+    expiresAt = Math.min(expiresAt, jwtExpiresAtMs);
+  }
+
+  cache.set(key, { user, expiresAt });
 }
 
 /** Drop every cached verification. Used by tests and on configuration reload. */
@@ -142,7 +183,35 @@ export async function verifyJwt(jwt: string): Promise<VerifiedUser | null> {
   return task;
 }
 
+/**
+ * Every team id the JWT's owner belongs to.
+ *
+ * Paginated deliberately: `teams.list()` returns Appwrite's default page of 25
+ * when no limit is given, so a user in more teams than that could have a
+ * configured team fall off the first page and silently lose a grant. Appwrite
+ * does not allow filtering teams by `$id`, so the list has to be walked.
+ * Paging stops as soon as both configured teams have been seen.
+ */
+async function membershipIds(client: Client): Promise<Set<string>> {
+  const teamsApi = new Teams(client);
+  const ids = new Set<string>();
+
+  for (let page = 0; page < MAX_TEAM_PAGES; page++) {
+    const result = await teamsApi.list({
+      queries: [Query.limit(TEAM_PAGE_SIZE), Query.offset(page * TEAM_PAGE_SIZE)],
+    });
+    for (const team of result.teams) ids.add(team.$id);
+
+    const haveBoth =
+      (!HO_TEAM_ID || ids.has(HO_TEAM_ID)) && (!ADMIN_TEAM_ID || ids.has(ADMIN_TEAM_ID));
+    if (haveBoth || result.teams.length < TEAM_PAGE_SIZE) break;
+  }
+
+  return ids;
+}
+
 async function runVerification(jwt: string, key: string): Promise<VerifiedUser | null> {
+  const jwtExpiresAtMs = jwtExpiryMs(jwt);
   const client = clientFor(jwt);
 
   let userId: string;
@@ -161,19 +230,18 @@ async function runVerification(jwt: string, key: string): Promise<VerifiedUser |
         message: err instanceof Error ? err.message : String(err),
       });
     }
-    writeCache(key, null);
+    writeCache(key, null, jwtExpiresAtMs);
     return null;
   }
 
   // Team membership decides both grants. `teams.list()` on a JWT-scoped client
   // is answered by Appwrite for that specific user, so it cannot be influenced
-  // by anything the caller sent - and one call covers both teams.
+  // by anything the caller sent.
   let role: Role = 'client';
   let isAdmin = false;
   if (HO_TEAM_ID || ADMIN_TEAM_ID) {
     try {
-      const { teams } = await new Teams(client).list();
-      const ids = new Set(teams.map((t) => t.$id));
+      const ids = await membershipIds(client);
       role = HO_TEAM_ID && ids.has(HO_TEAM_ID) ? 'ho' : 'client';
       isAdmin = Boolean(ADMIN_TEAM_ID && ids.has(ADMIN_TEAM_ID));
     } catch (err) {
@@ -188,6 +256,6 @@ async function runVerification(jwt: string, key: string): Promise<VerifiedUser |
   }
 
   const user: VerifiedUser = { userId, email, role, isAdmin };
-  writeCache(key, user);
+  writeCache(key, user, jwtExpiresAtMs);
   return user;
 }

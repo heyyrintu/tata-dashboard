@@ -30,8 +30,14 @@ if (report.sheets.length === 0) console.log('  (workbook has no sheets)');
 for (const s of report.sheets) {
   if (s.rejected) {
     console.log(`  ${s.name.padEnd(28)} REJECTED: ${s.rejected}`);
+    // Show the fields that DID resolve separately from the ones that did not:
+    // a sheet that mapped several columns but still lacks LR DATE and PICKUP
+    // LOCATION is a near miss, and looks nothing like a wrong-format file.
+    if (s.matchedColumns.length) {
+      console.log(`  ${''.padEnd(28)} mapped fields : ${s.matchedColumns.join(', ')}`);
+    }
     if (s.unmatchedHeaders.length) {
-      console.log(`  ${''.padEnd(28)} headers found: ${s.unmatchedHeaders.slice(0, 12).join(' | ')}`);
+      console.log(`  ${''.padEnd(28)} other headers : ${s.unmatchedHeaders.slice(0, 12).join(' | ')}`);
     }
     continue;
   }

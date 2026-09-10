@@ -388,16 +388,23 @@ export function parseNplWorkbook(filePath: string): ParseReport {
       .map(({ h }) => h);
 
     if (col.lrDate === undefined && col.pickupLocation === undefined) {
-      // Report the headers that WERE found. Without them a zero-row parse gives
-      // no clue whether the file is the wrong format or the header row moved.
+      // Report EVERY header the row carried, not just the unrecognised ones.
+      // A sheet can map PARTY NAME and DESTINATION yet still lack both required
+      // fields; reporting only the unmatched headers would then say
+      // "(no text cells)" about a row full of text, and drop the very fields
+      // that show how close the file came to being readable.
+      const allHeaders = headerCells.map(normaliseHeader).filter((h) => h !== '');
       warnings.push(
         `Sheet "${sheetName}" has no recognisable header row - skipped. ` +
           `Header row ${headerIdx + 1} reads: ${
-            unmatchedHeaders.length ? unmatchedHeaders.slice(0, 12).join(' | ') : '(no text cells)'
+            allHeaders.length ? allHeaders.slice(0, 12).join(' | ') : '(no text cells)'
           }`
       );
       const rejectedSheet = blankSheet('no recognisable header row');
       rejectedSheet.unmatchedHeaders = unmatchedHeaders;
+      // Keep what DID resolve - it is the strongest clue when a near-valid
+      // workbook is rejected.
+      rejectedSheet.matchedColumns = matchedColumns;
       sheets.push(rejectedSheet);
       continue;
     }
