@@ -5,6 +5,9 @@
     <link rel="icon" type="image/png" href="https://cdn.dribbble.com/userupload/45564127/file/6c01b78a863edd968c45d2287bcd5854.png?resize=752x470&vertical=center" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Drona Dashboard</title>
+    <!-- Runtime configuration, written by the container entrypoint before nginx
+         serves. Must load before the app bundle. See src/lib/runtimeEnv.ts. -->
+    <script src="/env.js"></script>
   </head>
   <body>
     <div id="root"></div>

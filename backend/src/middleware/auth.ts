@@ -22,8 +22,17 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   const apiKey = process.env.API_KEY;
   const requestId = req.id || 'unknown';
 
-  // If no API key is configured, allow all requests (development mode)
+  // If no API key is configured, allow all requests (development mode only).
+  //
+  // server.ts refuses to boot without API_KEY when NODE_ENV=production, so this
+  // branch should be unreachable there. The explicit production check is a
+  // second lock on the same door: an open /api means anyone can call
+  // POST /api/upload, which replaces every row in the shipments table.
   if (!apiKey) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('API_KEY is not configured - refusing to serve API requests', { requestId });
+      return next(createError('Server authentication is not configured.', 500));
+    }
     if (!openAccessWarned) {
       openAccessWarned = true;
       logger.warn('API_KEY not configured - all API requests are being allowed without authentication');

@@ -1,87 +1,66 @@
 # ================================
-# TATA Dashboard - Makefile
-# Common Docker commands
+# NPL DEF Dashboard - Makefile
+#
+# Production is deployed by Coolify from the root Dockerfile - there is no
+# production docker-compose stack. The targets below cover local development
+# and building/running that same production image on your own machine.
 # ================================
 
-.PHONY: help build up down logs restart clean dev prod
+DEV_COMPOSE := docker-compose.dev.yml
+IMAGE       := npl-def-dashboard
+
+.PHONY: help dev dev-down dev-logs dev-clean build run stop logs health
 
 # Default target
 help:
-	@echo "TATA Dashboard - Available Commands:"
+	@echo "NPL DEF Dashboard - Available Commands:"
 	@echo ""
-	@echo "  make build    - Build all Docker images"
-	@echo "  make up       - Start all services"
-	@echo "  make down     - Stop all services"
-	@echo "  make restart  - Restart all services"
-	@echo "  make logs     - View logs (follow mode)"
-	@echo "  make clean    - Remove containers and volumes"
-	@echo "  make dev      - Start development environment"
-	@echo "  make prod     - Start production environment"
-	@echo "  make status   - Show container status"
-	@echo "  make shell-backend  - Open shell in backend container"
-	@echo "  make shell-mongo    - Open MongoDB shell"
+	@echo "  Local development (Postgres + hot-reload backend/frontend):"
+	@echo "    make dev        - Start the development stack"
+	@echo "    make dev-logs   - Follow development logs"
+	@echo "    make dev-down   - Stop the development stack"
+	@echo "    make dev-clean  - Stop it and delete its volumes"
+	@echo ""
+	@echo "  Production image (what Coolify builds and runs):"
+	@echo "    make build      - Build the single-container image from ./Dockerfile"
+	@echo "    make run        - Run it on http://localhost:8080 (needs DATABASE_URL)"
+	@echo "    make logs       - Follow its logs"
+	@echo "    make stop       - Stop and remove it"
+	@echo "    make health     - Curl the health endpoint"
 
-# Build all images
-build:
-	docker compose build
-
-# Start services
-up:
-	docker compose up -d
-
-# Stop services
-down:
-	docker compose down
-
-# View logs
-logs:
-	docker compose logs -f
-
-# Restart services
-restart:
-	docker compose restart
-
-# Clean up everything
-clean:
-	docker compose down -v --remove-orphans
-	docker system prune -f
-
-# Development mode
+# ---------------------------------------------------------------- development
 dev:
-	docker compose -f docker-compose.dev.yml up -d
+	docker compose -f $(DEV_COMPOSE) up -d
 
-# Production mode
-prod:
-	docker compose up -d --build
+dev-logs:
+	docker compose -f $(DEV_COMPOSE) logs -f
 
-# Show status
-status:
-	docker compose ps
+dev-down:
+	docker compose -f $(DEV_COMPOSE) down
 
-# Shell access
-shell-backend:
-	docker compose exec backend sh
+dev-clean:
+	docker compose -f $(DEV_COMPOSE) down -v --remove-orphans
 
-shell-mongo:
-	docker compose exec mongodb mongosh -u admin -p
+# ----------------------------------------------------------------- production
+# Config is injected at runtime (see docker-entrypoint.sh), so the image is
+# built once and configured per environment - no VITE_* build arguments.
+build:
+	docker build -t $(IMAGE) .
 
-# Rebuild specific service
-rebuild-backend:
-	docker compose build backend
-	docker compose up -d backend
+# DATABASE_URL, FRONTEND_URL and API_KEY are required in production; the server
+# refuses to boot without them. Pass them from your shell or a local .env.
+run:
+	docker run -d --name $(IMAGE) -p 8080:80 \
+		-e DATABASE_URL="$${DATABASE_URL}" \
+		-e FRONTEND_URL="$${FRONTEND_URL:-http://localhost:8080}" \
+		-e API_KEY="$${API_KEY}" \
+		$(IMAGE)
 
-rebuild-frontend:
-	docker compose build frontend
-	docker compose up -d frontend
+logs:
+	docker logs -f $(IMAGE)
 
-# Database backup
-backup:
-	docker compose exec mongodb mongodump --out /data/backup --username admin --password $${MONGO_ROOT_PASSWORD} --authenticationDatabase admin
-	docker cp tata-mongodb:/data/backup ./backups/$(shell date +%Y%m%d_%H%M%S)
+stop:
+	docker rm -f $(IMAGE)
 
-# Health check
 health:
-	@echo "Checking services health..."
-	@curl -s http://localhost/health || echo "Nginx: DOWN"
-	@curl -s http://localhost:5000/health || echo "Backend: DOWN"
-	@docker compose exec mongodb mongosh --eval "db.adminCommand('ping')" --quiet || echo "MongoDB: DOWN"
+	@curl -fsS http://localhost:8080/health || echo "Dashboard: UNHEALTHY"

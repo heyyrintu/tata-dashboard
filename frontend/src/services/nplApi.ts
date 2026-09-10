@@ -1,15 +1,21 @@
 import axios from 'axios';
+import { env } from '../lib/runtimeEnv';
 
 // VITE_API_URL is the backend ORIGIN, not the API base. Older env files shipped
 // it with `/api` already appended, which made every request hit `/api/api/*`
 // and 404. Strip a trailing slash and a trailing `/api` so both forms work.
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000')
+//
+// Read through runtimeEnv so a Coolify-injected value wins over whatever was
+// compiled into the bundle. In the single-container deployment this stays
+// unset: nginx serves the SPA and proxies /api on the same origin, so the empty
+// default resolves to a relative `/api`.
+const API_URL = env('VITE_API_URL', 'http://localhost:5000')
   .replace(/\/+$/, '')
   .replace(/\/api$/, '');
 
 const client = axios.create({ baseURL: `${API_URL}/api`, timeout: 60000 });
 
-const API_KEY = import.meta.env.VITE_API_KEY;
+const API_KEY = env('VITE_API_KEY');
 if (API_KEY) {
   client.defaults.headers.common.Authorization = `Bearer ${API_KEY}`;
 }

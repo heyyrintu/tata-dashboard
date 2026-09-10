@@ -1,13 +1,16 @@
 import { Client, Account, Databases, Teams } from "appwrite";
+import { env, envFlag } from "./runtimeEnv";
 
 // Development-only auth bypass. Set VITE_BYPASS_AUTH=true in frontend/.env to
 // skip Appwrite login entirely and run the dashboard as a mock admin user.
 // NEVER enable this in a production build.
-export const BYPASS_AUTH = import.meta.env.VITE_BYPASS_AUTH === "true";
+export const BYPASS_AUTH = envFlag("VITE_BYPASS_AUTH");
 
-// Appwrite configuration from environment variables
-const APPWRITE_ENDPOINT = import.meta.env.VITE_APPWRITE_ENDPOINT;
-const APPWRITE_PROJECT_ID = import.meta.env.VITE_APPWRITE_PROJECT_ID;
+// Appwrite configuration. Resolved at RUNTIME from /env.js (written by the
+// container entrypoint from Coolify's injected environment), falling back to
+// the build-time value for local development. See ./runtimeEnv.
+const APPWRITE_ENDPOINT = env("VITE_APPWRITE_ENDPOINT");
+const APPWRITE_PROJECT_ID = env("VITE_APPWRITE_PROJECT_ID");
 
 // Validate required environment variables (skipped when auth is bypassed)
 if (!BYPASS_AUTH && (!APPWRITE_ENDPOINT || !APPWRITE_PROJECT_ID)) {
@@ -31,7 +34,7 @@ const databases = new Databases(client);
 const teams = new Teams(client);
 
 // Admin team ID from environment variable
-export const ADMIN_TEAM_ID = import.meta.env.VITE_APPWRITE_ADMIN_TEAM_ID || "";
+export const ADMIN_TEAM_ID = env("VITE_APPWRITE_ADMIN_TEAM_ID");
 
 if (!ADMIN_TEAM_ID && !BYPASS_AUTH) {
     console.warn("VITE_APPWRITE_ADMIN_TEAM_ID is not set. Admin features will be disabled.");

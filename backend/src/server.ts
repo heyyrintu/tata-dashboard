@@ -1,7 +1,7 @@
 // Must stay the FIRST import: it loads .env before any other module is constructed.
 import { emailPollingEnabled } from './config/env';
 import express from 'express';
-import cors from 'cors';
+import cors, { CorsOptions } from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import { connectDatabase } from './config/database';
@@ -9,7 +9,7 @@ import uploadRoutes from './routes/upload';
 import analyticsRoutes from './routes/analytics';
 import emailRoutes from './routes/email';
 import { authenticate } from './middleware/auth';
-import { errorHandler } from './middleware/errorHandler';
+import { errorHandler, createError } from './middleware/errorHandler';
 import dashboardRoutes from './routes/dashboard';
 import emailPollingService from './services/emailPollingService';
 import dashboardCache from './services/cacheService';
@@ -17,10 +17,13 @@ import path from 'path';
 import fs from 'fs';
 
 
-// Validate required environment variables
+// Validate required environment variables.
+// API_KEY is mandatory in production: middleware/auth.ts falls through to
+// open access when it is unset, which would publish every /api route -
+// including POST /api/upload, which replaces the entire shipments table.
 const requiredEnvVars = ['DATABASE_URL'];
 if (process.env.NODE_ENV === 'production') {
-  requiredEnvVars.push('FRONTEND_URL');
+  requiredEnvVars.push('FRONTEND_URL', 'API_KEY');
 }
 const missingVars = requiredEnvVars.filter(v => !process.env[v]);
 if (missingVars.length > 0) {
@@ -31,12 +34,69 @@ if (missingVars.length > 0) {
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Trust the reverse proxies in front of us. This MUST be set before the rate
+// limiters below are constructed: express-rate-limit v8 keys buckets on req.ip,
+// and without it every client collapses onto the proxy's address (turning the
+// per-client limits into one global cap) while its X-Forwarded-For validator
+// throws at request time.
+//
+// The default walks back through private/loopback hops, which is what this
+// topology actually needs - the in-container nginx (127.0.0.1) AND Coolify's
+// proxy (a Docker bridge address) each append to X-Forwarded-For, so a fixed
+// hop count of 1 would still resolve to the proxy rather than the caller.
+// Override with TRUST_PROXY (a number, an IP/CIDR list, or `false`) if the
+// deployment sits behind a different chain.
+const trustProxyRaw = process.env.TRUST_PROXY ?? 'loopback, linklocal, uniquelocal';
+const trustProxy =
+  trustProxyRaw === 'false'
+    ? false
+    : /^\d+$/.test(trustProxyRaw)
+      ? Number(trustProxyRaw)
+      : trustProxyRaw;
+app.set('trust proxy', trustProxy);
+
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
-const corsOptions = {
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+/**
+ * Expand FRONTEND_URL into the set of allowed browser origins.
+ *
+ * Accepts a comma-separated list so apex + www (and any staging host) can share
+ * one deployment, and adds the apex/www counterpart of each entry automatically
+ * since that is the pair that actually bites in production.
+ */
+function expandOrigins(raw: string): string[] {
+  const origins = new Set<string>();
+  for (const entry of raw.split(',')) {
+    const value = entry.trim().replace(/\/+$/, '');
+    if (!value) continue;
+    origins.add(value);
+    try {
+      const url = new URL(value);
+      origins.add(
+        url.host.startsWith('www.')
+          ? `${url.protocol}//${url.host.slice(4)}`
+          : `${url.protocol}//www.${url.host}`
+      );
+    } catch {
+      // Not a parseable absolute URL - keep the literal entry only.
+    }
+  }
+  return [...origins];
+}
+
+const allowedOrigins = expandOrigins(process.env.FRONTEND_URL || 'http://localhost:5173');
+console.log(`[Server] CORS allowed origins: ${allowedOrigins.join(', ')}`);
+
+const corsOptions: CorsOptions = {
+  origin(origin, callback) {
+    // Same-origin requests, curl and the container health check send no Origin
+    // header at all - those are not cross-origin and must not be rejected.
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    // Tag it 403 so the error handler does not report a rejected origin as an
+    // internal server error.
+    return callback(createError(`Origin ${origin} is not allowed by CORS`, 403));
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -140,8 +200,17 @@ app.get('/health', async (_req, res) => {
         dateRange: { min: row.min_date, max: row.max_date },
       },
     });
-  } catch {
-    res.json({ status: 'OK', message: 'Server is running', db: 'query failed' });
+  } catch (err) {
+    // The database is the only dependency this service has - if the probe query
+    // fails the app cannot serve anything useful, so report it as unhealthy.
+    // Returning 200 here made Coolify's health check report green straight
+    // through a database outage.
+    console.error('[Health] Database probe failed:', err);
+    res.status(503).json({
+      status: 'ERROR',
+      message: 'Database unavailable',
+      db: 'query failed',
+    });
   }
 });
 
@@ -158,7 +227,7 @@ connectDatabase().then(async () => {
     console.warn('[Server] Dashboard cache warm-up failed (will compute on first request):', err);
   }
 
-  app.listen(PORT, () => {
+  const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 
     // Email polling is opt-in. NPL DEF ingests via the upload page, so the
@@ -173,7 +242,81 @@ connectDatabase().then(async () => {
       console.log('[Server] Email polling enabled but IMAP credentials are missing - not started');
     }
   });
+
+  registerShutdownHandlers(server);
 });
+
+/**
+ * Graceful shutdown.
+ *
+ * Coolify sends SIGTERM on every redeploy. Without this the process is killed
+ * mid-request: an in-flight /api/upload (which truncates and repopulates the
+ * shipments table) dies half-done, and the Prisma pool leaves connections open
+ * on the remote database until they time out.
+ *
+ * Sequence: stop accepting new connections, let in-flight requests finish, stop
+ * the email poller, disconnect Prisma, exit. A hard timeout guards against a
+ * request that never completes, so the container still exits before Docker's
+ * own SIGKILL deadline.
+ */
+function registerShutdownHandlers(server: import('http').Server): void {
+  const SHUTDOWN_TIMEOUT_MS = parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '10000', 10);
+  let shuttingDown = false;
+
+  const shutdown = async (signal: NodeJS.Signals) => {
+    if (shuttingDown) {
+      console.warn(`[Server] Received ${signal} while already shutting down - ignoring`);
+      return;
+    }
+    shuttingDown = true;
+    console.log(`[Server] ${signal} received - starting graceful shutdown`);
+
+    const forceExit = setTimeout(() => {
+      console.error(`[Server] Shutdown timed out after ${SHUTDOWN_TIMEOUT_MS}ms - forcing exit`);
+      // Cut off whatever is still hanging so the process can actually leave.
+      server.closeAllConnections?.();
+      process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+    // Do not let the timer alone keep the event loop alive.
+    forceExit.unref();
+
+    try {
+      const closed = new Promise<void>((resolve, reject) => {
+        server.close((err) => (err ? reject(err) : resolve()));
+      });
+      // server.close() stops new connections but waits for existing ones, and
+      // an idle keep-alive socket (every browser holds a few) never finishes on
+      // its own. Drop the idle ones immediately; sockets with a request still
+      // in flight are left alone to complete.
+      server.closeIdleConnections?.();
+      await closed;
+      console.log('[Server] HTTP server closed');
+
+      if (emailPollingEnabled) {
+        try {
+          emailPollingService.stop();
+          console.log('[Server] Email polling stopped');
+        } catch (err) {
+          console.warn('[Server] Failed to stop email polling cleanly:', err);
+        }
+      }
+
+      const prisma = (await import('./lib/prisma')).default;
+      await prisma.$disconnect();
+      console.log('[Server] Database disconnected');
+
+      clearTimeout(forceExit);
+      process.exit(0);
+    } catch (err) {
+      console.error('[Server] Error during shutdown:', err);
+      clearTimeout(forceExit);
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', () => void shutdown('SIGTERM'));
+  process.on('SIGINT', () => void shutdown('SIGINT'));
+}
 
 export default app;
 

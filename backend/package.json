@@ -31,6 +31,7 @@
     "imapflow": "^1.0.171",
     "mailparser": "^3.7.2",
     "multer": "^2.0.2",
+    "prisma": "^6.8.0",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
     "xlsx": "^0.18.5"
@@ -44,7 +45,6 @@
     "@types/winston": "^2.4.4",
     "@types/xlsx": "^0.0.35",
     "nodemon": "^3.1.10",
-    "prisma": "^6.8.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }

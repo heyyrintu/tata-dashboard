@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { IconMail, IconLock, IconUser, IconLoader2, IconArrowRight } from '@tabler/icons-react';
 import { motion } from 'motion/react';
+import { env } from '../lib/runtimeEnv';
 
-const LOGO_URL = import.meta.env.VITE_LOGO_URL || "/logo.png";
+const LOGO_URL = env('VITE_LOGO_URL', '/logo.png');
 
 export default function AuthPage() {
   const { login, signup, user } = useAuth();
