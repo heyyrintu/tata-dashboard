@@ -58,10 +58,42 @@ export interface ShipmentInput {
   dataFlags?: string | null;
 }
 
+/**
+ * Why a row was dropped. Counting these - rather than a bare `skipped++` -
+ * is what lets a dry run answer "rows in, rows kept, rows skipped and why"
+ * before anything is written to the database.
+ */
+export type SkipReason =
+  /** Neither an LR date nor a pickup location: almost always a spacer or total row. */
+  | 'no_date_and_no_origin'
+  /** No volume and no party name: nothing identifiable to report on. */
+  | 'no_volume_and_no_party';
+
+export interface SheetReport {
+  name: string;
+  branch: string;
+  rows: number;
+  skipped: number;
+  /** Breakdown of `skipped` by cause. */
+  skipReasons: Record<string, number>;
+  /** Data rows seen after the header, i.e. kept + skipped. */
+  dataRows: number;
+  /** Canonical fields this sheet's header row resolved to. */
+  matchedColumns: string[];
+  /** Header cells present in the sheet that map to no known field. */
+  unmatchedHeaders: string[];
+  /** Set when the whole sheet was rejected before any row was read. */
+  rejected?: string;
+}
+
 export interface ParseReport {
   rows: ShipmentInput[];
-  sheets: { name: string; branch: string; rows: number; skipped: number }[];
+  sheets: SheetReport[];
   flagCounts: Record<string, number>;
+  /** Skip reasons totalled across every sheet. */
+  skipReasons: Record<string, number>;
+  /** Rows examined after the header row, across every sheet. */
+  totalDataRows: number;
   warnings: string[];
 }
 
@@ -299,9 +331,11 @@ export function parseNplWorkbook(filePath: string): ParseReport {
   const workbook = XLSX.readFile(filePath, { cellDates: false, cellFormula: false });
 
   const out: ShipmentInput[] = [];
-  const sheets: ParseReport['sheets'] = [];
+  const sheets: SheetReport[] = [];
   const flagCounts: Record<string, number> = {};
+  const skipReasons: Record<string, number> = {};
   const warnings: string[] = [];
+  let totalDataRows = 0;
 
   const flag = (bucket: string[], name: string) => {
     bucket.push(name);
@@ -316,13 +350,46 @@ export function parseNplWorkbook(filePath: string): ParseReport {
       raw: true,
       blankrows: false,
     });
-    if (grid.length === 0) continue;
+    const blankSheet = (rejected: string): SheetReport => ({
+      name: sheetName,
+      branch: deriveBranch(null, sheetName),
+      rows: 0,
+      skipped: 0,
+      skipReasons: {},
+      dataRows: 0,
+      matchedColumns: [],
+      unmatchedHeaders: [],
+      rejected,
+    });
+
+    if (grid.length === 0) {
+      sheets.push(blankSheet('sheet is empty'));
+      continue;
+    }
 
     const headerIdx = findHeaderRow(grid);
-    const col = buildColumnMap(grid[headerIdx] || []);
+    const headerCells = grid[headerIdx] || [];
+    const col = buildColumnMap(headerCells);
+
+    const matchedColumns = Object.keys(col).sort();
+    const matchedIdx = new Set(Object.values(col));
+    const unmatchedHeaders = headerCells
+      .map((cell, idx) => ({ h: normaliseHeader(cell), idx }))
+      .filter(({ h, idx }) => h !== '' && !matchedIdx.has(idx))
+      .map(({ h }) => h);
 
     if (col.lrDate === undefined && col.pickupLocation === undefined) {
-      warnings.push(`Sheet "${sheetName}" has no recognisable header row - skipped.`);
+      // Report the headers that WERE found. Without them a zero-row parse gives
+      // no clue whether the file is the wrong format or the header row moved.
+      warnings.push(
+        `Sheet "${sheetName}" has no recognisable header row - skipped. ` +
+          `Header row ${headerIdx + 1} reads: ${
+            unmatchedHeaders.length ? unmatchedHeaders.slice(0, 12).join(' | ') : '(no text cells)'
+          }`
+      );
+      const rejectedSheet = blankSheet('no recognisable header row');
+      rejectedSheet.unmatchedHeaders = unmatchedHeaders;
+      sheets.push(rejectedSheet);
       continue;
     }
     if (col.lrStatus === undefined) {
@@ -334,8 +401,17 @@ export function parseNplWorkbook(filePath: string): ParseReport {
 
     let kept = 0;
     let skipped = 0;
+    const sheetSkips: Record<string, number> = {};
+    const dataRows = grid.slice(headerIdx + 1);
+    totalDataRows += dataRows.length;
 
-    for (const row of grid.slice(headerIdx + 1)) {
+    const skip = (reason: SkipReason) => {
+      skipped++;
+      sheetSkips[reason] = (sheetSkips[reason] || 0) + 1;
+      skipReasons[reason] = (skipReasons[reason] || 0) + 1;
+    };
+
+    for (const row of dataRows) {
       const lrDate = parseDate(get(row, 'lrDate'));
       const pickupLocation = cleanString(get(row, 'pickupLocation'));
       const buckets = toNumber(get(row, 'buckets'));
@@ -344,11 +420,11 @@ export function parseNplWorkbook(filePath: string): ParseReport {
 
       // A usable row needs at least a date or an origin, plus some volume or a party.
       if (!lrDate && !pickupLocation) {
-        skipped++;
+        skip('no_date_and_no_origin');
         continue;
       }
       if (!litres && !buckets && !partyName) {
-        skipped++;
+        skip('no_volume_and_no_party');
         continue;
       }
 
@@ -464,8 +540,17 @@ export function parseNplWorkbook(filePath: string): ParseReport {
       kept++;
     }
 
-    sheets.push({ name: sheetName, branch: deriveBranch(null, sheetName), rows: kept, skipped });
+    sheets.push({
+      name: sheetName,
+      branch: deriveBranch(null, sheetName),
+      rows: kept,
+      skipped,
+      skipReasons: sheetSkips,
+      dataRows: dataRows.length,
+      matchedColumns,
+      unmatchedHeaders,
+    });
   }
 
-  return { rows: out, sheets, flagCounts, warnings };
+  return { rows: out, sheets, flagCounts, skipReasons, totalDataRows, warnings };
 }
