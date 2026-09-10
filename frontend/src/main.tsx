@@ -3,27 +3,26 @@ import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import App from './App';
-import { DashboardProvider } from './context/DashboardContext';
-import { SnapshotProvider } from './context/SnapshotContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
-import { client } from './lib/appwrite';
+import { NplDataProvider } from './context/NplDataContext';
+import { client, BYPASS_AUTH } from './lib/appwrite';
 
-// Verify Appwrite SDK connection on startup
-client.ping().catch((error) => {
-  console.error('Appwrite connection failed:', error);
-});
+// Verify Appwrite SDK connection on startup (skipped when auth is bypassed)
+if (!BYPASS_AUTH) {
+  client.ping().catch((error) => {
+    console.error('Appwrite connection failed:', error);
+  });
+}
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
       <ThemeProvider>
         <AuthProvider>
-          <DashboardProvider>
-            <SnapshotProvider>
-              <App />
-            </SnapshotProvider>
-          </DashboardProvider>
+          <NplDataProvider>
+            <App />
+          </NplDataProvider>
         </AuthProvider>
       </ThemeProvider>
     </BrowserRouter>

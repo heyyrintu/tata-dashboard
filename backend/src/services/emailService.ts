@@ -40,15 +40,20 @@ class EmailService {
       .filter(s => s.length > 0);
     this.archiveFolder = process.env.IMAP_ARCHIVE_FOLDER || 'Processed';
 
-    if (!this.user || !this.password) {
-      console.warn('[EmailService] Missing IMAP credentials. Email service will not be available.');
-    }
+    // Deliberately silent here. This class is instantiated at import time, so
+    // warning in the constructor logged on every boot even when email ingestion
+    // is switched off. Callers check isConfigured() before connecting.
   }
 
   /**
    * Create IMAP client connection
    */
   private createClient(): ImapFlow {
+    if (!this.isConfigured()) {
+      throw new Error(
+        'IMAP is not configured. Set IMAP_USER and IMAP_PASSWORD, and ENABLE_EMAIL_POLLING=true, to use email ingestion.'
+      );
+    }
     return new ImapFlow({
       host: this.host,
       port: this.port,

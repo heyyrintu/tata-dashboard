@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
-import { account, teams, ADMIN_TEAM_ID } from '../lib/appwrite';
+import { account, teams, ADMIN_TEAM_ID, BYPASS_AUTH } from '../lib/appwrite';
 import { ID, type Models } from 'appwrite';
 
 interface AuthContextType {
@@ -13,13 +13,23 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Stand-in user used only when VITE_BYPASS_AUTH=true (local development).
+const BYPASS_USER = {
+  $id: 'dev-bypass-user',
+  name: 'Dev User',
+  email: 'dev@localhost',
+} as Models.User<Models.Preferences>;
+
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<Models.User<Models.Preferences> | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [user, setUser] = useState<Models.User<Models.Preferences> | null>(
+    BYPASS_AUTH ? BYPASS_USER : null
+  );
+  const [isLoading, setIsLoading] = useState(!BYPASS_AUTH);
+  const [isAdmin, setIsAdmin] = useState(BYPASS_AUTH);
 
   // Check if user is already logged in on mount
   useEffect(() => {
+    if (BYPASS_AUTH) return;
     checkUser();
   }, []);
 
@@ -55,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
+    if (BYPASS_AUTH) return;
     await account.createEmailPasswordSession(email, password);
     const currentUser = await account.get();
     setUser(currentUser);
@@ -62,11 +73,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signup = async (email: string, password: string, name: string) => {
+    if (BYPASS_AUTH) return;
     await account.create(ID.unique(), email, password, name);
     await login(email, password);
   };
 
   const logout = async () => {
+    if (BYPASS_AUTH) return;
     await account.deleteSession('current');
     setUser(null);
     setIsAdmin(false);
