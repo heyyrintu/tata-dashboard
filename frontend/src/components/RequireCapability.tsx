@@ -1,20 +1,30 @@
 import { Navigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth, type Capabilities } from '../context/AuthContext';
 import { IconLoader2, IconLock } from '@tabler/icons-react';
 import { useTheme } from '../context/ThemeContext';
 
-interface AdminRouteProps {
+interface RequireCapabilityProps {
+  /** Capability the signed-in user must hold, e.g. "upload". */
+  capability: keyof Capabilities;
   children: React.ReactNode;
 }
 
-export default function AdminRoute({ children }: AdminRouteProps) {
-  const { user, isLoading, isAdmin } = useAuth();
+/**
+ * Route guard.
+ *
+ * Presentation only: hiding a route stops an ordinary user stumbling into a
+ * page they cannot use, it does not protect the endpoint behind it. The
+ * matching server-side check is requireCapability('upload') in backend
+ * routes/upload.ts, and that is the one that actually enforces anything.
+ */
+export default function RequireCapability({ capability, children }: RequireCapabilityProps) {
+  const { user, isLoading, can } = useAuth();
   const { theme } = useTheme();
 
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-linear-to-b from-[#0a0e27] to-[#08101e]">
-        <IconLoader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <IconLoader2 className="w-8 h-8 text-brand-600 animate-spin" />
       </div>
     );
   }
@@ -23,7 +33,7 @@ export default function AdminRoute({ children }: AdminRouteProps) {
     return <Navigate to="/auth" replace />;
   }
 
-  if (!isAdmin) {
+  if (!can[capability]) {
     return (
       <div className={`min-h-screen flex items-center justify-center ${
         theme === 'light'
@@ -56,7 +66,7 @@ export default function AdminRoute({ children }: AdminRouteProps) {
           </p>
           <a
             href="/"
-            className="inline-block px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="inline-block px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 transition-colors"
           >
             Go to Dashboard
           </a>

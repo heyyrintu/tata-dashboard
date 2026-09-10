@@ -4,21 +4,12 @@ export const connectDatabase = async () => {
   try {
     await prisma.$connect();
 
-    // Handle graceful shutdown
+    // NOTE: SIGINT/SIGTERM are deliberately NOT handled here. They used to call
+    // process.exit(0) the instant a signal arrived, which killed in-flight
+    // requests. server.ts owns shutdown now: it drains the HTTP server first and
+    // then disconnects this client.
     process.on('beforeExit', async () => {
       await prisma.$disconnect();
-    });
-
-    // Handle SIGINT (Ctrl+C)
-    process.on('SIGINT', async () => {
-      await prisma.$disconnect();
-      process.exit(0);
-    });
-
-    // Handle SIGTERM
-    process.on('SIGTERM', async () => {
-      await prisma.$disconnect();
-      process.exit(0);
     });
 
   } catch (error) {

@@ -10,7 +10,7 @@ import UploadPage from './pages/UploadPage';
 import AuthPage from './pages/AuthPage';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
-import AdminRoute from './components/AdminRoute';
+import RequireCapability from './components/RequireCapability';
 import ErrorBoundary from './components/ErrorBoundary';
 import { BYPASS_AUTH } from './lib/appwrite';
 
@@ -35,9 +35,9 @@ function App() {
                   <Route
                     path="/upload"
                     element={
-                      <AdminRoute>
+                      <RequireCapability capability="upload">
                         <UploadPage />
-                      </AdminRoute>
+                      </RequireCapability>
                     }
                   />
                   <Route path="*" element={<Navigate to="/" replace />} />

@@ -48,7 +48,7 @@ export default function Carriers() {
       render: (r) => (
         <button
           onClick={() => setFilter('vendor', r.vendor)}
-          className="text-left font-medium text-blue-500 hover:underline"
+          className="text-left font-medium text-brand-600 hover:underline"
           title="Filter the whole dashboard by this vendor"
         >
           {r.vendor}
@@ -293,7 +293,7 @@ export default function Carriers() {
                 onClick={() => setTab(t.id)}
                 className={`rounded-t-lg px-4 py-2 text-sm font-medium transition-colors ${
                   tab === t.id
-                    ? 'border-b-2 border-blue-500 text-blue-500'
+                    ? 'border-b-2 border-brand-600 text-brand-600'
                     : `${s.muted} hover:${s.heading}`
                 }`}
               >

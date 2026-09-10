@@ -47,7 +47,7 @@ export default function Overview() {
         action={
           <Link
             to="/upload"
-            className="mt-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+            className="mt-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             Go to upload
           </Link>

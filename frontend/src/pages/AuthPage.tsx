@@ -3,8 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { IconMail, IconLock, IconUser, IconLoader2, IconArrowRight } from '@tabler/icons-react';
 import { motion } from 'motion/react';
-
-const LOGO_URL = import.meta.env.VITE_LOGO_URL || "/logo.png";
+import BrandLogo from '../components/BrandLogo';
+import { BRAND_NAME, BRAND_TAGLINE, copyrightLine } from '../lib/brand';
 
 export default function AuthPage() {
   const { login, signup, user } = useAuth();
@@ -62,31 +62,22 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          {/* Logo Container */}
-          <motion.div 
+          {/* Logo. The lockup carries the wordmark, so there is no text
+              heading beside it - and therefore the image is NOT decorative:
+              it is the only thing naming the brand on this page, so it needs
+              real alt text. */}
+          <motion.div
             className="mb-8 inline-block"
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
-            <div className="backdrop-blur-xl p-6 rounded-3xl shadow-2xl bg-white/80 border border-[#fde7d4]">
-              <img 
-                src={LOGO_URL} 
-                alt="Drona Logo" 
-                className="h-20 w-auto object-contain"
-              />
+            <div className="backdrop-blur-xl p-6 rounded-3xl shadow-2xl bg-white/80 border border-brand-border-soft">
+              <BrandLogo className="h-24 w-auto object-contain" />
             </div>
           </motion.div>
 
-          {/* Title */}
-          <h1 className="text-5xl font-bold mb-4 tracking-tight">
-            <span className="bg-clip-text text-transparent bg-linear-to-r from-[#DE1C1C] via-[#FE7129] to-[#FEA418]">
-              DRONA
-            </span>
-            <span className="text-[#1a1a1a]"> Logitech</span>
-          </h1>
-          
-          <p className="text-xl text-[#4f2520] mb-8 max-w-md">
-            Intelligent fleet management and analytics platform for modern enterprises
+          <p className="text-xl text-brand-ink-soft mb-8 max-w-md">
+            {BRAND_TAGLINE}
           </p>
 
           {/* Feature highlights */}
@@ -103,7 +94,7 @@ export default function AuthPage() {
                 transition={{ delay: 0.3 + idx * 0.1 }}
                 className="flex items-center gap-3"
               >
-                <div className="w-2 h-2 rounded-full bg-linear-to-r from-[#DE1C1C] to-[#FEA418]" />
+                <div className="w-2 h-2 rounded-full brand-gradient-duo" />
                 <span className="text-sm text-[#5b3328]">{feature}</span>
               </motion.div>
             ))}
@@ -111,8 +102,8 @@ export default function AuthPage() {
         </motion.div>
 
         {/* Footer */}
-        <div className="absolute bottom-8 text-center text-[#84584a] text-sm">
-          2025 Drona Technologies. All rights reserved.
+        <div className="absolute bottom-8 text-center text-brand-muted text-sm">
+          {copyrightLine()}
         </div>
       </div>
 
@@ -124,32 +115,23 @@ export default function AuthPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          {/* Mobile Logo */}
+          {/* Mobile Logo. Same reasoning as the desktop panel: the lockup is
+              the only brand identification here, so it keeps its alt text. */}
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-block backdrop-blur-xl p-4 rounded-2xl mb-4 bg-white/90 border border-[#fde7d4] shadow-lg">
-              <img 
-                src={LOGO_URL} 
-                alt="Drona Logo" 
-                className="h-12 w-auto object-contain"
-              />
+            <div className="inline-block backdrop-blur-xl p-4 rounded-2xl bg-white/90 border border-brand-border-soft shadow-lg">
+              <BrandLogo className="h-14 w-auto object-contain" />
             </div>
-            <h1 className="text-2xl font-bold">
-              <span className="bg-clip-text text-transparent bg-linear-to-r from-[#DE1C1C] to-[#FEA418]">
-                DRONA
-              </span>
-              <span className="text-[#1f1f1f]"> Logitech</span>
-            </h1>
           </div>
 
           {/* Auth Card */}
-          <div className="backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden bg-white/95 border border-[#fde7d4]">
+          <div className="backdrop-blur-2xl rounded-3xl shadow-2xl overflow-hidden bg-white/95 border border-brand-border-soft">
             {/* Card Header */}
             <div className="px-8 pt-8 pb-6 border-b border-[#fde0d4]">
               <h2 className="text-2xl font-bold mb-1 text-[#1a1a1a]">
                 {isLogin ? 'Welcome back' : 'Create account'}
               </h2>
-              <p className="text-sm text-[#8a4b3c]">
-                {isLogin ? 'Sign in to access your dashboard' : 'Get started with Drona Logitech'}
+              <p className="text-sm text-brand-muted-warm">
+                {isLogin ? 'Sign in to access your dashboard' : `Get started with ${BRAND_NAME}`}
               </p>
             </div>
 
@@ -161,7 +143,7 @@ export default function AuthPage() {
                   onClick={() => setIsLogin(true)}
                   className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
                     isLogin
-                      ? 'bg-linear-to-r from-[#DE1C1C] to-[#FEA418] text-white shadow-lg shadow-[#de1c1c]/20'
+                      ? 'brand-gradient-duo text-white shadow-lg shadow-brand-600/20'
                       : 'text-[#a15a3f] hover:text-[#7c3c29]'
                   }`}
                 >
@@ -172,7 +154,7 @@ export default function AuthPage() {
                   onClick={() => setIsLogin(false)}
                   className={`flex-1 py-2.5 px-4 rounded-lg text-sm font-semibold transition-all duration-300 ${
                     !isLogin
-                      ? 'bg-linear-to-r from-[#DE1C1C] to-[#FEA418] text-white shadow-lg shadow-[#de1c1c]/20'
+                      ? 'brand-gradient-duo text-white shadow-lg shadow-brand-600/20'
                       : 'text-[#a15a3f] hover:text-[#7c3c29]'
                   }`}
                 >
@@ -208,14 +190,14 @@ export default function AuthPage() {
                     Full Name
                   </label>
                   <div className="relative group">
-                    <IconUser className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors text-[#c08a7c] group-focus-within:text-[#DE1C1C]" />
+                    <IconUser className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors text-brand-placeholder group-focus-within:text-brand-600" />
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       placeholder="John Doe"
                       required={!isLogin}
-                      className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-[#f5cbb4] bg-white text-[#2a1a18] placeholder-[#c08a7c] focus:border-[#DE1C1C] focus:ring-2 focus:ring-[#DE1C1C]/20 focus:outline-none transition-all"
+                      className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-brand-border bg-white text-brand-ink placeholder-brand-placeholder focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 focus:outline-none transition-all"
                     />
                   </div>
                 </motion.div>
@@ -227,14 +209,14 @@ export default function AuthPage() {
                   Email Address
                 </label>
                 <div className="relative group">
-                  <IconMail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors text-[#c08a7c] group-focus-within:text-[#DE1C1C]" />
+                  <IconMail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors text-brand-placeholder group-focus-within:text-brand-600" />
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@company.com"
                     required
-                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-[#f5cbb4] bg-white text-[#2a1a18] placeholder-[#c08a7c] focus:border-[#DE1C1C] focus:ring-2 focus:ring-[#DE1C1C]/20 focus:outline-none transition-all"
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-brand-border bg-white text-brand-ink placeholder-brand-placeholder focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 focus:outline-none transition-all"
                   />
                 </div>
               </div>
@@ -245,7 +227,7 @@ export default function AuthPage() {
                   Password
                 </label>
                 <div className="relative group">
-                  <IconLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors text-[#c08a7c] group-focus-within:text-[#DE1C1C]" />
+                  <IconLock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors text-brand-placeholder group-focus-within:text-brand-600" />
                   <input
                     type="password"
                     value={password}
@@ -253,11 +235,11 @@ export default function AuthPage() {
                     placeholder="••••••••"
                     required
                     minLength={8}
-                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-[#f5cbb4] bg-white text-[#2a1a18] placeholder-[#c08a7c] focus:border-[#DE1C1C] focus:ring-2 focus:ring-[#DE1C1C]/20 focus:outline-none transition-all"
+                    className="w-full pl-12 pr-4 py-3.5 rounded-xl border border-brand-border bg-white text-brand-ink placeholder-brand-placeholder focus:border-brand-600 focus:ring-2 focus:ring-brand-600/20 focus:outline-none transition-all"
                   />
                 </div>
                 {!isLogin && (
-                  <p className="mt-2 text-xs text-[#8a4b3c]">
+                  <p className="mt-2 text-xs text-brand-muted-warm">
                     Must be at least 8 characters
                   </p>
                 )}
@@ -269,8 +251,8 @@ export default function AuthPage() {
                 disabled={isSubmitting}
                 className={`w-full py-4 px-6 rounded-xl font-semibold text-white transition-all duration-300 flex items-center justify-center gap-2 group ${
                   isSubmitting
-                    ? 'bg-[#de1c1c]/60 cursor-not-allowed'
-                    : 'bg-linear-to-r from-[#DE1C1C] via-[#f45c1c] to-[#FEA418] hover:from-[#c91010] hover:via-[#f24c0f] hover:to-[#fd9715] shadow-lg shadow-[#de1c1c]/20 hover:shadow-[#de1c1c]/35 hover:scale-[1.02]'
+                    ? 'bg-brand-600/60 cursor-not-allowed'
+                    : 'brand-gradient brand-gradient-hover shadow-lg shadow-brand-600/20 hover:shadow-brand-600/35 hover:scale-[1.02]'
                 }`}
               >
                 {isSubmitting ? (
@@ -292,8 +274,8 @@ export default function AuthPage() {
                   <div className="w-full border-t border-[#f5cbb4]"></div>
                 </div>
                 <div className="relative flex justify-center text-sm">
-                  <span className="px-4 bg-white text-[#8a4b3c]">
-                    {isLogin ? "New to Drona Logitech?" : "Already have an account?"}
+                  <span className="px-4 bg-white text-brand-muted-warm">
+                    {isLogin ? `New to ${BRAND_NAME}?` : 'Already have an account?'}
                   </span>
                 </div>
               </div>
@@ -302,7 +284,7 @@ export default function AuthPage() {
               <button
                 type="button"
                 onClick={() => setIsLogin(!isLogin)}
-                className="w-full py-3 px-4 rounded-xl border border-[#f5cbb4] text-[#8a4b3c] hover:text-[#5c2a1f] hover:bg-[#fff3e0] hover:border-[#f2b98d] transition-all font-medium"
+                className="w-full py-3 px-4 rounded-xl border border-[#f5cbb4] text-brand-muted-warm hover:text-[#5c2a1f] hover:bg-[#fff3e0] hover:border-[#f2b98d] transition-all font-medium"
               >
                 {isLogin ? 'Create a new account' : 'Sign in to existing account'}
               </button>

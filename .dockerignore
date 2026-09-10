@@ -54,8 +54,8 @@ Makefile
 backend/uploads/*
 !backend/uploads/.gitkeep
 
-# Nginx folder (using combined config)
-nginx/
+# Retired deployment files (using the root Dockerfile + nginx.combined.conf)
+deploy/legacy/
 
 # Scripts (not needed in container)
 scripts/

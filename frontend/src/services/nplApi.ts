@@ -1,18 +1,94 @@
 import axios from 'axios';
+import { env } from '../lib/runtimeEnv';
+import { clearJwt, getJwt } from '../lib/appwriteJwt';
 
 // VITE_API_URL is the backend ORIGIN, not the API base. Older env files shipped
 // it with `/api` already appended, which made every request hit `/api/api/*`
 // and 404. Strip a trailing slash and a trailing `/api` so both forms work.
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000')
+//
+// Read through runtimeEnv so a Coolify-injected value wins over whatever was
+// compiled into the bundle.
+//
+// The default differs by build, and must: `vite dev` serves the SPA on 5173
+// with the API on a separate origin, so it needs an absolute URL. A production
+// build is served by nginx, which proxies /api on the SAME origin - so the
+// default there is empty, making requests relative. Defaulting a production
+// build to localhost:5000 would point every browser at the machine the user is
+// sitting at.
+const DEFAULT_API_URL = import.meta.env.DEV ? 'http://localhost:5000' : '';
+
+const API_URL = env('VITE_API_URL', DEFAULT_API_URL)
   .replace(/\/+$/, '')
   .replace(/\/api$/, '');
 
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    /** Set by the request interceptor: did this request carry an Appwrite JWT? */
+    usedJwt?: boolean;
+    /** Guard so a 401 is retried at most once. */
+    __retriedAfter401?: boolean;
+  }
+}
+
 const client = axios.create({ baseURL: `${API_URL}/api`, timeout: 60000 });
 
-const API_KEY = import.meta.env.VITE_API_KEY;
-if (API_KEY) {
-  client.defaults.headers.common.Authorization = `Bearer ${API_KEY}`;
-}
+// Fallback credential for callers with no Appwrite session. It is compiled into
+// a file the browser downloads, so it is not a secret and the backend treats it
+// as the least-privileged role: shared-key requests always see masked carrier
+// names. A signed-in user's JWT takes precedence over it below.
+const API_KEY = env('VITE_API_KEY');
+
+/**
+ * Attach the caller's identity to every request.
+ *
+ * The Appwrite JWT is what the backend verifies to decide the role, and with it
+ * whether the response carries real carrier names or pseudonyms. Minting is
+ * cached and deduplicated in lib/appwriteJwt.
+ *
+ * Whether a JWT was used is recorded on the request, because the 401 handler
+ * below has to treat the two credentials differently.
+ */
+client.interceptors.request.use(async (config) => {
+  const jwt = await getJwt();
+  const credential = jwt || API_KEY;
+  config.usedJwt = Boolean(jwt);
+  if (credential) {
+    config.headers.Authorization = `Bearer ${credential}`;
+  }
+  return config;
+});
+
+/**
+ * A 401 usually means the JWT lapsed or the session was revoked. Drop the
+ * cached token and retry once.
+ *
+ * A signed-in session must never silently fall back to the shared API key. If
+ * it did, a user whose session expired would keep browsing: the retry would
+ * succeed as the shared `client` role, no second 401 would reach the app, and
+ * AuthContext would go on showing them as signed in while every response
+ * quietly switched to masked data. So a request that used a JWT is only
+ * retried if a fresh JWT can be minted; otherwise the 401 is surfaced and the
+ * router can send them back to sign in.
+ */
+client.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const config = error?.config;
+    if (error?.response?.status !== 401 || !config || config.__retriedAfter401) {
+      return Promise.reject(error);
+    }
+
+    config.__retriedAfter401 = true;
+    clearJwt();
+
+    if (config.usedJwt) {
+      const fresh = await getJwt();
+      if (!fresh) return Promise.reject(error);
+    }
+
+    return client.request(config);
+  }
+);
 
 // ---------------------------------------------------------------- types
 
@@ -420,10 +496,70 @@ export async function uploadWorkbook(file: File, onProgress?: (pct: number) => v
   return data;
 }
 
-/** Build the export URL so the browser can download it directly. */
-export function exportUrl(filters: DashboardFilters): string {
-  const qs = new URLSearchParams(params(filters)).toString();
-  return `${API_URL}/api/analytics/export${qs ? `?${qs}` : ''}`;
+/**
+ * Download the filtered selection as an .xlsx.
+ *
+ * This used to hand the browser a bare URL to navigate to. A top-level
+ * navigation carries no Authorization header, so the request arrived
+ * unauthenticated - which only worked while the API had no key set, and now
+ * means the server cannot tell whether the caller may see real carrier names.
+ * Fetching it through the same axios client puts the JWT on the request, so the
+ * spreadsheet is masked or not according to the caller's actual role.
+ */
+export async function downloadExport(filters: DashboardFilters): Promise<void> {
+  const { data, headers } = await client.get('/analytics/export', {
+    params: params(filters),
+    responseType: 'blob',
+    timeout: 300000,
+  });
+
+  const disposition = String(headers['content-disposition'] ?? '');
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  const filename = match?.[1] ?? `npl-shipments-${Date.now()}.xlsx`;
+
+  const url = URL.createObjectURL(data as Blob);
+  try {
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  } finally {
+    // Revoking immediately can cancel the download in some browsers; a tick is
+    // enough for the click to have been dispatched.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}
+
+// ---------------------------------------------------------------- identity
+
+export type Role = 'ho' | 'client';
+
+export interface Identity {
+  userId: string | null;
+  email: string | null;
+  role: Role;
+  via: 'appwrite-jwt' | 'api-key' | 'dev';
+  /** Whether THIS session's responses carry pseudonymised carrier names. */
+  masked: boolean;
+  can: {
+    seeCarrierNames: boolean;
+    upload: boolean;
+  };
+}
+
+/**
+ * Ask the server who it thinks we are.
+ *
+ * The role is read from here rather than derived in the browser from Appwrite
+ * team membership. The server already resolves it to decide masking, so taking
+ * the answer from the same place keeps the UI from ever disagreeing with what
+ * the API actually enforces.
+ */
+export async function fetchIdentity(): Promise<Identity> {
+  const { data } = await client.get<Identity>('/me');
+  return data;
 }
 
 export default client;

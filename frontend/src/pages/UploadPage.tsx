@@ -84,10 +84,10 @@ export default function UploadPage() {
             {...getRootProps()}
             className={`cursor-pointer rounded-xl border-2 border-dashed px-6 py-12 text-center transition-colors ${
               isDragActive
-                ? 'border-blue-500 bg-blue-500/5'
+                ? 'border-brand-600 bg-brand-600/5'
                 : s.light
-                  ? 'border-gray-300 hover:border-blue-400'
-                  : 'border-white/15 hover:border-blue-500/60'
+                  ? 'border-gray-300 hover:border-brand-500'
+                  : 'border-white/15 hover:border-brand-600/60'
             }`}
           >
             <input {...getInputProps()} />
@@ -100,7 +100,7 @@ export default function UploadPage() {
 
           {file && (
             <div className={`mt-4 flex items-center gap-3 rounded-xl border px-4 py-3 ${s.divider}`}>
-              <IconFileSpreadsheet className="h-5 w-5 shrink-0 text-blue-500" />
+              <IconFileSpreadsheet className="h-5 w-5 shrink-0 text-brand-600" />
               <div className="min-w-0 flex-1">
                 <p className={`truncate text-sm font-medium ${s.heading}`}>{file.name}</p>
                 <p className={`text-xs ${s.muted}`}>{(file.size / 1024).toFixed(0)} KB</p>
@@ -124,7 +124,7 @@ export default function UploadPage() {
           {busy && (
             <div className="mt-4">
               <div className={`h-2 overflow-hidden rounded-full ${s.light ? 'bg-gray-200' : 'bg-white/10'}`}>
-                <div className="h-full rounded-full bg-blue-600 transition-all" style={{ width: `${progress}%` }} />
+                <div className="h-full rounded-full bg-brand-600 transition-all" style={{ width: `${progress}%` }} />
               </div>
               <p className={`mt-2 flex items-center gap-2 text-xs ${s.muted}`}>
                 <IconLoader2 className="h-3.5 w-3.5 animate-spin" />
@@ -136,7 +136,7 @@ export default function UploadPage() {
           <button
             onClick={submit}
             disabled={!file || busy}
-            className="mt-4 w-full rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-40"
+            className="mt-4 w-full rounded-xl bg-brand-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? 'Importing…' : 'Import workbook'}
           </button>
@@ -209,7 +209,7 @@ export default function UploadPage() {
                 </ul>
                 <button
                   onClick={() => navigate('/data-quality')}
-                  className="mt-4 text-xs font-medium text-blue-500 hover:underline"
+                  className="mt-4 text-xs font-medium text-brand-600 hover:underline"
                 >
                   See the full data-quality breakdown →
                 </button>

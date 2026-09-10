@@ -26,8 +26,53 @@ const tally = (fn: (r: ShipmentInput) => string | null | undefined) => {
 };
 
 console.log('\n=== SHEETS ===');
+if (report.sheets.length === 0) console.log('  (workbook has no sheets)');
 for (const s of report.sheets) {
-  console.log(`  ${s.name.padEnd(28)} branch=${s.branch.padEnd(12)} kept=${s.rows}  skipped=${s.skipped}`);
+  if (s.rejected) {
+    console.log(`  ${s.name.padEnd(28)} REJECTED: ${s.rejected}`);
+    // Show the fields that DID resolve separately from the ones that did not:
+    // a sheet that mapped several columns but still lacks LR DATE and PICKUP
+    // LOCATION is a near miss, and looks nothing like a wrong-format file.
+    if (s.matchedColumns.length) {
+      console.log(`  ${''.padEnd(28)} mapped fields : ${s.matchedColumns.join(', ')}`);
+    }
+    if (s.unmatchedHeaders.length) {
+      console.log(`  ${''.padEnd(28)} other headers : ${s.unmatchedHeaders.slice(0, 12).join(' | ')}`);
+    }
+    continue;
+  }
+  console.log(
+    `  ${s.name.padEnd(28)} branch=${s.branch.padEnd(12)} in=${String(s.dataRows).padStart(5)}` +
+      `  kept=${String(s.rows).padStart(5)}  skipped=${String(s.skipped).padStart(5)}`
+  );
+  for (const [reason, n] of Object.entries(s.skipReasons)) {
+    console.log(`  ${''.padEnd(28)}   - ${reason}: ${n}`);
+  }
+  if (s.unmatchedHeaders.length) {
+    console.log(`  ${''.padEnd(28)}   unmapped columns: ${s.unmatchedHeaders.join(' | ')}`);
+  }
+}
+
+console.log('\n=== ROW ACCOUNTING ===');
+console.log('  data rows in   :', report.totalDataRows);
+console.log('  rows kept      :', rows.length);
+console.log(
+  '  rows skipped   :',
+  report.totalDataRows - rows.length,
+  Object.keys(report.skipReasons).length
+    ? `(${Object.entries(report.skipReasons).map(([k, v]) => `${k}=${v}`).join(', ')})`
+    : ''
+);
+
+// Everything below reads parsed rows. With none, the summaries are noise and
+// the date-range line throws on an empty array - which is exactly what used to
+// hide the diagnostics above on a zero-row parse.
+if (rows.length === 0) {
+  console.log('\n=== WARNINGS ===');
+  if (report.warnings.length === 0) console.log('  (none)');
+  for (const w of report.warnings) console.log('  -', w);
+  console.log('\nNo rows parsed - nothing further to summarise.\n');
+  process.exit(0);
 }
 
 console.log('\n=== TOTALS ===');
@@ -38,12 +83,18 @@ console.log('  loading chg    :', sum((r) => r.loadingCharges || 0).toLocaleStri
 console.log('  unloading chg  :', sum((r) => r.unloadingCharges || 0).toLocaleString());
 
 const dates = rows.map((r) => r.lrDate).filter((d): d is Date => !!d);
-console.log(
-  '  LR date range  :',
-  new Date(Math.min(...dates.map((d) => d.getTime()))).toISOString().slice(0, 10),
-  '->',
-  new Date(Math.max(...dates.map((d) => d.getTime()))).toISOString().slice(0, 10)
-);
+if (dates.length === 0) {
+  console.log('  LR date range  : (no row carries an LR date)');
+} else {
+  const times = dates.map((d) => d.getTime());
+  console.log(
+    '  LR date range  :',
+    new Date(Math.min(...times)).toISOString().slice(0, 10),
+    '->',
+    new Date(Math.max(...times)).toISOString().slice(0, 10),
+    `(${rows.length - dates.length} row(s) with no LR date)`
+  );
+}
 
 console.log('\n=== BRANCH (rows / litres) ===');
 for (const [b] of tally((r) => r.branch)) {

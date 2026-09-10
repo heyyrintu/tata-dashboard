@@ -2,9 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="https://cdn.dribbble.com/userupload/45564127/file/6c01b78a863edd968c45d2287bcd5854.png?resize=752x470&vertical=center" />
+    <!-- Self-hosted brand assets. The favicon previously pointed at a
+         third-party CDN, leaving the browser tab dependent on someone else
+         staying up. Overwrite the files in public/brand/ to swap the artwork;
+         see frontend/BRAND.md. -->
+    <link rel="icon" type="image/svg+xml" href="/brand/favicon.svg" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Drona Dashboard</title>
+    <meta name="theme-color" content="#DE1C1C" />
+    <title>Drona Logitech Dashboard</title>
+    <!-- Runtime configuration, written by the container entrypoint before nginx
+         serves. Must load before the app bundle. See src/lib/runtimeEnv.ts. -->
+    <script src="/env.js"></script>
   </head>
   <body>
     <div id="root"></div>

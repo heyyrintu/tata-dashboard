@@ -1,601 +1,302 @@
-# TATA DEF Dashboard - Production Deployment Guide
+# NPL DEF Dashboard — Production Deployment Guide
 
-This guide provides step-by-step instructions for deploying the TATA DEF Dashboard to a production server.
+## Topology
 
-## Deployment Options
+One container, built from the **root `Dockerfile`**, listening on port **80**:
 
-| Method | Best For | Complexity |
-|--------|----------|------------|
-| **Docker (Recommended)** | Quick setup, consistency, easy scaling | Low |
-| **Manual VPS** | Full control, custom configurations | Medium |
+```text
+Coolify proxy (TLS)  ->  :80  nginx  ->  static SPA  (/usr/share/nginx/html)
+                                     \-> /api, /health  ->  node :5000
+                                                              |
+                                                    remote PostgreSQL
+```
+
+nginx and node are supervised by `supervisord`, which runs as PID 1 via
+`docker-entrypoint.sh`. TLS, certificates and the public hostname are Coolify's
+job — the container never terminates TLS and never binds 443.
+
+This is the only supported topology. The four-container `docker-compose.yml`
+stack and the host-level nginx configs were retired to
+[`deploy/legacy/`](deploy/legacy/README.md); the nixpacks files were deleted.
+Do not resurrect them under Coolify: they bind host ports 80/443 and fight
+Coolify's proxy for them.
 
 ---
 
-# Option A: Docker Deployment (Recommended)
+## Coolify setup
 
-## Prerequisites
-- Docker Engine 20.10+ and Docker Compose v2+
-- 2GB RAM minimum (4GB recommended)
-- Domain name (optional)
+Build pack: **Dockerfile**. Path: `/Dockerfile`. Exposed port: **80**.
 
-## Quick Start with Docker
+There are **no build arguments**. Every setting below is an ordinary runtime
+environment variable, so changing one is a container restart, not a rebuild.
 
-### 1. Clone and Configure
+### Required variables
 
-```bash
-git clone <your-repo-url> tata-dashboard
-cd tata-dashboard
+| Variable | Notes |
+| --- | --- |
+| `DATABASE_URL` | Remote PostgreSQL connection string. |
+| `FRONTEND_URL` | Public origin(s) allowed to call the API from a browser. Comma-separated; the apex/www counterpart of each entry is allowed automatically. |
+| `API_KEY` | Shared secret for `/api/*`. **The server refuses to boot in production without it.** |
 
-# Copy environment template
-cp .env.example .env
+Generate the key with `openssl rand -hex 32`.
 
-# Edit environment variables
-nano .env
-```
+`API_KEY` is mandatory because `middleware/auth.ts` falls through to open access
+when it is unset. An open `/api` includes `POST /api/upload`, which **replaces
+every row in the shipments table** — no authentication, no undo.
 
-### 2. Configure Environment Variables
+### Optional variables
 
-Edit `.env` with your values:
-```env
-# Database
-MONGO_ROOT_USERNAME=admin
-MONGO_ROOT_PASSWORD=your_secure_password
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `VITE_API_URL` | *(empty)* | Leave unset. nginx serves the SPA and proxies `/api` on the same origin, so the empty value resolves to a relative `/api`. Only set this if the API moves to a different host. |
+| `VITE_API_KEY` | *(empty)* | The key the browser sends. See the warning below. |
+| `VITE_APPWRITE_ENDPOINT` | | Appwrite console values, for the browser SDK. |
+| `VITE_APPWRITE_PROJECT_ID` | | |
+| `APPWRITE_ENDPOINT` | | Same values again, unprefixed, so the **backend** can verify JWTs. Without them no user can be identified — see *Roles*. |
+| `APPWRITE_PROJECT_ID` | | |
+| `HO_TEAM_ID` | | Appwrite team whose members see real carrier names. |
+| `ADMIN_TEAM_ID` | | Appwrite team whose members may upload. |
+| `CLIENT_VIEW` | `auto` | Masking kill-switch: `auto`, `always`, `off`. |
+| `VITE_LOGO_URL` | *(brand lockup)* | Overrides `public/brand/logo.*` without a rebuild. |
+| `RUN_MIGRATIONS` | `true` | Set `false` if a separate release step applies migrations. |
+| `TRUST_PROXY` | `loopback, linklocal, uniquelocal` | See *Rate limiting* below. |
+| `SHUTDOWN_TIMEOUT_MS` | `10000` | Must stay under `stopwaitsecs` (15s) in `supervisord.conf`. |
+| `ENABLE_EMAIL_POLLING` | `false` | IMAP ingestion is opt-in; `IMAP_*` variables only matter when it is `true`. |
 
-# URLs
-FRONTEND_URL=http://yourdomain.com
-VITE_API_URL=/api
+> **`VITE_*` variables are public.** They are written into `/env.js` and served
+> to every visitor. `VITE_API_KEY` is therefore not a secret — it keeps casual
+> traffic off the API, nothing more. Never put a server-side credential in a
+> `VITE_*` variable.
 
-# Appwrite Auth (get from Appwrite console)
-VITE_APPWRITE_ENDPOINT=https://fra.cloud.appwrite.io/v1
-VITE_APPWRITE_PROJECT_ID=your_project_id
-VITE_APPWRITE_ADMIN_TEAM_ID=your_team_id
-```
-
-### 3. Build and Start
-
-```bash
-# Build and start all services
-docker compose up -d --build
-
-# Check status
-docker compose ps
-
-# View logs
-docker compose logs -f
-```
-
-### 4. Access Application
-
-- **Frontend**: http://localhost (or your domain)
-- **API**: http://localhost/api
-- **Health Check**: http://localhost/health
-
-## Docker Commands Reference
-
-```bash
-# Start services
-docker compose up -d
-
-# Stop services
-docker compose down
-
-# Rebuild after code changes
-docker compose up -d --build
-
-# View logs
-docker compose logs -f backend
-docker compose logs -f frontend
-
-# Access container shell
-docker compose exec backend sh
-docker compose exec mongodb mongosh
-
-# Restart specific service
-docker compose restart backend
-
-# Remove everything (including volumes)
-docker compose down -v
-```
-
-## Production with SSL/HTTPS
-
-### Using Traefik (Recommended)
-
-Create `docker-compose.prod.yml`:
-```yaml
-services:
-  traefik:
-    image: traefik:v2.10
-    command:
-      - "--providers.docker=true"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.email=your@email.com"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - letsencrypt:/letsencrypt
-    networks:
-      - tata-network
-
-  nginx:
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.tata.rule=Host(`yourdomain.com`)"
-      - "traefik.http.routers.tata.entrypoints=websecure"
-      - "traefik.http.routers.tata.tls.certresolver=letsencrypt"
-
-volumes:
-  letsencrypt:
-```
-
-Run with:
-```bash
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-```
-
-## Development with Docker
-
-For local development with hot-reload:
-```bash
-docker compose -f docker-compose.dev.yml up -d
-```
-
-This starts:
-- MongoDB on port 27017
-- Backend on port 5000 (with hot-reload)
-- Frontend on port 5173 (Vite dev server)
-
-## Docker Troubleshooting
-
-| Issue | Solution |
-|-------|----------|
-| MongoDB won't start | Check disk space: `docker system df` |
-| Backend health check fails | Check logs: `docker compose logs backend` |
-| Frontend build fails | Ensure env vars are set in `.env` |
-| Permission denied | Run: `chmod -R 755 ./nginx/ssl` |
+`supervisord.conf` no longer carries an `environment=` allowlist, so the backend
+inherits everything Coolify injects. Adding a new variable needs no changes here.
 
 ---
 
-# Option B: Manual VPS Deployment
+## How frontend configuration reaches the browser
 
-## Prerequisites
+Vite inlines `import.meta.env.VITE_*` at **build** time, but Coolify injects
+environment at **runtime**, into an image that is already built. A variable set
+in the Coolify UI would therefore never reach a bundle compiled before it
+existed.
 
-- VPS with Ubuntu 20.04+ (2GB RAM minimum, 4GB recommended)
-- Domain name (optional, can use IP address)
-- SSH access to server
-- Root or sudo access
+The container closes that gap:
 
-## Quick Start
+1. `docker-entrypoint.sh` reads the `VITE_*` variables from the environment and
+   writes `/usr/share/nginx/html/env.js` as `window.__ENV__ = {...}` — before
+   nginx starts serving.
+2. `index.html` loads `/env.js` ahead of the app bundle.
+3. `frontend/src/lib/runtimeEnv.ts` reads it, falling back to the build-time
+   value (which is what `npm run dev` uses locally).
 
-1. Follow the phases below in order
-2. Replace `your-domain.com` with your actual domain or IP address
-3. Replace `your-secure-password` with a strong MongoDB password
+nginx serves `/env.js` with `no-store` so a restarted container never serves the
+previous config. Cache headers come from the `$cache_control` map in
+`nginx.combined.conf` rather than per-location blocks, because a location that
+declares its own `add_header` drops the server-level security headers.
 
-## Phase 1: Server Setup
+**Consequence:** rebuild only for code changes. Config changes are a restart.
 
-### 1.1 Update System
-```bash
-sudo apt update && sudo apt upgrade -y
-```
+---
 
-### 1.2 Install Node.js (v18+)
-```bash
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-node --version  # Verify installation
-```
+## Roles
 
-### 1.3 Install MongoDB
-```bash
-# Import MongoDB GPG key
-wget -qO - https://www.mongodb.org/static/pgp/server-7.0.asc | sudo apt-key add -
-echo "deb [ arch=amd64,arm64 ] https://repo.mongodb.org/apt/ubuntu focal/mongodb-org/7.0 multiverse" | sudo tee /etc/apt/sources.list.d/mongodb-org-7.0.list
-sudo apt update
-sudo apt install -y mongodb-org
-sudo systemctl enable mongod
-sudo systemctl start mongod
-```
+Two audiences share one deployment:
 
-### 1.4 Install PM2 (Process Manager)
-```bash
-sudo npm install -g pm2
-```
+| | Sees carrier names | May upload |
+| --- | --- | --- |
+| **Drona HO** (`HO_TEAM_ID`) | Real names | only if also in `ADMIN_TEAM_ID` |
+| **Client / NPL** (everyone else) | `Carrier 4F2` pseudonyms | only if in `ADMIN_TEAM_ID` |
 
-### 1.5 Install Nginx (Reverse Proxy)
-```bash
-sudo apt install -y nginx
-sudo systemctl enable nginx
-sudo systemctl start nginx
-```
+The two teams are **independent on purpose**. An HO analyst can read real
+carrier names without being trusted to wipe and reload every shipment row, and
+an operator can run the upload without needing carrier identities.
 
-## Phase 2: Application Deployment
+### How a role is established
 
-### 2.1 Create Application Directory
-```bash
-sudo mkdir -p /var/www/tata-dashboard
-sudo chown $USER:$USER /var/www/tata-dashboard
-cd /var/www/tata-dashboard
-```
+1. The browser mints a short-lived Appwrite JWT (`account.createJWT()`) and
+   sends it as `Authorization: Bearer …` on every API call.
+2. The backend hands that token straight back to Appwrite: `account.get()`
+   proves who it belongs to, and `teams.list()` on the same token says which
+   teams that user is in.
+3. Masking is applied **server-side**, before the payload is serialised.
 
-### 2.2 Clone Repository
-```bash
-git clone <your-repo-url> .
-# OR upload files via SCP/SFTP
-```
+Nothing the browser sends can raise its own role. There is no role header, no
+role query parameter, and the frontend's copy of the role — fetched from
+`GET /api/me` — only decides which buttons render. Carrier names a client is
+not entitled to never leave the server, so they cannot be recovered from the
+network tab, from the Excel export, or from the dashboard cache.
 
-### 2.3 Backend Setup
+Every failure resolves to the masked role: no token, an expired token, a user
+in no team, Appwrite unreachable. A misconfiguration hides names; it never
+reveals them.
+
+### Shared API key
+
+`API_KEY` has no user behind it, so it always resolves to `client` and can
+never upload. It ships to every browser as `VITE_API_KEY`, so treating it as
+internal would publish carrier names to anyone who reads the JS bundle.
+
+### Kill-switch
+
+`CLIENT_VIEW=always` masks everyone regardless of role — use it if roles are
+misconfigured and names are leaking. `CLIENT_VIEW=off` disables masking
+entirely, for an internal-only deployment. An unrecognised value falls back to
+`auto`, never to `off`.
+
+### Local development
+
+`VITE_BYPASS_AUTH=true` skips login, so no JWT exists. Set `DEV_ROLE=ho` (and
+optionally `DEV_ADMIN=false` to exercise the HO-without-upload case) on the
+backend instead. Both are ignored when `NODE_ENV=production`.
+
+---
+
+## Database migrations
+
+The container runs `prisma migrate deploy` on boot (`start-backend.sh`). That
+applies only the files in `backend/prisma/migrations/` that are not yet recorded
+in `_prisma_migrations`, never generates SQL of its own, and is a no-op once the
+database is current.
+
+> **This replaced `prisma db push --skip-generate`, which ran on every boot.**
+> `db push` diffs the live database against `schema.prisma` and rewrites the
+> database to match — it ignores the migration files and will drop or retype
+> columns without asking. Against the remote production database, an ordinary
+> redeploy could destroy data.
+
+### One-time baseline (required if the database was created with `db push`)
+
+A database created by `db push` has no `_prisma_migrations` history, so
+`migrate deploy` tries to apply the baseline migration on top of tables that
+already exist and fails. Boot will fail with instructions until you baseline it.
+
+**Verify first** that the live schema matches `schema.prisma`. This is read-only:
+
 ```bash
 cd backend
-npm install --production
-npm run build
+npx prisma migrate diff \
+  --from-url "$DATABASE_URL" \
+  --to-schema-datamodel prisma/schema.prisma \
+  --script
 ```
 
-### 2.4 Frontend Setup
-```bash
-cd ../frontend
-npm install
-npm run build
-```
-
-### 2.5 Create Environment Files
-
-**Backend `.env`** (`/var/www/tata-dashboard/backend/.env`):
-```env
-NODE_ENV=production
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/tata-dashboard
-# For secured MongoDB:
-# MONGODB_URI=mongodb://admin:your-secure-password@localhost:27017/tata-dashboard?authSource=admin
-
-# Outlook/Office 365 Email Configuration (Optional - for automatic email upload)
-# See backend/AZURE_SETUP.md for Azure app registration instructions
-OUTLOOK_CLIENT_ID=your-client-id
-OUTLOOK_CLIENT_SECRET=your-client-secret-value
-OUTLOOK_TENANT_ID=your-tenant-id
-OUTLOOK_UPLOAD_EMAIL=upload@yourdomain.com
-OUTLOOK_ARCHIVE_FOLDER=Processed
-OUTLOOK_POLL_INTERVAL=600000
-# Poll interval in milliseconds (600000 = 10 minutes)
-```
-
-**Frontend `.env.production`** (`/var/www/tata-dashboard/frontend/.env.production`):
-```env
-VITE_API_URL=http://your-domain.com/api
-# OR if using IP: VITE_API_URL=http://your-server-ip/api
-```
-
-## Phase 3: Process Management
-
-### 3.1 Copy PM2 Ecosystem File
-```bash
-# Copy ecosystem.config.js from project root to /var/www/tata-dashboard/
-cp ecosystem.config.js /var/www/tata-dashboard/
-```
-
-### 3.2 Start Application with PM2
-```bash
-cd /var/www/tata-dashboard
-pm2 start ecosystem.config.js
-pm2 save
-pm2 startup  # Follow instructions to enable auto-start on boot
-```
-
-**Note:** The PM2 ecosystem file starts two processes:
-- `tata-dashboard-backend` - Main API server
-- `tata-dashboard-email-service` - Email polling service (only runs if email credentials are configured)
-
-Verify both processes are running:
-```bash
-pm2 status
-# Should show both processes with "online" status
-```
-
-If email service is not needed, you can remove it from `ecosystem.config.js` or ensure email environment variables are not set.
-
-## Phase 4: Nginx Configuration
-
-### 4.1 Copy Nginx Config
-```bash
-# Copy nginx configuration
-sudo cp nginx/tata-dashboard.conf /etc/nginx/sites-available/tata-dashboard
-```
-
-### 4.2 Edit Configuration
-```bash
-sudo nano /etc/nginx/sites-available/tata-dashboard
-# Replace 'your-domain.com' with your actual domain or IP
-```
-
-### 4.3 Enable Site
-```bash
-sudo ln -s /etc/nginx/sites-available/tata-dashboard /etc/nginx/sites-enabled/
-sudo nginx -t  # Test configuration
-sudo systemctl reload nginx
-```
-
-## Phase 5: Email Service Setup (Optional)
-
-### 5.1 Azure App Registration
-
-To enable automatic email-based file upload, you need to register an Azure application:
-
-1. Follow the detailed instructions in `backend/AZURE_SETUP.md`
-2. Register an application in Azure AD
-3. Configure API permissions: `Mail.Read` and `Mail.ReadWrite` (Application permissions)
-4. Grant admin consent for the permissions (requires Azure admin account)
-5. Create a client secret and copy the **Secret Value** (not Secret ID)
-6. Get your Client ID, Tenant ID, and Client Secret
-
-### 5.2 Configure Email Environment Variables
-
-Add the email configuration to your backend `.env` file (see Phase 2.5):
-
-```env
-OUTLOOK_CLIENT_ID=your-client-id
-OUTLOOK_CLIENT_SECRET=your-secret-value
-OUTLOOK_TENANT_ID=your-tenant-id
-OUTLOOK_UPLOAD_EMAIL=upload@yourdomain.com
-OUTLOOK_ARCHIVE_FOLDER=Processed
-OUTLOOK_POLL_INTERVAL=600000
-```
-
-**Important:** Use the Secret **Value** (long string), not the Secret ID (GUID format).
-
-### 5.3 Verify Email Service
-
-After starting PM2, check if email service is running:
+An empty result means the schema already matches; then record the baseline:
 
 ```bash
-pm2 status tata-dashboard-email-service
-pm2 logs tata-dashboard-email-service
+npx prisma migrate resolve --applied 20260910054116_init_npl_shipments
 ```
 
-Test email service connection:
-```bash
-cd /var/www/tata-dashboard/backend
-npm run check-email
-```
+`migrate resolve` only inserts a row into `_prisma_migrations`. It does not
+create, alter or drop anything, and does not touch table data.
 
-### 5.4 Email Service Features
+If `migrate diff` **does** print statements, the live schema has drifted from
+`schema.prisma`. Do not baseline. Review the emitted SQL, take a backup, and
+write a migration that reconciles the difference deliberately.
 
-- Automatically checks for new emails every 10 minutes (configurable via `OUTLOOK_POLL_INTERVAL`)
-- Processes Excel attachments (.xlsx, .xls) from unread emails
-- Archives processed emails to "Processed" folder
-- Manual processing via API: `POST http://your-domain.com/api/email/process`
-- Service status endpoint: `GET http://your-domain.com/api/email/status`
-
-**Note:** 
-- Email service requires the configured email address to exist in your Office 365 tenant
-- Emails must be **unread** to be processed
-- Only emails with Excel attachments are processed
-
-## Phase 6: SSL/HTTPS Setup (Optional but Recommended)
-
-### 6.1 Install Certbot
-```bash
-sudo apt install -y certbot python3-certbot-nginx
-```
-
-### 6.2 Obtain SSL Certificate
-```bash
-sudo certbot --nginx -d your-domain.com
-# Follow prompts to configure SSL
-```
-
-## Phase 7: Security & Firewall
-
-### 7.1 Configure Firewall
-```bash
-sudo ufw allow 22/tcp    # SSH
-sudo ufw allow 80/tcp    # HTTP
-sudo ufw allow 443/tcp  # HTTPS
-sudo ufw enable
-```
-
-### 7.2 Secure MongoDB
-
-Edit `/etc/mongod.conf`:
-```bash
-sudo nano /etc/mongod.conf
-```
-
-Add:
-```yaml
-security:
-  authorization: enabled
-```
-
-Create MongoDB admin user:
-```bash
-mongosh
-use admin
-db.createUser({
-  user: "admin",
-  pwd: "your-secure-password",
-  roles: [ { role: "userAdminAnyDatabase", db: "admin" } ]
-})
-exit
-```
-
-Update backend `.env`:
-```env
-MONGODB_URI=mongodb://admin:your-secure-password@localhost:27017/tata-dashboard?authSource=admin
-```
-
-Restart MongoDB:
-```bash
-sudo systemctl restart mongod
-```
-
-## Phase 8: File Permissions & Directories
-
-### 8.1 Set Proper Permissions
-```bash
-sudo chown -R $USER:$USER /var/www/tata-dashboard
-sudo chmod -R 755 /var/www/tata-dashboard
-sudo chmod -R 755 /var/www/tata-dashboard/backend/uploads
-```
-
-### 8.2 Create Log Directory
-```bash
-sudo mkdir -p /var/log/pm2
-sudo chown -R $USER:$USER /var/log/pm2
-```
-
-## Phase 9: Backup Strategy
-
-### 9.1 Copy Backup Script
-```bash
-# Copy backup script to server
-cp scripts/backup-mongodb.sh /var/www/tata-dashboard/scripts/
-chmod +x /var/www/tata-dashboard/scripts/backup-mongodb.sh
-```
-
-### 9.2 Setup Cron Job
-```bash
-crontab -e
-# Add: 0 2 * * * /var/www/tata-dashboard/scripts/backup-mongodb.sh
-```
-
-## Phase 10: Monitoring & Logs
-
-### 10.1 PM2 Monitoring
-```bash
-pm2 monit  # Real-time monitoring
-pm2 logs   # View logs
-pm2 status # Check status
-```
-
-### 10.2 Log Rotation
-```bash
-# Copy logrotate config
-sudo cp logrotate/pm2 /etc/logrotate.d/pm2
-```
-
-## Maintenance Commands
-
-### Application Management
+### Adding a migration later
 
 ```bash
-# Restart backend application
-pm2 restart tata-dashboard-backend
-
-# Restart email service
-pm2 restart tata-dashboard-email-service
-
-# Restart all applications
-pm2 restart all
-
-# View logs
-pm2 logs tata-dashboard-backend
-pm2 logs tata-dashboard-email-service
-pm2 logs  # View all logs
-
-# Check status
-pm2 status
-```
-
-### Update Application
-
-```bash
-cd /var/www/tata-dashboard
-git pull  # or upload new files
-
-# Rebuild backend
 cd backend
-npm install --production
-npm run build
-
-# Rebuild frontend
-cd ../frontend
-npm install
-npm run build
-
-# Restart services
-pm2 restart all
-sudo systemctl reload nginx
+npx prisma migrate dev --name describe_the_change   # against a LOCAL database
 ```
 
-### Email Service Management
+Commit the generated folder. The next deploy applies it.
+
+---
+
+## Health checks
+
+`GET /health` runs a probe query and returns:
+
+- **200** with row counts when the database answers;
+- **503** when it does not.
+
+Point Coolify's health check at `/health` on port 80. It previously returned 200
+even when the query failed, which reported healthy straight through an outage.
+
+---
+
+## Restarts and redeploys
+
+Coolify sends `SIGTERM` on every redeploy. `server.ts` handles it: stop
+accepting connections, drop idle keep-alive sockets, let in-flight requests
+finish, stop the email poller, disconnect Prisma, exit 0. A
+`SHUTDOWN_TIMEOUT_MS` guard forces exit if something hangs.
+
+This matters most for `POST /api/upload`, which truncates and repopulates the
+shipments table — a hard kill mid-upload leaves it half-written.
+
+---
+
+## Rate limiting and the proxy chain
+
+Two proxies sit in front of node: Coolify's proxy and the in-container nginx.
+Each appends to `X-Forwarded-For`. Without `trust proxy`, express sees every
+request as coming from `127.0.0.1`, so `express-rate-limit` keys all clients to
+one bucket — the per-client limits become a single global cap, and v8's
+`X-Forwarded-For` validator errors at request time.
+
+The default (`loopback, linklocal, uniquelocal`) walks back through loopback and
+private addresses and stops at the first public one — the real client. Note that
+a fixed `trust proxy` of `1` is **not** enough here: it resolves to Coolify's
+proxy address, leaving every client in the same bucket. Override with
+`TRUST_PROXY` only if the chain differs.
+
+---
+
+## Local development
 
 ```bash
-# Check email service status
-curl http://localhost:5000/api/email/status
-
-# Manually trigger email processing
-curl -X POST http://localhost:5000/api/email/process
-
-# Start/stop email service
-pm2 start tata-dashboard-email-service
-pm2 stop tata-dashboard-email-service
-
-# Test email service
-cd /var/www/tata-dashboard/backend
-npm run check-email
+make dev        # Postgres + hot-reload backend and frontend
+make dev-logs
+make dev-down
 ```
 
-### MongoDB Operations
+Frontend on 5173, backend on 5000, Postgres on 5432. Nothing binds 80 or 443.
+
+To run the production image locally:
 
 ```bash
-sudo systemctl status mongod
-sudo systemctl restart mongod
-mongosh  # MongoDB shell
+make build
+DATABASE_URL=... API_KEY=... make run   # http://localhost:8080
+make health
+make stop
 ```
+
+---
 
 ## Troubleshooting
 
-### General Issues
+**Container exits immediately, log says `Missing required environment variables`**
+Set the named variable in Coolify. In production `DATABASE_URL`, `FRONTEND_URL`
+and `API_KEY` are all mandatory.
 
-- **Backend not starting**: Check PM2 logs `pm2 logs tata-dashboard-backend`
-- **MongoDB connection issues**: Verify MongoDB is running `sudo systemctl status mongod`
-- **Nginx 502 error**: Check backend is running on port 5000
-- **File upload fails**: Verify uploads directory permissions and Nginx `client_max_body_size`
+**Boot fails on `prisma migrate deploy`**
+The database has no migration history. Follow *One-time baseline* above.
 
-### Email Service Issues
+**All `/api` calls return 401**
+`API_KEY` and the browser's `VITE_API_KEY` differ. They must match. If users
+are signed in, check `APPWRITE_ENDPOINT`/`APPWRITE_PROJECT_ID` on the backend
+instead — a JWT that cannot be verified is rejected.
 
-- **Email service not starting**: 
-  ```bash
-  pm2 logs tata-dashboard-email-service
-  # Check if email environment variables are set correctly in .env
-  ```
+**An HO user sees pseudonyms**
+Check, in order: `CLIENT_VIEW` is not `always`; `HO_TEAM_ID` matches the team
+id in the Appwrite console; the user is actually a member of it; the backend
+`APPWRITE_*` pair is set. Every one of those failing modes masks by design.
+`GET /api/me` reports what the server decided and why (`role`, `via`).
 
-- **403 Authentication errors**: 
-  - Verify Azure app permissions are granted with admin consent
-  - Ensure permissions are "Application" type, not "Delegated"
-  - Check `backend/AZURE_SETUP.md` for detailed setup instructions
-  - Wait 5-10 minutes after granting permissions for propagation
+**"You do not have permission" on upload**
+The user is not in `ADMIN_TEAM_ID`. Being in `HO_TEAM_ID` does not grant
+upload — the two teams are separate.
 
-- **No emails processed**:
-  ```bash
-  # Test email service manually
-  cd /var/www/tata-dashboard/backend
-  npm run check-email
-  
-  # Check service status via API
-  curl http://localhost:5000/api/email/status
-  
-  # Manually trigger processing
-  curl -X POST http://localhost:5000/api/email/process
-  ```
+**Browser console: blocked by CORS**
+The origin is not in `FRONTEND_URL`. Add it (comma-separated); the apex/www
+counterpart is covered automatically. A rejected origin returns 403.
 
-- **Emails not found**:
-  - Verify emails are sent to the correct address (`OUTLOOK_UPLOAD_EMAIL`)
-  - Ensure emails are **unread** (service only processes unread emails)
-  - Check emails have Excel attachments (.xlsx, .xls)
-  - Verify email address exists in your Office 365 tenant
+**Frontend shows stale configuration after changing a Coolify variable**
+Restart the container — `/env.js` is written at boot. Hard-refresh if a proxy
+cached it; nginx itself sends `no-store` for that path.
 
-- **Rate limiting**: Increase `OUTLOOK_POLL_INTERVAL` in `.env` (minimum 60000 = 1 minute)
-
-For more detailed email troubleshooting, see `backend/EMAIL_TROUBLESHOOTING.md`
-
-## Estimated Costs
-
-- VPS (DigitalOcean/Linode): $5-10/month (1GB RAM) or $12-20/month (2GB RAM)
-- Domain: $10-15/year (optional)
-- Total: ~$5-20/month for basic setup
-
+**Health check red but the app loads**
+The database is unreachable. `/health` returns 503 by design; check
+`DATABASE_URL` and the database's network rules.

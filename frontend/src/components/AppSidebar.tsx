@@ -14,63 +14,67 @@ import { motion } from "motion/react";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
+import BrandLogo from "@/components/BrandLogo";
+import { BRAND_MARK, BRAND_NAME, BRAND_SUFFIX } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export default function AppSidebar() {
   const location = useLocation();
   const pathname = location.pathname;
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
   
   const links = [
     {
       label: "Overview",
       href: "/",
       icon: <IconBrandTabler className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Deliveries",
       href: "/deliveries",
       icon: <IconTruckDelivery className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Throughput",
       href: "/throughput",
       icon: <IconChartHistogram className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Network",
       href: "/network",
       icon: <IconMapPin className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Carriers",
       href: "/carriers",
       icon: <IconBuildingStore className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Shipments",
       href: "/shipments",
       icon: <IconTable className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Data Quality",
       href: "/data-quality",
       icon: <IconShieldCheck className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Upload Data",
       href: "/upload",
       icon: <IconUpload className="h-5 w-5 shrink-0" />,
-      adminOnly: true,
+      requires: "upload" as const,
     },
-  ].filter(link => !link.adminOnly || isAdmin);
+    // Presentation only - the /upload route and the API endpoint behind it
+    // are gated independently. See components/RequireCapability.tsx.
+  ].filter(link => !link.requires || can[link.requires]);
 
   const [open, setOpen] = useState(false);
 
@@ -78,6 +82,7 @@ export default function AppSidebar() {
     <Sidebar open={open} setOpen={setOpen}>
       <SidebarBody className="justify-between gap-10">
         <div className="flex flex-1 flex-col overflow-x-hidden overflow-y-auto">
+          <SidebarBrand />
           <div className="mt-4 flex flex-col gap-2">
             {links.map((link, idx) => (
               <SidebarLink
@@ -95,6 +100,40 @@ export default function AppSidebar() {
     </Sidebar>
   );
 }
+
+/**
+ * Brand mark at the top of the sidebar - the dashboard chrome carried no
+ * identity at all before this.
+ *
+ * The square mark is always shown; the wordmark fades in only when the sidebar
+ * is expanded, matching how SidebarLink handles its own labels. Both files are
+ * self-hosted in public/brand/ and swapped by overwriting them - see
+ * lib/brand.ts.
+ */
+const SidebarBrand = () => {
+  const { open, animate } = useSidebar();
+
+  return (
+    <a
+      href="/"
+      className="mb-2 flex items-center gap-2 border-b border-black/5 px-1 pb-3 pt-1 dark:border-white/10"
+      aria-label={BRAND_NAME}
+      title={BRAND_NAME}
+    >
+      <BrandLogo variant="mark" decorative className="h-8 w-8 shrink-0 rounded-lg" />
+      <motion.span
+        animate={{
+          display: animate ? (open ? "inline-block" : "none") : "inline-block",
+          opacity: animate ? (open ? 1 : 0) : 1,
+        }}
+        className="whitespace-pre text-sm font-bold tracking-tight"
+      >
+        <span className="brand-gradient-text">{BRAND_MARK}</span>
+        <span> {BRAND_SUFFIX}</span>
+      </motion.span>
+    </a>
+  );
+};
 
 const ThemeToggleButton = () => {
   const { theme, toggleTheme } = useTheme();

@@ -127,7 +127,7 @@ export default function ShipmentsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search party, destination, LR, invoice, vehicle or vendor…"
-                className={`h-9 w-full rounded-lg border pl-9 pr-3 text-sm outline-none focus:border-blue-500 ${s.input}`}
+                className={`h-9 w-full rounded-lg border pl-9 pr-3 text-sm outline-none focus:border-brand-600 ${s.input}`}
               />
             </div>
 
@@ -136,7 +136,7 @@ export default function ShipmentsPage() {
               <select
                 value={pageSize}
                 onChange={(e) => setPageSize(Number(e.target.value))}
-                className={`h-9 rounded-lg border px-2 text-sm outline-none focus:border-blue-500 ${s.input}`}
+                className={`h-9 rounded-lg border px-2 text-sm outline-none focus:border-brand-600 ${s.input}`}
               >
                 {[25, 50, 100, 200].map((n) => (
                   <option key={n} value={n}>
@@ -167,7 +167,7 @@ export default function ShipmentsPage() {
                       onClick={c.sortable ? () => toggleSort(c.key) : undefined}
                       className={`whitespace-nowrap px-3 py-2 text-xs font-semibold uppercase tracking-wide ${
                         c.align === 'right' ? 'text-right' : 'text-left'
-                      } ${c.sortable ? 'cursor-pointer select-none hover:text-blue-500' : ''}`}
+                      } ${c.sortable ? 'cursor-pointer select-none hover:text-brand-600' : ''}`}
                     >
                       <span className="inline-flex items-center gap-1">
                         {c.label}

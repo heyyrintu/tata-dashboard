@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" width="320" height="64" role="img" aria-label="Drona Logitech">
+  <title>Drona Logitech</title>
+  <!-- PLACEHOLDER. Overwrite this file with the real horizontal lockup.
+       Keep the filename and a similar aspect ratio (~5:1). -->
+  <defs>
+    <linearGradient id="dl-brand" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#DE1C1C"/>
+      <stop offset="50%" stop-color="#FE7129"/>
+      <stop offset="100%" stop-color="#FEA418"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(4 8)">
+    <rect width="48" height="48" rx="12" fill="url(#dl-brand)"/>
+    <path d="M16 14h9c8.3 0 14 4.9 14 10s-5.7 10-14 10h-9z" fill="#fff" opacity=".95"/>
+    <circle cx="25" cy="24" r="4.5" fill="url(#dl-brand)"/>
+  </g>
+  <text x="66" y="41" font-family="Inter, system-ui, sans-serif" font-size="26" font-weight="700" letter-spacing="-0.5">
+    <tspan fill="url(#dl-brand)">DRONA</tspan><tspan fill="currentColor"> Logitech</tspan>
+  </text>
+</svg>

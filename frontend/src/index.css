@@ -2,6 +2,95 @@
 @import "tailwindcss";
 @import "./styles/powerbi-white.css";
 
+/* ==========================================================================
+   Drona Logitech brand tokens
+   --------------------------------------------------------------------------
+   THE place to change brand colour. Everything else references these.
+   Identity strings and asset paths live in src/lib/brand.ts.
+
+   These must be declared here, in `@theme`, rather than in tailwind.config.js:
+   this project runs Tailwind v4 via `@import "tailwindcss"` with no `@config`
+   directive, so tailwind.config.js was never read. That is why the `primary`
+   scale it defined emitted no CSS at all and `border-primary-200` in
+   LoadingSpinner rendered a borderless spinner.
+
+   `@theme` entries named --color-* generate the matching utilities, so
+   --color-brand-600 gives bg-brand-600, text-brand-600, border-brand-600,
+   ring-brand-600, from-brand-600, and so on.
+   ========================================================================== */
+@theme {
+  /* Core brand ramp, built around the canonical red #DE1C1C.
+     600 is the brand red itself and the colour for primary actions; 700 is its
+     hover. The deep end is used for controls so they stay distinct from the
+     amber that means "Pending" and the red that means "Returned" on charts. */
+  --color-brand-50: #fef2f2;
+  --color-brand-100: #fde3e0;
+  --color-brand-200: #fac5bf;
+  --color-brand-300: #f59b92;
+  --color-brand-400: #ee6558;
+  --color-brand-500: #e63a2e;
+  --color-brand-600: #de1c1c;
+  --color-brand-700: #c91010;
+  --color-brand-800: #a50f0f;
+  --color-brand-900: #7f0c0c;
+
+  /* The three canonical gradient stops. */
+  --color-brand-from: #de1c1c;
+  --color-brand-via: #fe7129;
+  --color-brand-to: #fea418;
+
+  /* Warm neutrals derived from the brand, used by the sign-in page. These were
+     scattered inline as raw hexes; they belong with the colours they support. */
+  --color-brand-ink: #2a1a18;
+  --color-brand-ink-soft: #4f2520;
+  --color-brand-muted: #84584a;
+  --color-brand-muted-warm: #8a4b3c;
+  --color-brand-placeholder: #c08a7c;
+  --color-brand-border: #f5cbb4;
+  --color-brand-border-soft: #fde7d4;
+}
+
+/* Reusable expressions of the brand gradient, so the stops are written once.
+   Previously repeated inline as arbitrary values in a dozen places. */
+.brand-gradient {
+  background-image: linear-gradient(
+    to right,
+    var(--color-brand-from),
+    var(--color-brand-via),
+    var(--color-brand-to)
+  );
+}
+
+/* Two-stop variant, for small marks where the middle stop is not resolvable. */
+.brand-gradient-duo {
+  background-image: linear-gradient(
+    to right,
+    var(--color-brand-from),
+    var(--color-brand-to)
+  );
+}
+
+.brand-gradient-text {
+  background-image: linear-gradient(
+    to right,
+    var(--color-brand-from),
+    var(--color-brand-via),
+    var(--color-brand-to)
+  );
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.brand-gradient-hover:hover {
+  background-image: linear-gradient(
+    to right,
+    var(--color-brand-700),
+    #f24c0f,
+    #fd9715
+  );
+}
+
 body {
   margin: 0;
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
