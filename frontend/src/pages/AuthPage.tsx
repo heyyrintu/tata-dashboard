@@ -4,13 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { IconMail, IconLock, IconUser, IconLoader2, IconArrowRight } from '@tabler/icons-react';
 import { motion } from 'motion/react';
 import BrandLogo from '../components/BrandLogo';
-import {
-  BRAND_MARK,
-  BRAND_NAME,
-  BRAND_SUFFIX,
-  BRAND_TAGLINE,
-  copyrightLine,
-} from '../lib/brand';
+import { BRAND_NAME, BRAND_TAGLINE, copyrightLine } from '../lib/brand';
 
 export default function AuthPage() {
   const { login, signup, user } = useAuth();
@@ -68,22 +62,19 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          {/* Logo Container */}
-          <motion.div 
+          {/* Logo. The lockup carries the wordmark, so there is no text
+              heading beside it - and therefore the image is NOT decorative:
+              it is the only thing naming the brand on this page, so it needs
+              real alt text. */}
+          <motion.div
             className="mb-8 inline-block"
             whileHover={{ scale: 1.05 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
             <div className="backdrop-blur-xl p-6 rounded-3xl shadow-2xl bg-white/80 border border-brand-border-soft">
-              <BrandLogo decorative className="h-20 w-auto object-contain" />
+              <BrandLogo className="h-24 w-auto object-contain" />
             </div>
           </motion.div>
-
-          {/* Title */}
-          <h1 className="text-5xl font-bold mb-4 tracking-tight">
-            <span className="brand-gradient-text">{BRAND_MARK}</span>
-            <span className="text-brand-ink"> {BRAND_SUFFIX}</span>
-          </h1>
 
           <p className="text-xl text-brand-ink-soft mb-8 max-w-md">
             {BRAND_TAGLINE}
@@ -124,15 +115,12 @@ export default function AuthPage() {
           transition={{ duration: 0.5 }}
           className="w-full max-w-md"
         >
-          {/* Mobile Logo */}
+          {/* Mobile Logo. Same reasoning as the desktop panel: the lockup is
+              the only brand identification here, so it keeps its alt text. */}
           <div className="lg:hidden text-center mb-8">
-            <div className="inline-block backdrop-blur-xl p-4 rounded-2xl mb-4 bg-white/90 border border-brand-border-soft shadow-lg">
-              <BrandLogo decorative className="h-12 w-auto object-contain" />
+            <div className="inline-block backdrop-blur-xl p-4 rounded-2xl bg-white/90 border border-brand-border-soft shadow-lg">
+              <BrandLogo className="h-14 w-auto object-contain" />
             </div>
-            <h1 className="text-2xl font-bold">
-              <span className="brand-gradient-text">{BRAND_MARK}</span>
-              <span className="text-brand-ink"> {BRAND_SUFFIX}</span>
-            </h1>
           </div>
 
           {/* Auth Card */}
