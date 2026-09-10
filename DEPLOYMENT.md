@@ -50,9 +50,13 @@ every row in the shipments table** — no authentication, no undo.
 | --- | --- | --- |
 | `VITE_API_URL` | *(empty)* | Leave unset. nginx serves the SPA and proxies `/api` on the same origin, so the empty value resolves to a relative `/api`. Only set this if the API moves to a different host. |
 | `VITE_API_KEY` | *(empty)* | The key the browser sends. See the warning below. |
-| `VITE_APPWRITE_ENDPOINT` | | Appwrite console values. |
+| `VITE_APPWRITE_ENDPOINT` | | Appwrite console values, for the browser SDK. |
 | `VITE_APPWRITE_PROJECT_ID` | | |
-| `VITE_APPWRITE_ADMIN_TEAM_ID` | | Admin features are disabled if unset. |
+| `APPWRITE_ENDPOINT` | | Same values again, unprefixed, so the **backend** can verify JWTs. Without them no user can be identified — see *Roles*. |
+| `APPWRITE_PROJECT_ID` | | |
+| `HO_TEAM_ID` | | Appwrite team whose members see real carrier names. |
+| `ADMIN_TEAM_ID` | | Appwrite team whose members may upload. |
+| `CLIENT_VIEW` | `auto` | Masking kill-switch: `auto`, `always`, `off`. |
 | `VITE_LOGO_URL` | `/logo.png` | |
 | `RUN_MIGRATIONS` | `true` | Set `false` if a separate release step applies migrations. |
 | `TRUST_PROXY` | `loopback, linklocal, uniquelocal` | See *Rate limiting* below. |
@@ -91,6 +95,59 @@ previous config. Cache headers come from the `$cache_control` map in
 declares its own `add_header` drops the server-level security headers.
 
 **Consequence:** rebuild only for code changes. Config changes are a restart.
+
+---
+
+## Roles
+
+Two audiences share one deployment:
+
+| | Sees carrier names | May upload |
+| --- | --- | --- |
+| **Drona HO** (`HO_TEAM_ID`) | Real names | only if also in `ADMIN_TEAM_ID` |
+| **Client / NPL** (everyone else) | `Carrier 4F2` pseudonyms | only if in `ADMIN_TEAM_ID` |
+
+The two teams are **independent on purpose**. An HO analyst can read real
+carrier names without being trusted to wipe and reload every shipment row, and
+an operator can run the upload without needing carrier identities.
+
+### How a role is established
+
+1. The browser mints a short-lived Appwrite JWT (`account.createJWT()`) and
+   sends it as `Authorization: Bearer …` on every API call.
+2. The backend hands that token straight back to Appwrite: `account.get()`
+   proves who it belongs to, and `teams.list()` on the same token says which
+   teams that user is in.
+3. Masking is applied **server-side**, before the payload is serialised.
+
+Nothing the browser sends can raise its own role. There is no role header, no
+role query parameter, and the frontend's copy of the role — fetched from
+`GET /api/me` — only decides which buttons render. Carrier names a client is
+not entitled to never leave the server, so they cannot be recovered from the
+network tab, from the Excel export, or from the dashboard cache.
+
+Every failure resolves to the masked role: no token, an expired token, a user
+in no team, Appwrite unreachable. A misconfiguration hides names; it never
+reveals them.
+
+### Shared API key
+
+`API_KEY` has no user behind it, so it always resolves to `client` and can
+never upload. It ships to every browser as `VITE_API_KEY`, so treating it as
+internal would publish carrier names to anyone who reads the JS bundle.
+
+### Kill-switch
+
+`CLIENT_VIEW=always` masks everyone regardless of role — use it if roles are
+misconfigured and names are leaking. `CLIENT_VIEW=off` disables masking
+entirely, for an internal-only deployment. An unrecognised value falls back to
+`auto`, never to `off`.
+
+### Local development
+
+`VITE_BYPASS_AUTH=true` skips login, so no JWT exists. Set `DEV_ROLE=ho` (and
+optionally `DEV_ADMIN=false` to exercise the HO-without-upload case) on the
+backend instead. Both are ignored when `NODE_ENV=production`.
 
 ---
 
@@ -218,7 +275,19 @@ and `API_KEY` are all mandatory.
 The database has no migration history. Follow *One-time baseline* above.
 
 **All `/api` calls return 401**
-`API_KEY` and the browser's `VITE_API_KEY` differ. They must match.
+`API_KEY` and the browser's `VITE_API_KEY` differ. They must match. If users
+are signed in, check `APPWRITE_ENDPOINT`/`APPWRITE_PROJECT_ID` on the backend
+instead — a JWT that cannot be verified is rejected.
+
+**An HO user sees pseudonyms**
+Check, in order: `CLIENT_VIEW` is not `always`; `HO_TEAM_ID` matches the team
+id in the Appwrite console; the user is actually a member of it; the backend
+`APPWRITE_*` pair is set. Every one of those failing modes masks by design.
+`GET /api/me` reports what the server decided and why (`role`, `via`).
+
+**"You do not have permission" on upload**
+The user is not in `ADMIN_TEAM_ID`. Being in `HO_TEAM_ID` does not grant
+upload — the two teams are separate.
 
 **Browser console: blocked by CORS**
 The origin is not in `FRONTEND_URL`. Add it (comma-separated); the apex/www

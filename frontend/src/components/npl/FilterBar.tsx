@@ -1,6 +1,7 @@
+import { useState } from 'react';
 import { useNplData } from '../../context/NplDataContext';
 import { useSurface, fmtInt } from './ui';
-import { exportUrl, type DashboardFilters } from '../../services/nplApi';
+import { downloadExport, type DashboardFilters } from '../../services/nplApi';
 import { lastFullMonth, monthOf } from '../../lib/period';
 import {
   IconRefresh,
@@ -80,6 +81,25 @@ export default function FilterBar() {
     isRefreshing,
     refresh,
   } = useNplData();
+
+  const [isExporting, setIsExporting] = useState(false);
+
+  // The export is fetched with the caller's credentials rather than opened as a
+  // plain link: a top-level navigation sends no Authorization header, so the
+  // server could neither authenticate it nor decide whether the Vendor column
+  // should carry real carrier names.
+  const handleExport = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+      await downloadExport(filters as DashboardFilters);
+    } catch (err) {
+      console.error('[export] download failed', err);
+      alert('Export failed. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const latest = options?.dateRange.to ?? null;
   const ranges = quickRanges(latest);
@@ -193,13 +213,19 @@ export default function FilterBar() {
               <IconRefresh className="h-4 w-4" />
             )}
           </button>
-          <a
-            href={exportUrl(filters as DashboardFilters)}
-            className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+          <button
+            onClick={handleExport}
+            disabled={isExporting}
+            title="Download the filtered selection as .xlsx"
+            className="flex h-9 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-xs font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-60"
           >
-            <IconDownload className="h-4 w-4" />
-            Export
-          </a>
+            {isExporting ? (
+              <IconLoader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <IconDownload className="h-4 w-4" />
+            )}
+            {isExporting ? 'Exporting...' : 'Export'}
+          </button>
         </div>
       </div>
 

@@ -11,6 +11,9 @@ import emailRoutes from './routes/email';
 import { authenticate } from './middleware/auth';
 import { errorHandler, createError } from './middleware/errorHandler';
 import dashboardRoutes from './routes/dashboard';
+import meRoutes from './routes/me';
+import { appwriteAuthConfigured } from './services/appwriteAuth';
+import { CLIENT_VIEW } from './config/vendorPrivacy';
 import emailPollingService from './services/emailPollingService';
 import dashboardCache from './services/cacheService';
 import path from 'path';
@@ -156,6 +159,7 @@ app.get('/api', (_req, res) => {
 app.use('/api', authenticate);
 
 // Routes with rate limiting
+app.use('/api/me', apiLimiter, meRoutes);
 app.use('/api/upload', uploadLimiter, uploadRoutes);
 app.use('/api/analytics/dashboard', apiLimiter, dashboardRoutes);
 app.use('/api/analytics', apiLimiter, analyticsRoutes);
@@ -166,8 +170,29 @@ if (emailPollingEnabled) {
 }
 
 console.log(
-  `[Server] Routes registered: /api/upload, /api/analytics${emailPollingEnabled ? ', /api/email' : ''}`
+  `[Server] Routes registered: /api/me, /api/upload, /api/analytics${emailPollingEnabled ? ', /api/email' : ''}`
 );
+
+// Role resolution is what decides whether a caller sees real carrier names, so
+// say plainly at boot which mode this process is in.
+console.log(`[Server] Carrier masking mode: CLIENT_VIEW=${CLIENT_VIEW}`);
+if (appwriteAuthConfigured) {
+  console.log(
+    process.env.HO_TEAM_ID
+      ? '[Server] Appwrite auth enabled; real carrier names granted via HO_TEAM_ID'
+      : '[Server] Appwrite auth enabled but HO_TEAM_ID is unset - every user resolves to "client"'
+  );
+  console.log(
+    process.env.ADMIN_TEAM_ID
+      ? '[Server] Upload rights granted via ADMIN_TEAM_ID'
+      : '[Server] ADMIN_TEAM_ID is unset - nobody can POST /api/upload'
+  );
+} else if (process.env.NODE_ENV === 'production') {
+  console.warn(
+    '[Server] APPWRITE_ENDPOINT / APPWRITE_PROJECT_ID are not set - user sign-in cannot be verified, ' +
+      'so every request falls back to the shared API key and the masked "client" role.'
+  );
+}
 
 // Health check endpoint (no auth required)
 app.get('/health', async (_req, res) => {

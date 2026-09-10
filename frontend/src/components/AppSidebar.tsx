@@ -19,58 +19,60 @@ import { cn } from "@/lib/utils";
 export default function AppSidebar() {
   const location = useLocation();
   const pathname = location.pathname;
-  const { isAdmin } = useAuth();
+  const { can } = useAuth();
   
   const links = [
     {
       label: "Overview",
       href: "/",
       icon: <IconBrandTabler className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Deliveries",
       href: "/deliveries",
       icon: <IconTruckDelivery className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Throughput",
       href: "/throughput",
       icon: <IconChartHistogram className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Network",
       href: "/network",
       icon: <IconMapPin className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Carriers",
       href: "/carriers",
       icon: <IconBuildingStore className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Shipments",
       href: "/shipments",
       icon: <IconTable className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Data Quality",
       href: "/data-quality",
       icon: <IconShieldCheck className="h-5 w-5 shrink-0" />,
-      adminOnly: false,
+      requires: null,
     },
     {
       label: "Upload Data",
       href: "/upload",
       icon: <IconUpload className="h-5 w-5 shrink-0" />,
-      adminOnly: true,
+      requires: "upload" as const,
     },
-  ].filter(link => !link.adminOnly || isAdmin);
+    // Presentation only - the /upload route and the API endpoint behind it
+    // are gated independently. See components/RequireCapability.tsx.
+  ].filter(link => !link.requires || can[link.requires]);
 
   const [open, setOpen] = useState(false);
 

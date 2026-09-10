@@ -43,9 +43,36 @@ function filtersFrom(req: Request): ShipmentFilters {
   };
 }
 
-function cacheKeyFor(f: ShipmentFilters): string {
+/**
+ * Whether carrier names must be pseudonymised for this request.
+ *
+ * Defaults to masked when req.auth is somehow absent: every /api route runs
+ * behind authenticate(), so that cannot normally happen, and if it ever does
+ * the safe answer is to hide names rather than to leak them.
+ */
+function maskedFor(req: Request): boolean {
+  return req.auth?.masked ?? true;
+}
+
+/**
+ * Cache key.
+ *
+ * `masked` is part of the key, and must stay that way. The cached value is a
+ * fully-rendered payload with carrier names already either real or
+ * pseudonymised, so a key that ignored the role would let the first HO request
+ * populate an entry that a subsequent client request then reads - handing the
+ * client exactly the names the masking exists to withhold.
+ *
+ * CACHE_VERSION changes whenever the key shape or payload shape changes, so
+ * entries written by an older build can never be read back by a newer one.
+ */
+const CACHE_VERSION = 'v2';
+
+function cacheKeyFor(f: ShipmentFilters, masked: boolean): string {
   return [
+    CACHE_VERSION,
     'dash',
+    masked ? 'masked' : 'real',
     f.from?.toISOString() ?? '',
     f.to?.toISOString() ?? '',
     f.branch ?? '',
@@ -58,8 +85,9 @@ function cacheKeyFor(f: ShipmentFilters): string {
 
 export const dashboard = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const masked = maskedFor(req);
     const filters = filtersFrom(req);
-    const key = cacheKeyFor(filters);
+    const key = cacheKeyFor(filters, masked);
 
     const cached = dashboardCache.get(key);
     if (cached) {
@@ -67,7 +95,7 @@ export const dashboard = async (req: Request, res: Response, next: NextFunction)
       return;
     }
 
-    const data = await getDashboard(filters);
+    const data = await getDashboard(filters, masked);
     dashboardCache.set(key, data);
     res.json({ ...data, meta: { ...data.meta, cached: false } });
   } catch (err) {
@@ -75,9 +103,9 @@ export const dashboard = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
-export const filterOptions = async (_req: Request, res: Response, next: NextFunction) => {
+export const filterOptions = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    res.json(await getFilterOptions());
+    res.json(await getFilterOptions(maskedFor(req)));
   } catch (err) {
     next(err);
   }
@@ -92,7 +120,7 @@ export const shipments = async (req: Request, res: Response, next: NextFunction)
       search: str(req.query.search),
       sortBy: str(req.query.sortBy),
       sortDir: req.query.sortDir === 'asc' ? 'asc' : 'desc',
-    });
+    }, maskedFor(req));
     res.json(data);
   } catch (err) {
     next(err);
@@ -103,7 +131,9 @@ export const shipments = async (req: Request, res: Response, next: NextFunction)
 export const exportShipments = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // The export covers the entire filtered set, not just the page on screen.
-    const rows = await getAllShipments(filtersFrom(req));
+    // A spreadsheet outlives the session it came from, so the Vendor column
+    // here is masked for a client exactly as it is on screen.
+    const rows = await getAllShipments(filtersFrom(req), maskedFor(req));
 
     const sheet = XLSX.utils.json_to_sheet(
       rows.map((r) => ({

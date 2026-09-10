@@ -1,6 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { uploadExcel } from '../controllers/uploadController';
+import { requireCapability } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -41,6 +42,12 @@ const upload = multer({
   }
 });
 
-router.post('/', upload.single('file'), uploadExcel);
+// ADMIN_TEAM_ID members only - deliberately NOT the same grant as seeing real
+// carrier names. This endpoint truncates and repopulates the entire shipments
+// table, and until per-user identity existed it was reachable by anything
+// holding the shared API key, which every browser holds as VITE_API_KEY.
+// The check runs BEFORE multer, so an unauthorised upload is rejected without
+// writing the file to disk first.
+router.post('/', requireCapability('upload'), upload.single('file'), uploadExcel);
 
 export default router;

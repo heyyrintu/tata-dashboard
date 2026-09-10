@@ -270,21 +270,27 @@ function scoreRow(
  * matches nothing in the database. Swap it back for the real name before the
  * query is built. Only runs when a carrier filter is actually set.
  */
-async function resolveFilters<T extends ShipmentFilters>(f: T): Promise<T> {
+async function resolveFilters<T extends ShipmentFilters>(f: T, masked: boolean): Promise<T> {
   if (!f.vendor) return f;
   const vendors = await prisma.shipment.findMany({
     where: { vendorName: { not: null } },
     select: { vendorName: true },
     distinct: ['vendorName'],
   });
-  return { ...f, vendor: resolveCarrier(f.vendor, vendors.map((v) => v.vendorName as string)) };
+  return { ...f, vendor: resolveCarrier(f.vendor, vendors.map((v) => v.vendorName as string), masked) };
 }
 
-/** Strip internal carrier identity and normalise the town on outgoing rows. */
-function forClient<T extends { vendorName: string | null; destination: string | null; lane: string | null }>(row: T): T {
+/**
+ * Strip internal carrier identity and normalise the town on outgoing rows.
+ * `masked` comes from the caller's role - see config/vendorPrivacy.ts.
+ */
+function forClient<T extends { vendorName: string | null; destination: string | null; lane: string | null }>(
+  row: T,
+  masked: boolean
+): T {
   return {
     ...row,
-    vendorName: carrierLabel(row.vendorName),
+    vendorName: carrierLabel(row.vendorName, masked),
     destination: normaliseDestination(row.destination),
     lane: row.lane,
   };
@@ -292,8 +298,8 @@ function forClient<T extends { vendorName: string | null; destination: string | 
 
 // ---------------------------------------------------------------- main
 
-export async function getDashboard(rawFilters: ShipmentFilters) {
-  const filters = await resolveFilters(rawFilters);
+export async function getDashboard(rawFilters: ShipmentFilters, masked: boolean) {
+  const filters = await resolveFilters(rawFilters, masked);
   const where = buildWhere(filters);
 
   const [rows, totalRows] = await Promise.all([
@@ -441,7 +447,7 @@ export async function getDashboard(rawFilters: ShipmentFilters) {
   const vendors = groupBy(rows, (r) => r.vendorName, (vendor, rs) => {
     const s = onTimeStats(rs);
     return {
-      vendor: carrierLabel(vendor),
+      vendor: carrierLabel(vendor, masked),
       shipments: rs.length,
       litres: litresOf(rs),
       onTimePct: s.pct,
@@ -461,7 +467,7 @@ export async function getDashboard(rawFilters: ShipmentFilters) {
     litres: litresOf(rs),
     onTimePct: onTimeStats(rs).pct,
     avgTransitDays: avgTransit(rs),
-    vendor: carrierLabel(rs.find((r) => r.vendorName)?.vendorName ?? null),
+    vendor: carrierLabel(rs.find((r) => r.vendorName)?.vendorName ?? null, masked),
     branches: [...new Set(rs.map((r) => r.branch).filter(Boolean))] as string[],
   }))
     .sort((a, b) => b.trips - a.trips)
@@ -817,7 +823,7 @@ export async function getDashboard(rawFilters: ShipmentFilters) {
 }
 
 /** Distinct values for the filter bar, plus the overall date bounds. */
-export async function getFilterOptions() {
+export async function getFilterOptions(masked: boolean) {
   const [branches, vendors, skus, loadTypes, statuses, bounds] = await Promise.all([
     prisma.shipment.findMany({ where: { branch: { not: null } }, select: { branch: true }, distinct: ['branch'], orderBy: { branch: 'asc' } }),
     prisma.shipment.findMany({ where: { vendorName: { not: null } }, select: { vendorName: true }, distinct: ['vendorName'], orderBy: { vendorName: 'asc' } }),
@@ -830,7 +836,7 @@ export async function getFilterOptions() {
   return {
     branches: branches.map((b) => b.branch as string),
     // Pseudonyms, matching what the charts show. resolveFilters maps them back.
-    vendors: [...new Set(vendors.map((v) => carrierLabel(v.vendorName) as string))].sort(),
+    vendors: [...new Set(vendors.map((v) => carrierLabel(v.vendorName, masked) as string))].sort(),
     // Sort SKUs by pack size, not alphabetically, so 5L < 10L < 20L < 210L.
     skus: skus
       .map((s) => s.materialSku as string)
@@ -858,8 +864,8 @@ const SORTABLE = new Set([
 ]);
 
 /** Paginated drill-down table behind the charts. */
-export async function getShipments(rawQuery: ShipmentPageQuery) {
-  const q = await resolveFilters(rawQuery);
+export async function getShipments(rawQuery: ShipmentPageQuery, masked: boolean) {
+  const q = await resolveFilters(rawQuery, masked);
   const page = Math.max(1, q.page || 1);
   const pageSize = Math.min(200, Math.max(1, q.pageSize || 50));
 
@@ -891,16 +897,22 @@ export async function getShipments(rawQuery: ShipmentPageQuery) {
     prisma.shipment.count({ where }),
   ]);
 
-  return { rows: rows.map(forClient), total, page, pageSize, pageCount: Math.ceil(total / pageSize) };
+  return {
+    rows: rows.map((r) => forClient(r, masked)),
+    total,
+    page,
+    pageSize,
+    pageCount: Math.ceil(total / pageSize),
+  };
 }
 
 /** Every row matching the filter, ordered for export. Bounded by MAX_ROWS. */
-export async function getAllShipments(rawFilters: ShipmentFilters) {
-  const f = await resolveFilters(rawFilters);
+export async function getAllShipments(rawFilters: ShipmentFilters, masked: boolean) {
+  const f = await resolveFilters(rawFilters, masked);
   const rows = await prisma.shipment.findMany({
     where: buildWhere(f),
     orderBy: [{ lrDate: 'asc' }, { id: 'asc' }],
     take: MAX_ROWS,
   });
-  return rows.map(forClient);
+  return rows.map((r) => forClient(r, masked));
 }

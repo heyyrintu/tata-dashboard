@@ -1,4 +1,4 @@
-import { Client, Account, Databases, Teams } from "appwrite";
+import { Client, Account, Databases } from "appwrite";
 import { env, envFlag } from "./runtimeEnv";
 
 // Development-only auth bypass. Set VITE_BYPASS_AUTH=true in frontend/.env to
@@ -31,13 +31,11 @@ const client = new Client()
 
 const account = new Account(client);
 const databases = new Databases(client);
-const teams = new Teams(client);
 
-// Admin team ID from environment variable
-export const ADMIN_TEAM_ID = env("VITE_APPWRITE_ADMIN_TEAM_ID");
+// NOTE: the admin/HO team IDs are deliberately NOT read here.
+// Team membership is resolved server-side (backend HO_TEAM_ID and
+// ADMIN_TEAM_ID) and reported to the app by GET /api/me. Checking it again in
+// the browser would only add a second answer that can disagree with the one
+// the API actually enforces.
 
-if (!ADMIN_TEAM_ID && !BYPASS_AUTH) {
-    console.warn("VITE_APPWRITE_ADMIN_TEAM_ID is not set. Admin features will be disabled.");
-}
-
-export { client, account, databases, teams };
+export { client, account, databases };

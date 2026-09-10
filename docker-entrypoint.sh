@@ -25,9 +25,10 @@ const keys = [
   "VITE_API_KEY",
   "VITE_APPWRITE_ENDPOINT",
   "VITE_APPWRITE_PROJECT_ID",
-  "VITE_APPWRITE_ADMIN_TEAM_ID",
   "VITE_LOGO_URL",
 ];
+// NOTE: no team ids here. Which team a user belongs to is resolved server-side
+// (HO_TEAM_ID / ADMIN_TEAM_ID, no VITE_ prefix) and reported by GET /api/me.
 const config = {};
 for (const key of keys) {
   const value = process.env[key];
