@@ -49,29 +49,40 @@ export function copyrightLine(): string {
  * Brand asset paths.
  *
  * Every file lives in frontend/public/brand/ and is served from the app's own
- * origin - nothing is hotlinked. The favicon used to point at a dribbble CDN
- * URL, which put the brand's appearance at the mercy of a third party.
+ * origin - nothing is hotlinked. The favicon used to point at a third-party CDN
+ * URL, which put the brand's appearance at the mercy of someone else's uptime.
  *
- * To swap in real artwork, overwrite the files in frontend/public/brand/ and
- * change nothing here. See frontend/public/brand/README.md for the exact
- * filenames and sizes expected.
+ * To swap in real artwork, drop the files into frontend/public/brand/ and
+ * change nothing here. See frontend/public/brand/README.md.
+ *
+ * Each slot lists candidates in priority order, and <BrandLogo> falls through
+ * to the next one if a file is absent. That way SVG artwork and raster artwork
+ * both drop in with no code change - a vector logo.svg wins where it exists,
+ * a logo.png is picked up otherwise, and the committed placeholder is the
+ * last resort so the UI is never broken.
  */
 export const BRAND_ASSETS = {
   /** Full horizontal lockup: mark + wordmark. Sign-in page, sidebar (expanded). */
-  logo: '/brand/logo.svg',
-  /** Square mark alone, for tight spaces. Sidebar (collapsed), favicon. */
-  mark: '/brand/logo-mark.svg',
-  /** Apple touch icon. Must be a raster PNG; iOS does not accept SVG. */
-  appleTouchIcon: '/brand/apple-touch-icon.png',
+  logo: ['/brand/logo.svg', '/brand/logo.png'],
+  /** Square mark alone, for tight spaces. Sidebar (collapsed). */
+  mark: ['/brand/logo-mark.svg', '/brand/logo-mark.png'],
 } as const;
 
+/** Apple touch icon. Must be a raster PNG; iOS does not accept SVG. */
+export const APPLE_TOUCH_ICON = '/brand/apple-touch-icon.png';
+
 /**
- * Logo source for the sign-in page.
+ * Candidate sources for a brand slot, most-preferred first.
  *
- * VITE_LOGO_URL still overrides it at runtime, so a deployment can point at a
- * different lockup without a rebuild, but the default is now a self-hosted
- * file rather than a missing /logo.png.
+ * VITE_LOGO_URL still overrides the lockup at runtime, so a deployment can
+ * point at different artwork without a rebuild. When it is set it wins
+ * outright; otherwise the bundled candidates are tried in order.
  */
-export function logoUrl(): string {
-  return env('VITE_LOGO_URL', BRAND_ASSETS.logo);
+export function logoSources(): readonly string[] {
+  const override = env('VITE_LOGO_URL');
+  return override ? [override] : BRAND_ASSETS.logo;
+}
+
+export function markSources(): readonly string[] {
+  return BRAND_ASSETS.mark;
 }

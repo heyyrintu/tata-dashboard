@@ -14,7 +14,8 @@ import { motion } from "motion/react";
 import { useLocation } from "react-router-dom";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
-import { BRAND_ASSETS, BRAND_MARK, BRAND_NAME, BRAND_SUFFIX } from "@/lib/brand";
+import BrandLogo from "@/components/BrandLogo";
+import { BRAND_MARK, BRAND_NAME, BRAND_SUFFIX } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 export default function AppSidebar() {
@@ -119,12 +120,7 @@ const SidebarBrand = () => {
       aria-label={BRAND_NAME}
       title={BRAND_NAME}
     >
-      <img
-        src={BRAND_ASSETS.mark}
-        alt=""
-        aria-hidden="true"
-        className="h-8 w-8 shrink-0 rounded-lg"
-      />
+      <BrandLogo variant="mark" decorative className="h-8 w-8 shrink-0 rounded-lg" />
       <motion.span
         animate={{
           display: animate ? (open ? "inline-block" : "none") : "inline-block",

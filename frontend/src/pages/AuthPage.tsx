@@ -3,16 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { IconMail, IconLock, IconUser, IconLoader2, IconArrowRight } from '@tabler/icons-react';
 import { motion } from 'motion/react';
+import BrandLogo from '../components/BrandLogo';
 import {
   BRAND_MARK,
   BRAND_NAME,
   BRAND_SUFFIX,
   BRAND_TAGLINE,
   copyrightLine,
-  logoUrl,
 } from '../lib/brand';
-
-const LOGO_URL = logoUrl();
 
 export default function AuthPage() {
   const { login, signup, user } = useAuth();
@@ -77,11 +75,7 @@ export default function AuthPage() {
             transition={{ type: "spring", stiffness: 300 }}
           >
             <div className="backdrop-blur-xl p-6 rounded-3xl shadow-2xl bg-white/80 border border-brand-border-soft">
-              <img
-                src={LOGO_URL}
-                alt={BRAND_NAME}
-                className="h-20 w-auto object-contain"
-              />
+              <BrandLogo decorative className="h-20 w-auto object-contain" />
             </div>
           </motion.div>
 
@@ -133,11 +127,7 @@ export default function AuthPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
             <div className="inline-block backdrop-blur-xl p-4 rounded-2xl mb-4 bg-white/90 border border-brand-border-soft shadow-lg">
-              <img
-                src={LOGO_URL}
-                alt={BRAND_NAME}
-                className="h-12 w-auto object-contain"
-              />
+              <BrandLogo decorative className="h-12 w-auto object-contain" />
             </div>
             <h1 className="text-2xl font-bold">
               <span className="brand-gradient-text">{BRAND_MARK}</span>
