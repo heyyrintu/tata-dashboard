@@ -16,6 +16,10 @@ export type Role = 'ho' | 'client';
 
 export const ROLES: readonly Role[] = ['ho', 'client'] as const;
 
+/**
+ * Type guard for untrusted role strings - currently only DEV_ROLE, which comes
+ * from the environment. Nothing derived from a request is ever passed here.
+ */
 export function isRole(value: unknown): value is Role {
   return typeof value === 'string' && (ROLES as readonly string[]).includes(value);
 }
@@ -42,6 +46,11 @@ export interface Capabilities {
 
 export type Capability = keyof Capabilities;
 
+/**
+ * Resolve capabilities from the two independent grants. Both arguments are
+ * required so a caller cannot accidentally infer one from the other: an HO
+ * analyst may see carrier names without being able to upload, and vice versa.
+ */
 export function capabilitiesFor(role: Role, isAdmin: boolean): Capabilities {
   return {
     seeCarrierNames: role === 'ho',
@@ -65,6 +74,7 @@ export interface AuthContext {
   masked: boolean;
 }
 
+/** capabilitiesFor() applied to a request's resolved identity. */
 export function capabilitiesOf(auth: AuthContext): Capabilities {
   return capabilitiesFor(auth.role, auth.isAdmin);
 }

@@ -83,6 +83,11 @@ export function logoSources(): readonly string[] {
   return override ? [override] : BRAND_ASSETS.logo;
 }
 
+/**
+ * Candidates for the square mark. Unlike the lockup this has no runtime
+ * override: the mark renders at 32px in the sidebar, where a wide lockup
+ * supplied by mistake would be unreadable.
+ */
 export function markSources(): readonly string[] {
   return BRAND_ASSETS.mark;
 }

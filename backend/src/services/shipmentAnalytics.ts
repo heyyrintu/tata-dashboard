@@ -298,6 +298,14 @@ function forClient<T extends { vendorName: string | null; destination: string | 
 
 // ---------------------------------------------------------------- main
 
+/**
+ * Full dashboard payload for one filter selection.
+ *
+ * `masked` is passed in rather than read from configuration: it is a property
+ * of the CALLER, not of the process, and the controller derives it from the
+ * verified request identity. It must also be part of the cache key, since the
+ * payload it produces differs.
+ */
 export async function getDashboard(rawFilters: ShipmentFilters, masked: boolean) {
   const filters = await resolveFilters(rawFilters, masked);
   const where = buildWhere(filters);

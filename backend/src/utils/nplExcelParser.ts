@@ -327,6 +327,15 @@ function findHeaderRow(rows: unknown[][]): number {
   return 0;
 }
 
+/**
+ * Read an NPL MIS workbook into rows, with a full account of what happened.
+ *
+ * Reads only - no database access - so it is safe to dry-run against a file
+ * before deciding to import it. The returned ParseReport carries per-sheet
+ * counts, attributed skip reasons and unmapped headers, which is what lets a
+ * caller answer "rows in, rows kept, rows skipped and why" before writing
+ * anything. Volumes are never silently corrected; suspect rows are flagged.
+ */
 export function parseNplWorkbook(filePath: string): ParseReport {
   const workbook = XLSX.readFile(filePath, { cellDates: false, cellFormula: false });
 
