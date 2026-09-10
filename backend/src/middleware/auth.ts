@@ -13,13 +13,21 @@ import { createError } from './errorHandler';
  * 
  * Set API_KEY in environment variables
  */
+// Warn once at first use rather than on every request. Each dashboard page
+// load fires several API calls, which turned this into hundreds of identical
+// log lines that drowned out everything else.
+let openAccessWarned = false;
+
 export const authenticate = (req: Request, res: Response, next: NextFunction): void => {
   const apiKey = process.env.API_KEY;
   const requestId = req.id || 'unknown';
 
   // If no API key is configured, allow all requests (development mode)
   if (!apiKey) {
-    logger.warn('API_KEY not configured - allowing all requests', { requestId });
+    if (!openAccessWarned) {
+      openAccessWarned = true;
+      logger.warn('API_KEY not configured - all API requests are being allowed without authentication');
+    }
     return next();
   }
 

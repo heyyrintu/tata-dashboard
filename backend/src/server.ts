@@ -1,8 +1,9 @@
+// Must stay the FIRST import: it loads .env before any other module is constructed.
+import { emailPollingEnabled } from './config/env';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
-import dotenv from 'dotenv';
 import { connectDatabase } from './config/database';
 import uploadRoutes from './routes/upload';
 import analyticsRoutes from './routes/analytics';
@@ -15,7 +16,6 @@ import dashboardCache from './services/cacheService';
 import path from 'path';
 import fs from 'fs';
 
-dotenv.config();
 
 // Validate required environment variables
 const requiredEnvVars = ['DATABASE_URL'];
@@ -73,28 +73,20 @@ if (!fs.existsSync(uploadsDir)) {
 app.get('/api', (_req, res) => {
   res.json({
     status: 'OK',
-    message: 'TATA Dashboard API',
-    version: '1.0.0',
+    message: 'NPL DEF Dashboard API',
+    version: '2.0.0',
     endpoints: {
-      upload: '/api/upload',
+      upload: 'POST /api/upload - Import an NPL MIS master workbook (replaces all data)',
       analytics: {
         base: '/api/analytics',
         routes: [
-          'GET /api/analytics - Get summary cards (totalIndents, totalTrips)',
-          'GET /api/analytics/range-wise - Get range-wise summary',
-          'GET /api/analytics/fulfillment - Get fulfillment analytics',
-          'GET /api/analytics/load-over-time - Get load over time',
-          'GET /api/analytics/revenue - Get revenue analytics',
-          'GET /api/analytics/cost - Get cost analytics',
-          'GET /api/analytics/profit-loss - Get profit/loss analytics',
-          'GET /api/analytics/vehicle-cost - Get vehicle cost analytics',
-          'GET /api/analytics/month-on-month - Get month-on-month data',
-          'GET /api/analytics/debug/calculations - Debug all calculations',
-          'GET /api/analytics/export-all - Export all indents to Excel (with date filter)',
-          'GET /api/analytics/fulfillment/export-missing - Export missing indents to Excel'
+          'GET /api/analytics - Full dashboard payload (KPIs, on-time, volume, POD, vendors, lanes, data quality)',
+          'GET /api/analytics/filters - Filter options (branches, vendors, SKUs, load types, date bounds)',
+          'GET /api/analytics/shipments - Paginated shipment table',
+          'GET /api/analytics/export - Export the filtered selection to Excel'
         ]
       },
-      email: '/api/email',
+      email: emailPollingEnabled ? '/api/email' : 'disabled (set ENABLE_EMAIL_POLLING=true)',
       health: '/health'
     }
   });
@@ -107,38 +99,44 @@ app.use('/api', authenticate);
 app.use('/api/upload', uploadLimiter, uploadRoutes);
 app.use('/api/analytics/dashboard', apiLimiter, dashboardRoutes);
 app.use('/api/analytics', apiLimiter, analyticsRoutes);
-app.use('/api/email', apiLimiter, emailRoutes);
+// Email ingestion is off by default; its routes are not mounted when disabled
+// so a stray call fails fast with 404 rather than hitting a dead IMAP server.
+if (emailPollingEnabled) {
+  app.use('/api/email', apiLimiter, emailRoutes);
+}
 
-console.log('[Server] Routes registered: /api/upload, /api/analytics, /api/email');
+console.log(
+  `[Server] Routes registered: /api/upload, /api/analytics${emailPollingEnabled ? ', /api/email' : ''}`
+);
 
 // Health check endpoint (no auth required)
 app.get('/health', async (_req, res) => {
   try {
-    const stats = await import('./lib/prisma').then(m => m.default.$queryRaw<[{
+    const stats = await import('./lib/prisma').then((m) => m.default.$queryRaw<[{
       total_rows: bigint;
-      rows_with_cost: bigint;
-      total_cost: number;
-      rows_with_range: bigint;
+      rows_delivered: bigint;
+      total_litres: number;
+      pod_received: bigint;
       min_date: string;
       max_date: string;
     }]>`
       SELECT
         COUNT(*) AS total_rows,
-        COUNT(CASE WHEN "totalCostAE" > 0 THEN 1 END) AS rows_with_cost,
-        COALESCE(SUM("totalCostAE"), 0) AS total_cost,
-        COUNT(CASE WHEN range IS NOT NULL AND TRIM(range) != '' THEN 1 END) AS rows_with_range,
-        MIN("indentDate")::text AS min_date,
-        MAX("indentDate")::text AS max_date
-      FROM trips
+        COUNT(CASE WHEN "deliveryStatus" = 'Delivered' THEN 1 END) AS rows_delivered,
+        COALESCE(SUM("totalQuantityLtr"), 0) AS total_litres,
+        COUNT(CASE WHEN "podReceived" THEN 1 END) AS pod_received,
+        MIN("lrDate")::text AS min_date,
+        MAX("lrDate")::text AS max_date
+      FROM shipments
     `);
     const row = stats[0];
     res.json({
       status: 'OK',
       db: {
         totalRows: Number(row.total_rows),
-        rowsWithCost: Number(row.rows_with_cost),
-        totalCost: Number(row.total_cost),
-        rowsWithRange: Number(row.rows_with_range),
+        delivered: Number(row.rows_delivered),
+        totalLitres: Number(row.total_litres),
+        podReceived: Number(row.pod_received),
         dateRange: { min: row.min_date, max: row.max_date },
       },
     });
@@ -163,13 +161,16 @@ connectDatabase().then(async () => {
   app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 
-    // Start email polling service if IMAP credentials are configured
-    if (process.env.IMAP_USER && process.env.IMAP_PASSWORD) {
+    // Email polling is opt-in. NPL DEF ingests via the upload page, so the
+    // poller stays off unless ENABLE_EMAIL_POLLING=true is set explicitly.
+    if (!emailPollingEnabled) {
+      console.log('[Server] Email polling disabled (set ENABLE_EMAIL_POLLING=true to enable)');
+    } else if (process.env.IMAP_USER && process.env.IMAP_PASSWORD) {
       console.log('[Server] Starting email polling service (IMAP)');
       console.log(`[Server] Polling interval: ${parseInt(process.env.EMAIL_POLL_INTERVAL || '600000', 10) / 1000}s`);
       emailPollingService.start();
     } else {
-      console.log('[Server] Email polling service not configured (missing IMAP credentials)');
+      console.log('[Server] Email polling enabled but IMAP credentials are missing - not started');
     }
   });
 });

@@ -1,22 +1,77 @@
 import { Request, Response } from 'express';
 import path from 'path';
-import { parseExcelFile } from '../utils/excelParser';
-import prisma from '../lib/prisma';
 import fs from 'fs';
+import prisma from '../lib/prisma';
 import dashboardCache from '../services/cacheService';
-import { preComputeAll } from '../services/preComputeService';
+import { parseNplWorkbook, ShipmentInput } from '../utils/nplExcelParser';
+import { logger } from '../utils/logger';
 
-interface UploadResult {
+export interface UploadResult {
   success: boolean;
   recordCount: number;
   fileName?: string;
   message: string;
   error?: string;
+  sheets?: { name: string; branch: string; rows: number; skipped: number }[];
+  flagCounts?: Record<string, number>;
+  warnings?: string[];
+}
+
+const BATCH_SIZE = 200;
+
+function toPrismaRow(s: ShipmentInput) {
+  return {
+    srNo: s.srNo ?? null,
+    sourceSheet: s.sourceSheet ?? null,
+    branch: s.branch ?? null,
+    pickupLocation: s.pickupLocation ?? null,
+    partyName: s.partyName ?? null,
+    destination: s.destination ?? null,
+    lane: s.lane ?? null,
+    invoiceNumber: s.invoiceNumber ?? null,
+    lrNo: s.lrNo ?? null,
+    lrDate: s.lrDate ?? null,
+    material: s.material ?? null,
+    materialSku: s.materialSku ?? null,
+    packSizeLtr: s.packSizeLtr ?? null,
+    buckets: s.buckets ?? 0,
+    totalQuantityLtr: s.totalQuantityLtr ?? 0,
+    loadType: s.loadType ?? null,
+    expectedDeliveryDate: s.expectedDeliveryDate ?? null,
+    actualDeliveryDate: s.actualDeliveryDate ?? null,
+    dispatchDate: s.dispatchDate ?? null,
+    dispatchFrom: s.dispatchFrom ?? null,
+    deliveryStatus: s.deliveryStatus ?? null,
+    deliveryStatusRaw: s.deliveryStatusRaw ?? null,
+    lrStatus: s.lrStatus ?? null,
+    damage: s.damage ?? false,
+    delayDays: s.delayDays ?? null,
+    isOnTime: s.isOnTime ?? null,
+    dispatchToDeliveryDays: s.dispatchToDeliveryDays ?? null,
+    loadingCharges: s.loadingCharges ?? 0,
+    unloadingCharges: s.unloadingCharges ?? 0,
+    vehicleNumber: s.vehicleNumber ?? null,
+    vehicleType: s.vehicleType ?? null,
+    vendorName: s.vendorName ?? null,
+    dispatchVehicle: s.dispatchVehicle ?? null,
+    routeCode: s.routeCode ?? null,
+    ply: s.ply ?? 0,
+    podStatus: s.podStatus ?? null,
+    podStatusRaw: s.podStatusRaw ?? null,
+    podReceived: s.podReceived ?? false,
+    monthKey: s.monthKey ?? null,
+    remarks: s.remarks ?? null,
+    dataFlags: s.dataFlags ?? null,
+  };
 }
 
 /**
- * Internal function to process Excel file from buffer or file path
- * This can be called from HTTP upload or email processing
+ * Parse an NPL MIS workbook and replace the shipments table with its contents.
+ *
+ * The upload is a full replace, not a merge: the master sheet is the single
+ * source of truth and is re-issued in full each time, so appending would
+ * duplicate every prior row. The delete and the inserts share one transaction,
+ * so a parse or write failure leaves the previous data intact.
  */
 export const processExcelFile = async (
   fileBuffer: Buffer | null,
@@ -26,192 +81,97 @@ export const processExcelFile = async (
   let tempFilePath: string | null = null;
 
   try {
-    // If buffer is provided, save to temp file first
     if (fileBuffer) {
       const tempDir = path.join(__dirname, '../../uploads');
-      if (!fs.existsSync(tempDir)) {
-        fs.mkdirSync(tempDir, { recursive: true });
-      }
-
-      const sanitizedName = (fileName || 'upload.xlsx').replace(/[^a-zA-Z0-9._-]/g, '_');
-      tempFilePath = path.join(tempDir, `temp_${Date.now()}_${sanitizedName}`);
+      if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+      const safeName = (fileName || 'upload.xlsx').replace(/[^a-zA-Z0-9._-]/g, '_');
+      tempFilePath = path.join(tempDir, `temp_${Date.now()}_${safeName}`);
       fs.writeFileSync(tempFilePath, fileBuffer);
     }
 
     const finalPath = filePath || tempFilePath;
-    if (!finalPath) {
-      throw new Error('No file path or buffer provided');
-    }
+    if (!finalPath) throw new Error('No file path or buffer provided');
 
-    // Parse the Excel file
-    const indents = parseExcelFile(finalPath);
+    const report = parseNplWorkbook(finalPath);
 
-    if (indents.length === 0) {
+    if (report.rows.length === 0) {
       return {
         success: false,
         recordCount: 0,
-        fileName: fileName,
-        message: 'No valid data found in Excel file',
-        error: 'No valid data found in Excel file'
+        fileName,
+        message: 'No valid shipment rows found in the workbook.',
+        error: 'No valid shipment rows found in the workbook.',
+        sheets: report.sheets,
+        warnings: report.warnings,
       };
     }
 
-    // Sort indents by indentDate (time) - oldest first
-    indents.sort((a, b) => {
-      const dateA = a.indentDate ? (a.indentDate instanceof Date ? a.indentDate.getTime() : new Date(a.indentDate).getTime()) : 0;
-      const dateB = b.indentDate ? (b.indentDate instanceof Date ? b.indentDate.getTime() : new Date(b.indentDate).getTime()) : 0;
-      return dateA - dateB;
-    });
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.shipment.deleteMany();
+        for (let i = 0; i < report.rows.length; i += BATCH_SIZE) {
+          await tx.shipment.createMany({
+            data: report.rows.slice(i, i + BATCH_SIZE).map(toPrismaRow),
+          });
+        }
+      },
+      { timeout: 120_000 }
+    );
 
-    // Delete all existing data and insert new data in a transaction
-    const batchSize = 100;
-
-    await prisma.$transaction(async (tx) => {
-      await tx.trip.deleteMany();
-
-      for (let i = 0; i < indents.length; i += batchSize) {
-        const batch = indents.slice(i, i + batchSize);
-
-        const prismaData = batch.map(indent => ({
-          sNo: indent.sNo,
-          indentDate: indent.indentDate ? (indent.indentDate instanceof Date ? indent.indentDate : new Date(indent.indentDate)) : null,
-          indent: indent.indent,
-          allocationDate: indent.allocationDate instanceof Date ? indent.allocationDate : (indent.allocationDate ? new Date(indent.allocationDate) : null),
-          customerName: indent.customerName,
-          location: indent.location,
-          vehicleModel: indent.vehicleModel,
-          vehicleNumber: indent.vehicleNumber,
-          vehicleBased: indent.vehicleBased,
-          lrNo: indent.lrNo,
-          material: indent.material,
-          loadPerBucket: indent.loadPerBucket || 0,
-          noOfBuckets: indent.noOfBuckets || 0,
-          totalLoad: indent.totalLoad || 0,
-          podReceived: indent.podReceived,
-          loadingCharge: indent.loadingCharge || 0,
-          unloadingCharge: indent.unloadingCharge || 0,
-          actualRunning: indent.actualRunning || 0,
-          billableRunning: indent.billableRunning || 0,
-          range: indent.range,
-          remarks: indent.remarks,
-          freightTigerMonth: indent.freightTigerMonth,
-          totalCostAE: indent.totalCostAE || 0,
-          totalCostLoading: indent.totalCostLoading || 0,
-          totalCostUnload: indent.totalCostUnload || 0,
-          anyOtherCost: indent.anyOtherCost || 0,
-          remainingCost: indent.remainingCost || 0,
-          vehicleCost: indent.vehicleCost || 0,
-          profitLoss: indent.profitLoss || 0,
-          totalKm: indent.totalKm || 0,
-        }));
-
-        await tx.trip.createMany({
-          data: prismaData,
-          skipDuplicates: true
-        });
-      }
-    }, { timeout: 60000 });
-
-    // Verify data integrity
-    const totalInserted = await prisma.trip.count();
-
-    const aggregateResult = await prisma.trip.aggregate({
-      _sum: {
-        totalCostAE: true,
-        totalKm: true
-      }
-    });
-    const totalCostValue = aggregateResult._sum.totalCostAE ?? 0;
-    const totalKmValue = aggregateResult._sum.totalKm ?? 0;
-
-    // Verify data integrity
-    const expectedTotalCost = indents.reduce((sum, indent) => sum + (indent.totalCostAE || 0), 0);
-    const expectedTotalKm = indents.reduce((sum, indent) => sum + (Number(indent.totalKm) || 0), 0);
-
-    if (totalInserted !== indents.length) {
-      console.warn(`[uploadController] WARNING: Inserted count (${totalInserted}) doesn't match parsed count (${indents.length})`);
-    }
-    if (Math.abs(totalCostValue - expectedTotalCost) > 0.01) {
-      console.warn(`[uploadController] WARNING: Database total cost (₹${totalCostValue.toLocaleString('en-IN')}) doesn't match expected (₹${expectedTotalCost.toLocaleString('en-IN')})`);
-    }
-    if (Math.abs(totalKmValue - expectedTotalKm) > 0.01) {
-      console.warn(`[uploadController] WARNING: Database total Km (${totalKmValue.toLocaleString('en-IN')} km) doesn't match expected (${expectedTotalKm.toLocaleString('en-IN')} km)`);
-    }
-
-    // Invalidate cache and trigger background pre-computation
     dashboardCache.invalidate();
-    setImmediate(() => {
-      preComputeAll().catch(err =>
-        console.error('[uploadController] Background pre-computation failed:', err)
-      );
+    await prisma.dashboardSnapshot.deleteMany().catch(() => undefined);
+
+    logger.info('NPL workbook imported', {
+      fileName,
+      records: report.rows.length,
+      sheets: report.sheets.length,
+      flags: report.flagCounts,
     });
 
     return {
       success: true,
-      recordCount: indents.length,
-      fileName: fileName,
-      message: `Successfully uploaded ${indents.length} records (sorted by time)`
+      recordCount: report.rows.length,
+      fileName,
+      message: `Imported ${report.rows.length} shipments from ${report.sheets.length} sheets.`,
+      sheets: report.sheets,
+      flagCounts: report.flagCounts,
+      warnings: report.warnings,
     };
   } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    logger.error('NPL workbook import failed', { fileName, error: message });
     return {
       success: false,
       recordCount: 0,
-      fileName: fileName,
-      message: error instanceof Error ? error.message : 'Failed to process Excel file',
-      error: error instanceof Error ? error.message : 'Failed to process Excel file'
+      fileName,
+      message: `Import failed: ${message}`,
+      error: message,
     };
   } finally {
-    // Clean up temp file if created from buffer
     if (tempFilePath && fs.existsSync(tempFilePath)) {
       try {
         fs.unlinkSync(tempFilePath);
-      } catch (cleanupError) {
-        console.error('[uploadController] Failed to cleanup temp file:', cleanupError);
-      }
-    }
-    // Clean up uploaded file from multer if provided
-    if (filePath && !fileBuffer && fs.existsSync(filePath)) {
-      try {
-        fs.unlinkSync(filePath);
-      } catch (cleanupError) {
-        console.error('[uploadController] Failed to cleanup uploaded file:', cleanupError);
+      } catch {
+        /* best effort */
       }
     }
   }
 };
 
-/**
- * HTTP endpoint for file upload via multer
- */
-export const uploadExcel = async (req: Request, res: Response) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({
-        success: false,
-        error: 'No file uploaded'
-      });
-    }
-
-    const filePath = req.file.path;
-    const result = await processExcelFile(null, filePath, req.file.originalname);
-
-    if (result.success) {
-      res.json({
-        success: true,
-        recordCount: result.recordCount,
-        fileName: result.fileName,
-        message: result.message
-      });
-    } else {
-      res.status(400).json({
-        success: false,
-        error: result.error || 'Failed to process Excel file'
-      });
-    }
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to process Excel file'
-    });
+export const uploadExcel = async (req: Request, res: Response): Promise<void> => {
+  if (!req.file) {
+    res.status(400).json({ success: false, message: 'No file uploaded.' });
+    return;
   }
+
+  const result = await processExcelFile(null, req.file.path, req.file.originalname);
+
+  // Multer already wrote the upload to disk; drop it once parsed.
+  try {
+    if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+  } catch {
+    /* best effort */
+  }
+
+  res.status(result.success ? 200 : 400).json(result);
 };

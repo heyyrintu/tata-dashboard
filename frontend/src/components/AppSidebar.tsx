@@ -2,8 +2,13 @@ import { useState } from "react";
 import { Sidebar, SidebarBody, SidebarLink, useSidebar } from "@/components/ui/sidebar";
 import {
   IconBrandTabler,
-  IconUserBolt,
+  IconTruckDelivery,
+  IconBuildingStore,
   IconTable,
+  IconShieldCheck,
+  IconUpload,
+  IconChartHistogram,
+  IconMapPin,
 } from "@tabler/icons-react";
 import { motion } from "motion/react";
 import { useLocation } from "react-router-dom";
@@ -18,27 +23,51 @@ export default function AppSidebar() {
   
   const links = [
     {
-      label: "Dashboard",
+      label: "Overview",
       href: "/",
-      icon: (
-        <IconBrandTabler className="h-5 w-5 shrink-0" />
-      ),
+      icon: <IconBrandTabler className="h-5 w-5 shrink-0" />,
       adminOnly: false,
     },
     {
-      label: "Analytics",
-      href: "/powerbi",
-      icon: (
-        <IconTable className="h-5 w-5 shrink-0" />
-      ),
-      adminOnly: true,
+      label: "Deliveries",
+      href: "/deliveries",
+      icon: <IconTruckDelivery className="h-5 w-5 shrink-0" />,
+      adminOnly: false,
+    },
+    {
+      label: "Throughput",
+      href: "/throughput",
+      icon: <IconChartHistogram className="h-5 w-5 shrink-0" />,
+      adminOnly: false,
+    },
+    {
+      label: "Network",
+      href: "/network",
+      icon: <IconMapPin className="h-5 w-5 shrink-0" />,
+      adminOnly: false,
+    },
+    {
+      label: "Carriers",
+      href: "/carriers",
+      icon: <IconBuildingStore className="h-5 w-5 shrink-0" />,
+      adminOnly: false,
+    },
+    {
+      label: "Shipments",
+      href: "/shipments",
+      icon: <IconTable className="h-5 w-5 shrink-0" />,
+      adminOnly: false,
+    },
+    {
+      label: "Data Quality",
+      href: "/data-quality",
+      icon: <IconShieldCheck className="h-5 w-5 shrink-0" />,
+      adminOnly: false,
     },
     {
       label: "Upload Data",
       href: "/upload",
-      icon: (
-        <IconUserBolt className="h-5 w-5 shrink-0" />
-      ),
+      icon: <IconUpload className="h-5 w-5 shrink-0" />,
       adminOnly: true,
     },
   ].filter(link => !link.adminOnly || isAdmin);

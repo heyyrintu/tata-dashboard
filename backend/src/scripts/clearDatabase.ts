@@ -1,28 +1,15 @@
-import { connectDatabase } from '../config/database';
-import Trip from '../models/Trip';
+import prisma from '../lib/prisma';
 
-/**
- * Script to clear all Trip data from the database
- * Usage: npx ts-node src/scripts/clearDatabase.ts
- */
+/** Wipe all imported shipment data. Run with: npm run clear-db */
+async function main() {
+  const deleted = await prisma.shipment.deleteMany();
+  await prisma.dashboardSnapshot.deleteMany();
+  console.log(`Deleted ${deleted.count} shipments and cleared dashboard snapshots.`);
+}
 
-const clearDatabase = async () => {
-  try {
-    console.log('🔌 Connecting to database...');
-    await connectDatabase();
-    
-    console.log('🗑️  Clearing all Trip data...');
-    const result = await Trip.deleteMany({});
-    
-    console.log(`✅ Successfully deleted ${result.deletedCount} trips from the database`);
-    console.log('✨ Database is now empty and ready for fresh data upload');
-    
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Error clearing database:', error);
+main()
+  .catch((e) => {
+    console.error(e);
     process.exit(1);
-  }
-};
-
-clearDatabase();
-
+  })
+  .finally(() => prisma.$disconnect());

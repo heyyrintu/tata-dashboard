@@ -7,57 +7,91 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Trip {
-  id              Int       @id @default(autoincrement())
-  sNo             Int?
-  indentDate      DateTime? @db.Timestamptz
-  indent          String?
-  allocationDate  DateTime? @db.Timestamptz
-  customerName    String?
-  location        String?
-  vehicleModel    String?
-  vehicleNumber   String?
-  vehicleBased    String?
-  lrNo            String?
-  material        String?
-  loadPerBucket   Float?    @default(0)
-  noOfBuckets     Float?    @default(0)
-  totalLoad       Float?    @default(0)
-  podReceived     String?
-  loadingCharge   Float?    @default(0)
-  unloadingCharge Float?    @default(0)
-  actualRunning   Float?    @default(0)
-  billableRunning Float?    @default(0)
-  range           String?
-  remarks         String?
-  freightTigerMonth String?
-  totalCostAE     Float?    @default(0)
-  totalCostLoading Float?   @default(0)
-  totalCostUnload Float?    @default(0)
-  anyOtherCost    Float?    @default(0)
-  remainingCost   Float?    @default(0)
-  vehicleCost     Float?    @default(0)
-  profitLoss      Float?    @default(0)
-  totalKm         Float?    @default(0)
-  createdAt       DateTime  @default(now()) @db.Timestamptz
-  updatedAt       DateTime  @updatedAt @db.Timestamptz
+/// One row of the NPL DEF MIS master sheet = one LR / consignment.
+/// Sheets are per-branch tabs; Sonipat arrives split across two tabs and is unioned on import.
+model Shipment {
+  id                   Int       @id @default(autoincrement())
+  srNo                 Int?
+  sourceSheet          String?
 
-  @@index([indentDate])
-  @@index([indent])
-  @@index([allocationDate])
-  @@index([range])
-  @@index([material])
-  @@index([freightTigerMonth])
-  @@index([indentDate, range])
-  @@index([vehicleNumber, indentDate])
-  @@map("trips")
+  // --- Origin / destination ---
+  branch               String?   // normalised PICKUP LOCATION (Sonipat, Lucknow, Gandhidham, Varanasi)
+  pickupLocation       String?   // as written in the sheet
+  partyName            String?
+  destination          String?
+  lane                 String?   // "Sonipat -> Gurgaon", for lane analysis
+
+  // --- Document refs ---
+  invoiceNumber        String?
+  lrNo                 String?
+  lrDate               DateTime? @db.Timestamptz
+
+  // --- Material ---
+  material             String?   // raw MATERIAL DETAILS
+  materialSku          String?   // canonical pack label derived from litres/bucket ("20L", "210L")
+  packSizeLtr          Float?
+  buckets              Float?    @default(0)
+  totalQuantityLtr     Float?    @default(0)
+  loadType             String?   // FTL / PTL
+
+  // --- Delivery execution ---
+  expectedDeliveryDate DateTime? @db.Timestamptz
+  actualDeliveryDate   DateTime? @db.Timestamptz
+  dispatchDate         DateTime? @db.Timestamptz
+  dispatchFrom         String?
+  deliveryStatus       String?   // normalised
+  deliveryStatusRaw    String?
+  lrStatus             String?
+  damage               Boolean?  @default(false)
+
+  // --- Derived delivery metrics (computed at import) ---
+  delayDays            Int?      // actual - expected, negative = early
+  isOnTime             Boolean?  // null when not measurable
+  dispatchToDeliveryDays Int?
+
+  // --- Charges (sparse in the source data) ---
+  loadingCharges       Float?    @default(0)
+  unloadingCharges     Float?    @default(0)
+
+  // --- Carrier ---
+  vehicleNumber        String?
+  vehicleType          String?
+  vendorName           String?
+  dispatchVehicle      String?
+  routeCode            String?
+  ply                  Float?    @default(0)
+
+  // --- POD ---
+  podStatus            String?   // normalised: Received / Pending / At WH / Returned
+  podStatusRaw         String?
+  podReceived          Boolean?  @default(false)
+
+  // --- Bookkeeping ---
+  monthKey             String?   // "2026-08" from lrDate, used for month grouping
+  remarks              String?
+  dataFlags            String?   // comma-separated import corrections, drives the data-quality panel
+
+  createdAt            DateTime  @default(now()) @db.Timestamptz
+  updatedAt            DateTime  @updatedAt @db.Timestamptz
+
+  @@index([lrDate])
+  @@index([monthKey])
+  @@index([branch])
+  @@index([deliveryStatus])
+  @@index([podStatus])
+  @@index([vendorName])
+  @@index([materialSku])
+  @@index([branch, lrDate])
+  @@index([monthKey, branch])
+  @@index([lrDate, deliveryStatus])
+  @@map("shipments")
 }
 
 model DashboardSnapshot {
-  id         Int       @id @default(autoincrement())
-  cacheKey   String    @unique
+  id         Int      @id @default(autoincrement())
+  cacheKey   String   @unique
   data       Json
-  computedAt DateTime  @default(now()) @db.Timestamptz
+  computedAt DateTime @default(now()) @db.Timestamptz
   tripCount  Int
 
   @@map("dashboard_snapshots")
