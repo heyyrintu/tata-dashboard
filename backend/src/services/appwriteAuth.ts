@@ -91,6 +91,7 @@ function writeCache(key: string, user: VerifiedUser | null): void {
 /** Drop every cached verification. Used by tests and on configuration reload. */
 export function clearVerificationCache(): void {
   cache.clear();
+  inFlight.clear();
 }
 
 /**
@@ -107,6 +108,16 @@ function clientFor(jwt: string): Client {
 }
 
 /**
+ * Verifications currently in flight, keyed the same way as the cache.
+ *
+ * The result cache alone does not stop the burst it was added for: one
+ * dashboard page load fires several API calls at once, and on a cold cache
+ * every one of them misses, so each does its own pair of Appwrite round trips.
+ * Sharing the in-flight promise collapses that burst to a single verification.
+ */
+const inFlight = new Map<string, Promise<VerifiedUser | null>>();
+
+/**
  * Verify a JWT and resolve the caller's role.
  *
  * Returns null when the token is not valid, or when Appwrite cannot be reached
@@ -121,6 +132,17 @@ export async function verifyJwt(jwt: string): Promise<VerifiedUser | null> {
   const cached = readCache(key);
   if (cached) return cached.user;
 
+  const pending = inFlight.get(key);
+  if (pending) return pending;
+
+  // Clear the entry once settled, whatever the outcome, so a failed
+  // verification cannot pin every later request to the same rejection.
+  const task = runVerification(jwt, key).finally(() => inFlight.delete(key));
+  inFlight.set(key, task);
+  return task;
+}
+
+async function runVerification(jwt: string, key: string): Promise<VerifiedUser | null> {
   const client = clientFor(jwt);
 
   let userId: string;

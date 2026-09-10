@@ -4,7 +4,7 @@
 
 One container, built from the **root `Dockerfile`**, listening on port **80**:
 
-```
+```text
 Coolify proxy (TLS)  ->  :80  nginx  ->  static SPA  (/usr/share/nginx/html)
                                      \-> /api, /health  ->  node :5000
                                                               |
@@ -57,7 +57,7 @@ every row in the shipments table** — no authentication, no undo.
 | `HO_TEAM_ID` | | Appwrite team whose members see real carrier names. |
 | `ADMIN_TEAM_ID` | | Appwrite team whose members may upload. |
 | `CLIENT_VIEW` | `auto` | Masking kill-switch: `auto`, `always`, `off`. |
-| `VITE_LOGO_URL` | `/logo.png` | |
+| `VITE_LOGO_URL` | *(brand lockup)* | Overrides `public/brand/logo.*` without a rebuild. |
 | `RUN_MIGRATIONS` | `true` | Set `false` if a separate release step applies migrations. |
 | `TRUST_PROXY` | `loopback, linklocal, uniquelocal` | See *Rate limiting* below. |
 | `SHUTDOWN_TIMEOUT_MS` | `10000` | Must stay under `stopwaitsecs` (15s) in `supervisord.conf`. |

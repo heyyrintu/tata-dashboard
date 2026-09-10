@@ -285,7 +285,24 @@ connectDatabase().then(async () => {
  * own SIGKILL deadline.
  */
 function registerShutdownHandlers(server: import('http').Server): void {
-  const SHUTDOWN_TIMEOUT_MS = parseInt(process.env.SHUTDOWN_TIMEOUT_MS || '10000', 10);
+  // A malformed SHUTDOWN_TIMEOUT_MS must not silently defeat graceful
+  // shutdown: parseInt('abc') is NaN and setTimeout treats NaN (and any value
+  // <= 0) as "fire now", so a typo would kill in-flight requests the instant
+  // SIGTERM arrived - the exact failure this handler exists to prevent.
+  // Fall back to the documented default rather than refusing to run: a bad
+  // shutdown timer is no reason to take down a healthy server.
+  const DEFAULT_SHUTDOWN_TIMEOUT_MS = 10_000;
+  const configuredTimeout = Number(process.env.SHUTDOWN_TIMEOUT_MS);
+  const SHUTDOWN_TIMEOUT_MS =
+    Number.isSafeInteger(configuredTimeout) && configuredTimeout > 0
+      ? configuredTimeout
+      : DEFAULT_SHUTDOWN_TIMEOUT_MS;
+  if (process.env.SHUTDOWN_TIMEOUT_MS && SHUTDOWN_TIMEOUT_MS !== configuredTimeout) {
+    console.warn(
+      `[Server] SHUTDOWN_TIMEOUT_MS="${process.env.SHUTDOWN_TIMEOUT_MS}" is not a positive integer - ` +
+        `using ${DEFAULT_SHUTDOWN_TIMEOUT_MS}ms`
+    );
+  }
   let shuttingDown = false;
 
   const shutdown = async (signal: NodeJS.Signals) => {

@@ -21,6 +21,15 @@ const API_URL = env('VITE_API_URL', DEFAULT_API_URL)
   .replace(/\/+$/, '')
   .replace(/\/api$/, '');
 
+declare module 'axios' {
+  interface InternalAxiosRequestConfig {
+    /** Set by the request interceptor: did this request carry an Appwrite JWT? */
+    usedJwt?: boolean;
+    /** Guard so a 401 is retried at most once. */
+    __retriedAfter401?: boolean;
+  }
+}
+
 const client = axios.create({ baseURL: `${API_URL}/api`, timeout: 60000 });
 
 // Fallback credential for callers with no Appwrite session. It is compiled into
@@ -35,10 +44,14 @@ const API_KEY = env('VITE_API_KEY');
  * The Appwrite JWT is what the backend verifies to decide the role, and with it
  * whether the response carries real carrier names or pseudonyms. Minting is
  * cached and deduplicated in lib/appwriteJwt.
+ *
+ * Whether a JWT was used is recorded on the request, because the 401 handler
+ * below has to treat the two credentials differently.
  */
 client.interceptors.request.use(async (config) => {
   const jwt = await getJwt();
   const credential = jwt || API_KEY;
+  config.usedJwt = Boolean(jwt);
   if (credential) {
     config.headers.Authorization = `Bearer ${credential}`;
   }
@@ -47,19 +60,33 @@ client.interceptors.request.use(async (config) => {
 
 /**
  * A 401 usually means the JWT lapsed or the session was revoked. Drop the
- * cached token and retry once; a second failure is a genuine sign-out and is
- * passed through for the router to handle.
+ * cached token and retry once.
+ *
+ * A signed-in session must never silently fall back to the shared API key. If
+ * it did, a user whose session expired would keep browsing: the retry would
+ * succeed as the shared `client` role, no second 401 would reach the app, and
+ * AuthContext would go on showing them as signed in while every response
+ * quietly switched to masked data. So a request that used a JWT is only
+ * retried if a fresh JWT can be minted; otherwise the 401 is surfaced and the
+ * router can send them back to sign in.
  */
 client.interceptors.response.use(
   (res) => res,
   async (error) => {
     const config = error?.config;
-    if (error?.response?.status === 401 && config && !config.__retriedAfter401) {
-      config.__retriedAfter401 = true;
-      clearJwt();
-      return client.request(config);
+    if (error?.response?.status !== 401 || !config || config.__retriedAfter401) {
+      return Promise.reject(error);
     }
-    return Promise.reject(error);
+
+    config.__retriedAfter401 = true;
+    clearJwt();
+
+    if (config.usedJwt) {
+      const fresh = await getJwt();
+      if (!fresh) return Promise.reject(error);
+    }
+
+    return client.request(config);
   }
 );
 
