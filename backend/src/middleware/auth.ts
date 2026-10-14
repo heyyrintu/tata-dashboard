@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '../utils/logger';
 import { createError } from './errorHandler';
+import { isDevelopment } from '../config/env';
 
 /**
  * API Key Authentication Middleware
@@ -24,14 +25,15 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
 
   // No API key configured.
   //
-  // Outside production this is the ordinary local-development case, so requests
-  // are allowed through with a one-time warning. In production it must never
-  // open the API up: /api/upload truncates and repopulates the shipments table,
-  // so "misconfigured" has to fail closed rather than fail open. server.ts
-  // already refuses to boot without API_KEY in production - this is the second
-  // layer, so the guarantee does not rest on that one check alone.
+  // Allowed through only when NODE_ENV is explicitly "development", which is
+  // the ordinary local case. Every other value - including NODE_ENV unset -
+  // fails closed: /api/upload truncates and repopulates the shipments table, so
+  // a misconfigured deploy must not serve an open API just because NODE_ENV was
+  // forgotten alongside API_KEY. server.ts already refuses to boot under the
+  // same rule; this is the second layer, so the guarantee does not rest on that
+  // one check alone.
   if (!apiKey) {
-    if (process.env.NODE_ENV === 'production') {
+    if (!isDevelopment) {
       logger.error('API_KEY is not configured - refusing all API requests', { requestId });
       return next(createError('Server authentication is not configured.', 500));
     }
