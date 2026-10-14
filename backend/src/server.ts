@@ -1,5 +1,5 @@
 // Must stay the FIRST import: it loads .env before any other module is constructed.
-import { emailPollingEnabled } from './config/env';
+import { emailPollingEnabled, isDevelopment } from './config/env';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -17,10 +17,23 @@ import path from 'path';
 import fs from 'fs';
 
 
-// Validate required environment variables
+// Validate required environment variables.
+//
+// API_KEY is required unless NODE_ENV is explicitly "development" - not merely
+// when it equals "production". middleware/auth.ts treats an unset key as
+// development mode and lets every /api request through, including
+// POST /api/upload, which truncates and repopulates the shipments table. So a
+// deploy that forgot the variable would serve a fully open, destructive API.
+// Gating that on `=== 'production'` would leave the identical hole whenever
+// NODE_ENV is itself unset or misspelled, which is exactly as easy to get wrong
+// as forgetting API_KEY. Open access is therefore opt-in, and every other value
+// of NODE_ENV - unset included - fails closed at boot.
 const requiredEnvVars = ['DATABASE_URL'];
 if (process.env.NODE_ENV === 'production') {
   requiredEnvVars.push('FRONTEND_URL');
+}
+if (!isDevelopment) {
+  requiredEnvVars.push('API_KEY');
 }
 const missingVars = requiredEnvVars.filter(v => !process.env[v]);
 if (missingVars.length > 0) {
