@@ -17,10 +17,16 @@ import path from 'path';
 import fs from 'fs';
 
 
-// Validate required environment variables
+// Validate required environment variables.
+//
+// API_KEY is required in production because middleware/auth.ts treats an unset
+// key as "development mode" and lets every /api request through - including
+// POST /api/upload, which truncates and repopulates the shipments table. A
+// deploy that simply forgot the variable would therefore serve a fully open,
+// destructive API. Failing to boot is the safe way to get that wrong.
 const requiredEnvVars = ['DATABASE_URL'];
 if (process.env.NODE_ENV === 'production') {
-  requiredEnvVars.push('FRONTEND_URL');
+  requiredEnvVars.push('FRONTEND_URL', 'API_KEY');
 }
 const missingVars = requiredEnvVars.filter(v => !process.env[v]);
 if (missingVars.length > 0) {

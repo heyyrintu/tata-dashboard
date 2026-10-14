@@ -22,8 +22,19 @@ export const authenticate = (req: Request, res: Response, next: NextFunction): v
   const apiKey = process.env.API_KEY;
   const requestId = req.id || 'unknown';
 
-  // If no API key is configured, allow all requests (development mode)
+  // No API key configured.
+  //
+  // Outside production this is the ordinary local-development case, so requests
+  // are allowed through with a one-time warning. In production it must never
+  // open the API up: /api/upload truncates and repopulates the shipments table,
+  // so "misconfigured" has to fail closed rather than fail open. server.ts
+  // already refuses to boot without API_KEY in production - this is the second
+  // layer, so the guarantee does not rest on that one check alone.
   if (!apiKey) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('API_KEY is not configured - refusing all API requests', { requestId });
+      return next(createError('Server authentication is not configured.', 500));
+    }
     if (!openAccessWarned) {
       openAccessWarned = true;
       logger.warn('API_KEY not configured - all API requests are being allowed without authentication');
